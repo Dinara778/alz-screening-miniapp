@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --app-bg: #eff6f0;
+  --app-text: #0f172a;
+  --brand-main: #064e3b;
+  --brand-main-soft: #d1fae5;
+}
+
+body {
+  @apply m-0;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button:focus-visible,
+textarea:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--brand-main);
+  outline-offset: 2px;
+}

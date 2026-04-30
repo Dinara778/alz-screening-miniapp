@@ -1,0 +1,98 @@
+export type TrialType = 'congruent' | 'incongruent' | 'neutral';
+
+export type TrialResult = {
+  type: TrialType;
+  rt: number | null;
+  correct: boolean;
+  timedOut?: boolean;
+};
+
+export type WordMemoryResult = {
+  immediateScore: number;
+  delayedScore: number;
+  immediateWords: string[];
+  delayedWords: string[];
+  redFlag: boolean;
+};
+
+export type FlankerResult = {
+  trials: TrialResult[];
+  avgCongruentRt: number;
+  avgIncongruentRt: number;
+  incongruentCv: number;
+  incongruentAccuracy: number;
+  redFlag: boolean;
+};
+
+export type ReactionResult = {
+  successfulRTs: number[];
+  medianRt: number;
+  cv: number;
+  anticipations: number;
+  redFlag: boolean;
+};
+
+export type StroopResult = {
+  trials: TrialResult[];
+  incongruentErrorRate: number;
+  incongruentCv: number;
+  redFlag: boolean;
+};
+
+export type FaceNameResult = {
+  score: number;
+  answers: { faceId: number; selected: string; correct: string }[];
+  redFlag: boolean;
+};
+
+export type ParticipantProfile = {
+  name: string;
+  email: string;
+  phone: string;
+  sex: 'Женский' | 'Мужской' | 'Другой';
+  age: number;
+  education: string;
+  educationYears: number;
+  pcConfidence: 1 | 2 | 3 | 4 | 5;
+};
+
+export type SessionResult = {
+  id: string;
+  date: string;
+  flags: number;
+  status: 'Нет признаков' | 'Умеренный риск, стабильные реакции' | 'Риск выше среднего' | 'Высокий риск';
+  participant: ParticipantProfile;
+  wordMemory: WordMemoryResult;
+  flanker: FlankerResult;
+  reaction: ReactionResult;
+  stroop: StroopResult;
+  faceName: FaceNameResult;
+};
+
+export type AppStage =
+  | 'welcome'
+  | 'history'
+  | 'word-study'
+  | 'word-immediate'
+  | 'flanker-instruction'
+  | 'flanker'
+  | 'reaction-instruction'
+  | 'reaction'
+  | 'interference-wait'
+  | 'word-delayed'
+  | 'face-study'
+  | 'stroop-instruction'
+  | 'stroop'
+  | 'face-test'
+  | 'result';
+
+export type SavedProgress = {
+  stage: AppStage;
+  startedAt: number | null;
+  immediateWords?: string[];
+  delayedWords?: string[];
+  flankerTrials?: TrialResult[];
+  reactionSuccessful?: number[];
+  reactionAnticipations?: number;
+  stroopTrials?: TrialResult[];
+};
