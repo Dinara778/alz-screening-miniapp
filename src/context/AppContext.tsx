@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { AppStage, ParticipantProfile, SessionResult, TrialResult } from '../types';
 import { clearProgress, loadHistory, loadProgress, saveProgress, saveSession } from '../utils/storage';
+import { sendSessionToSheets } from '../utils/sheetsWebhook';
 
 type FaceAnswer = { faceId: number; selected: string; correct: string };
 
@@ -95,6 +96,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const saveResultFn = (result: SessionResult) => {
     setLatestResult(result);
     saveSession(result);
+    void sendSessionToSheets(result).catch(() => {
+      // Ignore webhook errors to keep UX stable.
+    });
     setHistory(loadHistory());
     clearProgress();
   };
