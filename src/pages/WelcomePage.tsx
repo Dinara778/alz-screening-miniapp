@@ -11,7 +11,6 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
   const [sex, setSex] = useState<ParticipantProfile['sex']>('Женский');
   const [age, setAge] = useState('');
   const [education, setEducation] = useState('');
-  const [educationYears, setEducationYears] = useState('');
   const [pcConfidence, setPcConfidence] = useState<ParticipantProfile['pcConfidence']>(3);
 
   const submit = (e: FormEvent) => {
@@ -19,8 +18,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
     const normalizedEmail = email.trim();
     const normalizedPhone = phone.trim();
     const parsedAge = Number(age);
-    const parsedEducationYears = Number(educationYears);
-    if (!name.trim() || !normalizedEmail || !normalizedPhone || !education.trim() || !Number.isFinite(parsedAge) || !Number.isFinite(parsedEducationYears)) return;
+    if (!name.trim() || !normalizedEmail || !normalizedPhone || !education.trim() || !Number.isFinite(parsedAge)) return;
 
     onStart({
       name: name.trim(),
@@ -29,7 +27,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
       sex,
       age: parsedAge,
       education: education.trim(),
-      educationYears: parsedEducationYears,
+      educationYears: 12,
       pcConfidence,
     });
   };
@@ -62,7 +60,6 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
           </select>
           <input className="rounded-xl border p-3" placeholder="Возраст" type="number" min={18} max={100} value={age} onChange={(e) => setAge(e.target.value)} required />
           <input className="rounded-xl border p-3" placeholder="Образование" value={education} onChange={(e) => setEducation(e.target.value)} required />
-          <input className="rounded-xl border p-3" placeholder="Лет образования" type="number" min={1} max={30} value={educationYears} onChange={(e) => setEducationYears(e.target.value)} required />
           <label className="text-sm text-slate-700">
             Насколько уверенно пользуетесь ПК (1 — только с помощью, 5 — уверенно и часто):
           </label>

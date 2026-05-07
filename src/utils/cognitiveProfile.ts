@@ -157,7 +157,7 @@ export const buildCognitiveProfile = (session: SessionResult): CognitiveProfile 
     reactionInterpretation = 'Когнитивный темп начинает становиться менее стабильным при нагрузке и усталости.';
   } else {
     reactionInterpretation =
-      'Скорость реакции заметно колеблется. Это часто ощущается как нестабильная продуктивность, скачки концентрации и быстрое ментальное истощение.';
+      'Скорость реакции заметно колеблется. Это часто ощущается как нестабильная продуктивность, скачки концентрации и быстрое когнитивное истощение.';
     reactionLevel = 'overload';
     reactionScore = 40;
     reactionOverloaded = true;
@@ -168,7 +168,7 @@ export const buildCognitiveProfile = (session: SessionResult): CognitiveProfile 
   }
   domains.push({
     key: 'reaction',
-    title: 'Стабильность ментального темпа',
+    title: 'Стабильность когнитивного темпа',
     level: reactionLevel,
     score: reactionScore,
     interpretation: reactionInterpretation,
@@ -304,10 +304,10 @@ export const buildCognitiveProfile = (session: SessionResult): CognitiveProfile 
     'Когнитивная система работает стабильно. Есть отдельные зоны утомления, но общая устойчивость сохраняется.';
   if (overloadIndicators >= 2 && overloadIndicators <= 3) {
     overloadText =
-      'Мозг начинает терять стабильность под нагрузкой. Это может влиять на концентрацию, ясность мышления и ментальную выносливость.';
+      'Мозг начинает терять стабильность под нагрузкой. Это может влиять на концентрацию, ясность мышления и когнитивную выносливость.';
   } else if (overloadIndicators >= 4) {
     overloadText =
-      'Нагрузка и истощение уже заметно влияют на качество работы внимания и памяти. Обычно в таком состоянии люди ощущают ментальную усталость и перегруженность.';
+      'Нагрузка и истощение уже заметно влияют на качество работы внимания и памяти. Обычно в таком состоянии люди ощущают когнитивную усталость и перегруженность.';
   }
 
   return {
