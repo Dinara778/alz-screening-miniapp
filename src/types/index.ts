@@ -60,7 +60,10 @@ export type SessionResult = {
   id: string;
   date: string;
   flags: number;
-  status: 'Нет признаков' | 'Умеренный риск, стабильные реакции' | 'Риск выше среднего' | 'Высокий риск';
+  status:
+    | 'Когнитивная система работает стабильно'
+    | 'Нестабильность под нагрузкой'
+    | 'Выраженная когнитивная перегрузка';
   participant: ParticipantProfile;
   wordMemory: WordMemoryResult;
   flanker: FlankerResult;

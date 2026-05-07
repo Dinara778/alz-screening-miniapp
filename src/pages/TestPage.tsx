@@ -8,6 +8,7 @@ import { useFlankerTest } from '../hooks/useFlankerTest';
 import { useReactionTest } from '../hooks/useReactionTest';
 import { useStroopTest } from '../hooks/useStroopTest';
 import { useTimer } from '../hooks/useTimer';
+import { buildCognitiveProfile } from '../utils/cognitiveProfile';
 import { WORDS } from '../utils/generateStimuli';
 import { buildStatus, normalizeWords, scoreFaceName, scoreFlanker, scoreReaction, scoreStroop, scoreWordMemory } from '../utils/scoring';
 
@@ -142,13 +143,33 @@ export const TestPage = () => {
     const faceScore = mappedAnswers.filter((a) => a.selected === a.correct).length;
     const fn = scoreFaceName(faceScore, mappedAnswers);
 
-    const flags = [wm.redFlag, fl.redFlag, rx.redFlag, st.redFlag, fn.redFlag].filter(Boolean).length;
+    const profileFlags = buildCognitiveProfile({
+      id: 'preview',
+      date: new Date().toISOString(),
+      flags: 0,
+      status: 'Когнитивная система работает стабильно',
+      participant: app.participant ?? {
+        name: 'Не указано',
+        email: 'Не указано',
+        phone: 'Не указано',
+        sex: 'Другой',
+        age: 0,
+        education: 'Не указано',
+        educationYears: 12,
+        pcConfidence: 3,
+      },
+      wordMemory: wm,
+      flanker: fl,
+      reaction: rx,
+      stroop: st,
+      faceName: fn,
+    }).overloadIndicators;
 
     app.saveResult({
       id: crypto.randomUUID(),
       date: new Date().toISOString(),
-      flags,
-      status: buildStatus(flags),
+      flags: profileFlags,
+      status: buildStatus(profileFlags),
       participant: app.participant ?? {
         name: 'Не указано',
         email: 'Не указано',
@@ -360,7 +381,7 @@ export const TestPage = () => {
             ))}
           </div>
         ))}
-        <Button disabled={!face.isComplete} onClick={finish}>Завершить скрининг</Button>
+        <Button disabled={!face.isComplete} onClick={finish}>Завершить анализ</Button>
       </div>
     );
   }

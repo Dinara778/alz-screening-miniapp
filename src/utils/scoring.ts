@@ -67,8 +67,7 @@ export const scoreFaceName = (score: number, answers: FaceNameResult['answers'])
 });
 
 export const buildStatus = (flags: number): SessionResult['status'] => {
-  if (flags === 0) return 'Нет признаков';
-  if (flags <= 2) return 'Умеренный риск, стабильные реакции';
-  if (flags === 3) return 'Риск выше среднего';
-  return 'Высокий риск';
+  if (flags <= 1) return 'Когнитивная система работает стабильно';
+  if (flags <= 3) return 'Нестабильность под нагрузкой';
+  return 'Выраженная когнитивная перегрузка';
 };

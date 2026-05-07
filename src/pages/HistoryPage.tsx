@@ -15,7 +15,7 @@ export const HistoryPage = ({ onBack }: { onBack: () => void }) => {
             {(h.participant?.name ?? 'Пользователь')}, {(h.participant?.age ?? '—')} лет, {(h.participant?.sex ?? '—')}, ПК: {(h.participant?.pcConfidence ?? '—')}/5, образование: {(h.participant?.educationYears ?? '—')} лет
           </div>
           <div>
-            Статус: <span className="font-medium">{h.status}</span> ({h.flags} флагов)
+            Когнитивный профиль: <span className="font-medium">{h.status}</span> ({h.flags} индикаторов перегрузки)
           </div>
           <div className="text-sm text-slate-600">
             Память {h.wordMemory.immediateScore}/{h.wordMemory.delayedScore}; Flanker точность {h.flanker.incongruentAccuracy.toFixed(1)}%;

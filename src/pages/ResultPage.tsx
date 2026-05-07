@@ -1,86 +1,110 @@
 import { Button } from '../components/Button';
-import { ResultCard } from '../components/ResultCard';
 import { useApp } from '../context/AppContext';
-import { adjustTestScores } from '../utils/adjustTestScores';
+import { buildCognitiveProfile } from '../utils/cognitiveProfile';
 
 export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const { latestResult } = useApp();
   if (!latestResult) return null;
-  const metricLabels: Record<string, string> = {
-    delayedRecall: 'Память (отсроченное воспроизведение)',
-    faceRecognition: 'Лица-имена',
-    flankerRT: 'Flanker RT (мс)',
-    flankerCV: 'Flanker CV (%)',
-    simpleRT: 'Простая реакция RT (мс)',
-    simpleCV: 'Простая реакция CV (%)',
-    stroopErrors: 'Stroop ошибки (%)',
-  };
-
-  const elevatedRisk = latestResult.flags >= 3;
-  const highRisk = latestResult.flags >= 4;
-
-  const recommendation =
-    latestResult.flags <= 2
-      ? 'Умеренный риск, стабильные реакции.'
-      : latestResult.flags === 3
-        ? 'Риск выше среднего, рекомендуется обратиться к неврологу.'
-        : 'Высокий риск, рекомендуется обратиться к неврологу.';
-
-  const adjusted = adjustTestScores(
-    {
-      delayedRecall: latestResult.wordMemory.delayedScore,
-      faceRecognition: latestResult.faceName.score,
-      flankerRT:
-        latestResult.flanker.avgIncongruentRt ||
-        latestResult.flanker.avgCongruentRt ||
-        244,
-      flankerCV: latestResult.flanker.incongruentCv,
-      simpleRT: latestResult.reaction.medianRt,
-      simpleCV: latestResult.reaction.cv,
-      stroopErrors: latestResult.stroop.incongruentErrorRate,
-    },
-    {
-      age: latestResult.participant.age,
-      educationYears: latestResult.participant.educationYears,
-      sex: latestResult.participant.sex === 'Мужской' ? 'male' : 'female',
-    },
-  );
+  const profile = buildCognitiveProfile(latestResult);
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold">Результаты скрининга</h1>
-      <div className={`rounded-xl p-4 ${highRisk ? 'bg-red-50 border border-red-200' : 'bg-white'}`}>
-        <p className="text-lg font-semibold">{latestResult.status}</p>
-        <p className="text-slate-700">Флагов: {latestResult.flags} из 5</p>
-        <p className="mt-2">{recommendation}</p>
-        <p className="mt-2">Рекомендация: пройти расширенную диагностику.</p>
-        {elevatedRisk && <p className="mt-2 text-red-700">Рекомендуется очный визит к неврологу в ближайшее время.</p>}
+      <h1 className="text-2xl font-bold">Ваш когнитивный профиль</h1>
+      <div className="rounded-xl border border-emerald-300 bg-white p-4 space-y-3">
+        <div className="text-sm text-emerald-900">Индекс когнитивной устойчивости</div>
+        <div className="text-5xl font-bold text-emerald-900">{profile.cognitiveStabilityIndex}</div>
+        <p className="text-slate-700">{profile.overloadText}</p>
+        <p className="text-sm text-slate-600">
+          Индикаторы когнитивной перегрузки: {profile.overloadIndicators} из 5
+        </p>
       </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <ResultCard title="Память" value={`${latestResult.wordMemory.immediateScore} / ${latestResult.wordMemory.delayedScore}`} flag={latestResult.wordMemory.redFlag} />
-        <ResultCard title="Flanker" value={`Точность ${latestResult.flanker.incongruentAccuracy.toFixed(1)}%, CV ${latestResult.flanker.incongruentCv.toFixed(1)}%`} flag={latestResult.flanker.redFlag} />
-        <ResultCard title="Реакция" value={`Медиана ${latestResult.reaction.medianRt.toFixed(0)} мс, CV ${latestResult.reaction.cv.toFixed(1)}%`} flag={latestResult.reaction.redFlag} />
-        <ResultCard title="Stroop" value={`Ошибки ${latestResult.stroop.incongruentErrorRate.toFixed(1)}%, CV ${latestResult.stroop.incongruentCv.toFixed(1)}%`} flag={latestResult.stroop.redFlag} />
-        <ResultCard title="Лица-имена" value={`${latestResult.faceName.score} / 3`} flag={latestResult.faceName.redFlag} />
+        <div className="rounded-xl bg-white p-4 border border-emerald-200">
+          <h2 className="font-semibold mb-2">Сильные стороны</h2>
+          {profile.strengths.length ? (
+            <ul className="text-sm text-slate-700 space-y-1">
+              {profile.strengths.map((s) => (
+                <li key={s}>• {s}</li>
+              ))}
+            </ul>
+          ) : (
+            <div className="text-sm text-slate-600">Сильные стороны уточняются в динамике при повторных замерах.</div>
+          )}
+        </div>
+        <div className="rounded-xl bg-white p-4 border border-amber-200">
+          <h2 className="font-semibold mb-2">Зоны когнитивной перегрузки</h2>
+          {profile.overloadZones.length ? (
+            <ul className="text-sm text-slate-700 space-y-1">
+              {profile.overloadZones.map((s) => (
+                <li key={s}>• {s}</li>
+              ))}
+            </ul>
+          ) : (
+            <div className="text-sm text-slate-600">Выраженных зон перегрузки сейчас не обнаружено.</div>
+          )}
+        </div>
       </div>
-      <div className="rounded-xl bg-white p-4 space-y-3 border border-emerald-200">
-        <h2 className="text-xl font-bold">Скорректированные Z-оценки</h2>
-        <p className="text-sm text-slate-700">Итоговый риск: {adjusted.riskLevel}</p>
-        <p className="text-sm text-slate-700">Флагов по Z-критерию (&lt; -1.5): {adjusted.totalFlags}</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-          {adjusted.metrics.map((m) => (
-            <div key={m.metric} className={`rounded-lg p-2 border ${m.flagged ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-slate-50'}`}>
-              <div className="font-medium">{metricLabels[m.metric] ?? m.metric}</div>
-              <div>Raw: {m.raw.toFixed(2)}</div>
-              <div>Adjusted: {m.corrected.toFixed(2)}</div>
-              <div>Z: {m.z.toFixed(2)}</div>
+
+      <div className="space-y-3">
+        {profile.domains.map((d) => (
+          <div
+            key={d.key}
+            className={`rounded-xl p-4 border ${
+              d.level === 'strong'
+                ? 'bg-emerald-50 border-emerald-200'
+                : d.level === 'watch'
+                  ? 'bg-amber-50 border-amber-200'
+                  : 'bg-orange-50 border-orange-200'
+            }`}
+          >
+            <div className="font-semibold">{d.title}</div>
+            <div className="text-sm mt-1 text-slate-700">{d.interpretation}</div>
+            <div className="text-sm mt-2 text-slate-600">{d.metrics.join(' · ')}</div>
+            <div className="text-sm mt-2">
+              <span className="font-medium">Персональные рекомендации:</span>
+              <ul className="mt-1 space-y-1 text-slate-700">
+                {d.recommendations.map((r) => (
+                  <li key={r}>• {r}</li>
+                ))}
+              </ul>
             </div>
-          ))}
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-xl bg-slate-950 text-white p-5 space-y-3">
+        <p>
+          Ваши результаты показывают не только скорость реакции, но и то, насколько стабильно мозг работает под нагрузкой.
+        </p>
+        <p>
+          Даже при нормальной скорости мышления мозг может терять устойчивость:
+          <br />— при переключении внимания,
+          <br />— в условиях перегрузки,
+          <br />— при длительной концентрации,
+          <br />— под информационным шумом.
+        </p>
+        <p>Расширенный когнитивный профиль поможет увидеть:</p>
+        <ul className="space-y-1 text-slate-200">
+          <li>• какие именно механизмы внимания проседают первыми,</li>
+          <li>• насколько стабильно мозг удерживает темп работы,</li>
+          <li>• как меняется точность под нагрузкой,</li>
+          <li>• есть ли признаки когнитивного переутомления,</li>
+          <li>• какие паттерны снижают ясность мышления именно у вас.</li>
+        </ul>
+        <p className="text-slate-200">
+          Это не общие советы, а персональный анализ ваших реакций, вариативности и устойчивости внимания.
+        </p>
+        <div className="rounded-lg bg-slate-800 p-3 text-sm">
+          <div className="font-semibold mb-1">Что доступно в расширенной версии:</div>
+          <div>1. Ваш когнитивный профиль: карта сильных и слабых сторон, сравнение доменов, доминирующий тип нагрузки.</div>
+          <div>2. Что сильнее всего влияет на концентрацию: перегрузка переключением, нестабильность внимания, реактивность, истощение.</div>
+          <div>3. Как меняется работа мозга под нагрузкой: где падает точность, растет вариативность и быстрее наступает усталость.</div>
+          <div>4. Персональные рекомендации: по вашим метрикам, с причинно-следственными объяснениями и практиками.</div>
         </div>
       </div>
       <div className="flex flex-wrap gap-3">
-        <Button>Купить расширенную диагностику + программу когнитивных тренировок за 399 руб</Button>
-        {elevatedRisk && <Button variant="danger">Выбрать врача в вашем городе</Button>}
+        <Button>Открыть расширенный когнитивный профиль за 399 ₽</Button>
         <Button variant="secondary" onClick={onRestart}>Пройти снова</Button>
       </div>
     </div>
