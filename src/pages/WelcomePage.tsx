@@ -1,6 +1,7 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useRef, useState } from 'react';
 import { Button } from '../components/Button';
 import { ParticipantProfile } from '../types';
+import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
 type Props = { onStart: (profile: ParticipantProfile) => void; onHistory: () => void };
 
@@ -12,6 +13,26 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
   const [age, setAge] = useState('');
   const [education, setEducation] = useState('');
   const [pcConfidence, setPcConfidence] = useState<ParticipantProfile['pcConfidence']>(3);
+  const formSessionIdRef = useRef(`welcome-${Date.now()}`);
+  const hasSentFormStartRef = useRef(false);
+
+  const sendFormStartedEvent = (triggerField: string) => {
+    if (hasSentFormStartRef.current) return;
+    hasSentFormStartRef.current = true;
+    void sendAnalyticsEventToSheets({
+      eventType: 'form_started',
+      sessionId: formSessionIdRef.current,
+      stage: 'welcome',
+      triggerField,
+      participant: {
+        name: name.trim() || undefined,
+        email: email.trim() || undefined,
+        phone: phone.trim() || undefined,
+      },
+    }).catch(() => {
+      // Ignore analytics errors to keep UX stable.
+    });
+  };
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -19,6 +40,23 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
     const normalizedPhone = phone.trim();
     const parsedAge = Number(age);
     if (!name.trim() || !normalizedEmail || !normalizedPhone || !education.trim() || !Number.isFinite(parsedAge)) return;
+
+    void sendAnalyticsEventToSheets({
+      eventType: 'form_submitted',
+      sessionId: formSessionIdRef.current,
+      stage: 'welcome',
+      participant: {
+        name: name.trim(),
+        email: normalizedEmail,
+        phone: normalizedPhone,
+        sex,
+        age: parsedAge,
+        education: education.trim(),
+        pcConfidence,
+      },
+    }).catch(() => {
+      // Ignore analytics errors to keep UX stable.
+    });
 
     onStart({
       name: name.trim(),
@@ -50,20 +88,20 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         </div>
 
         <div className="grid gap-3">
-          <input className="rounded-xl border p-3" placeholder="Имя" value={name} onChange={(e) => setName(e.target.value)} required />
-          <input className="rounded-xl border p-3" placeholder="Почта" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          <input className="rounded-xl border p-3" placeholder="Телефон" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required />
-          <select className="rounded-xl border p-3" value={sex} onChange={(e) => setSex(e.target.value as ParticipantProfile['sex'])}>
+          <input className="rounded-xl border p-3" placeholder="Имя" value={name} onChange={(e) => { sendFormStartedEvent('name'); setName(e.target.value); }} required />
+          <input className="rounded-xl border p-3" placeholder="Почта" type="email" value={email} onChange={(e) => { sendFormStartedEvent('email'); setEmail(e.target.value); }} required />
+          <input className="rounded-xl border p-3" placeholder="Телефон" type="tel" value={phone} onChange={(e) => { sendFormStartedEvent('phone'); setPhone(e.target.value); }} required />
+          <select className="rounded-xl border p-3" value={sex} onChange={(e) => { sendFormStartedEvent('sex'); setSex(e.target.value as ParticipantProfile['sex']); }}>
             <option value="Женский">Женский</option>
             <option value="Мужской">Мужской</option>
             <option value="Другой">Другой</option>
           </select>
-          <input className="rounded-xl border p-3" placeholder="Возраст" type="number" min={18} max={100} value={age} onChange={(e) => setAge(e.target.value)} required />
-          <input className="rounded-xl border p-3" placeholder="Образование" value={education} onChange={(e) => setEducation(e.target.value)} required />
+          <input className="rounded-xl border p-3" placeholder="Возраст" type="number" min={18} max={100} value={age} onChange={(e) => { sendFormStartedEvent('age'); setAge(e.target.value); }} required />
+          <input className="rounded-xl border p-3" placeholder="Образование" value={education} onChange={(e) => { sendFormStartedEvent('education'); setEducation(e.target.value); }} required />
           <label className="text-sm text-slate-700">
             Насколько уверенно пользуетесь ПК (1 — только с помощью, 5 — уверенно и часто):
           </label>
-          <input className="w-full" type="range" min={1} max={5} step={1} value={pcConfidence} onChange={(e) => setPcConfidence(Number(e.target.value) as ParticipantProfile['pcConfidence'])} />
+          <input className="w-full" type="range" min={1} max={5} step={1} value={pcConfidence} onChange={(e) => { sendFormStartedEvent('pcConfidence'); setPcConfidence(Number(e.target.value) as ParticipantProfile['pcConfidence']); }} />
           <div className="text-sm font-semibold">Оценка: {pcConfidence}</div>
         </div>
 

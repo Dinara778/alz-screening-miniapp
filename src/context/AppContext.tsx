@@ -1,7 +1,7 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppStage, ParticipantProfile, SessionResult, TrialResult } from '../types';
-import { clearProgress, loadHistory, loadProgress, saveProgress, saveSession } from '../utils/storage';
-import { sendSessionToSheets } from '../utils/sheetsWebhook';
+import { clearProgress, loadHistory, saveProgress, saveSession } from '../utils/storage';
+import { sendAnalyticsEventToSheets, sendSessionToSheets } from '../utils/sheetsWebhook';
 
 type FaceAnswer = { faceId: number; selected: string; correct: string };
 
@@ -50,18 +50,15 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [history, setHistory] = useState<SessionResult[]>(() => loadHistory());
   const [sessionSeed, setSessionSeed] = useState(() => Date.now());
   const [participant, setParticipant] = useState<ParticipantProfile | null>(null);
+  const sentStageEventsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    const progress = loadProgress();
-    if (!progress) return;
-    setStage(progress.stage);
-    setInterferenceStart(progress.startedAt);
-    setImmediateWords(progress.immediateWords ?? []);
-    setDelayedWords(progress.delayedWords ?? []);
-    setFlankerTrials(progress.flankerTrials ?? []);
-    setReactionSuccessful(progress.reactionSuccessful ?? []);
-    setReactionAnticipations(progress.reactionAnticipations ?? 0);
-    setStroopTrials(progress.stroopTrials ?? []);
+    sentStageEventsRef.current = new Set();
+  }, [sessionSeed]);
+
+  useEffect(() => {
+    // Refresh should always start a new session.
+    clearProgress();
   }, []);
 
   useEffect(() => {
@@ -76,6 +73,31 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       stroopTrials,
     });
   }, [stage, interferenceStart, immediateWords, delayedWords, flankerTrials, reactionSuccessful, reactionAnticipations, stroopTrials]);
+
+  useEffect(() => {
+    const key = `${sessionSeed}:${stage}`;
+    if (sentStageEventsRef.current.has(key)) return;
+    sentStageEventsRef.current.add(key);
+
+    void sendAnalyticsEventToSheets({
+      eventType: 'stage_reached',
+      sessionId: String(sessionSeed),
+      stage,
+      participant: participant
+        ? {
+            name: participant.name,
+            email: participant.email,
+            phone: participant.phone,
+            sex: participant.sex,
+            age: participant.age,
+            education: participant.education,
+            pcConfidence: participant.pcConfidence,
+          }
+        : undefined,
+    }).catch(() => {
+      // Ignore analytics errors to keep UX stable.
+    });
+  }, [sessionSeed, stage, participant]);
 
   const resetSession = () => {
     setStage('welcome');

@@ -6,6 +6,8 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const { latestResult } = useApp();
   if (!latestResult) return null;
   const profile = buildCognitiveProfile(latestResult);
+  const sellingCtaClass =
+    'bg-red-600 text-white hover:bg-red-500 shadow-lg shadow-red-600/30';
 
   return (
     <div className="space-y-5">
@@ -131,11 +133,11 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         </div>
         <div className="rounded-lg bg-slate-900 px-4 py-3 text-white flex items-center justify-between gap-3">
           <span className="font-semibold">Стоимость личного разбора: 5900 ₽</span>
-          <Button>Записаться на разбор</Button>
+          <Button className={sellingCtaClass}>Записаться на разбор</Button>
         </div>
       </div>
       <div className="flex flex-wrap gap-3">
-        <Button>Открыть Полный анализ когнитивной устойчивости за 1490 ₽</Button>
+        <Button className={sellingCtaClass}>Открыть Полный анализ когнитивной устойчивости за 1490 ₽</Button>
         <Button variant="secondary" onClick={onRestart}>Пройти снова</Button>
       </div>
     </div>
