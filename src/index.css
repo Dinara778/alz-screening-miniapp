@@ -7,6 +7,18 @@
   --app-text: #0f172a;
   --brand-main: #064e3b;
   --brand-main-soft: #d1fae5;
+  --brand-accent: #0d9488;
+  --brand-warm: #fff7ed;
+}
+
+html.dark,
+html.telegram-dark {
+  --app-bg: #0f172a;
+  --app-text: #e2e8f0;
+  --brand-main: #34d399;
+  --brand-main-soft: #064e3b;
+  --brand-accent: #2dd4bf;
+  --brand-warm: #1e293b;
 }
 
 body {

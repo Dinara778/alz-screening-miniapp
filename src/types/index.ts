@@ -83,6 +83,7 @@ export type SessionResult = {
 };
 
 export type AppStage =
+  | 'corta-intro'
   | 'welcome'
   | 'history'
   | 'word-study'

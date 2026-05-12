@@ -43,7 +43,7 @@ type AppState = {
 const Ctx = createContext<AppState | null>(null);
 
 export const AppProvider = ({ children }: { children: React.ReactNode }) => {
-  const [stage, setStage] = useState<AppStage>('welcome');
+  const [stage, setStage] = useState<AppStage>('corta-intro');
   const [interferenceStart, setInterferenceStart] = useState<number | null>(null);
   const [immediateWords, setImmediateWords] = useState<string[]>([]);
   const [delayedWords, setDelayedWords] = useState<string[]>([]);
@@ -108,7 +108,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   }, [sessionSeed, stage, participant]);
 
   const resetSession = () => {
-    setStage('welcome');
+    setStage('corta-intro');
     setInterferenceStart(null);
     setImmediateWords([]);
     setDelayedWords([]);

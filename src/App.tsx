@@ -9,12 +9,14 @@ import { FullReportPage } from './pages/FullReportPage';
 import { ResultPage } from './pages/ResultPage';
 import { TestPage } from './pages/TestPage';
 import { ConsultationRequestPage } from './pages/ConsultationRequestPage';
+import { CortaIntroPage } from './pages/CortaIntroPage';
 import { WelcomePage } from './pages/WelcomePage';
 
 const STAGES_HIDE_SUPPORT_FOOTER: AppStage[] = ['flanker', 'reaction', 'stroop'];
 
 /** Все этапы экрана прохождения теста — без строки о разработчике внизу */
 const STAGES_HIDE_DEVELOPER_CREDIT: AppStage[] = [
+  'corta-intro',
   'word-study',
   'word-immediate',
   'flanker-instruction',
@@ -42,7 +44,8 @@ function App() {
   }, []);
 
   return (
-    <main className="max-w-2xl mx-auto px-4 py-6 min-h-screen text-slate-950">
+    <main className="max-w-2xl mx-auto min-h-screen px-4 py-6 text-slate-950 shadow-brand bg-gradient-to-b from-emerald-50/95 via-white to-teal-50/80 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100 dark:shadow-none">
+      {app.stage === 'corta-intro' && <CortaIntroPage onContinue={() => app.setStage('welcome')} />}
       {app.stage === 'welcome' && (
         <WelcomePage
           onStart={(profile) => {
@@ -71,7 +74,7 @@ function App() {
       {app.stage === 'result' && <ResultPage onRestart={app.resetSession} />}
       {app.stage === 'full-report' && <FullReportPage />}
       {app.stage === 'consultation-request' && <ConsultationRequestPage />}
-      {app.stage !== 'welcome' && app.stage !== 'result' && (
+      {app.stage !== 'welcome' && app.stage !== 'corta-intro' && app.stage !== 'result' && (
         <SupportFooter
           showSupport={!STAGES_HIDE_SUPPORT_FOOTER.includes(app.stage)}
           showDeveloperCredit={!STAGES_HIDE_DEVELOPER_CREDIT.includes(app.stage)}

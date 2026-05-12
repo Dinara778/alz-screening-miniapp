@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Corta Lab">
+  <defs>
+    <linearGradient id="cortaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#047857" />
+      <stop offset="100%" stop-color="#0f766e" />
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="56" fill="url(#cortaGrad)" />
+  <path
+    d="M72 36c-20 0-36 16-36 36s16 36 36 36c9 0 17-3 24-9"
+    fill="none"
+    stroke="#ecfdf5"
+    stroke-width="9"
+    stroke-linecap="round"
+  />
+  <circle cx="78" cy="42" r="6" fill="#a7f3d0" opacity="0.9" />
+</svg>
