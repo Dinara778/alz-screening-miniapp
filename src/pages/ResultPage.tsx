@@ -4,7 +4,7 @@ import { Footer } from '../components/Footer';
 import { useApp } from '../context/AppContext';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { buildResultShareText, getShareTestLink, shareOrCopyResultText } from '../utils/shareResult';
-import { isTelegramMiniApp, openTelegramInvoiceForProduct, reportPaidStorageKey } from '../utils/telegramPayments';
+import { openTelegramInvoiceForProduct, reportPaidStorageKey } from '../utils/telegramPayments';
 
 const sellingCtaClass =
   'bg-red-600 text-white hover:bg-red-500 shadow-lg shadow-red-600/30';
@@ -33,9 +33,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   };
 
   const activePatterns = a.patterns.filter((p) => p.active);
-
-  const paymentsApi = (import.meta.env.VITE_TELEGRAM_PAYMENTS_URL as string | undefined)?.trim();
-  const canTelegramPay = Boolean(paymentsApi && isTelegramMiniApp());
 
   const handlePayFullReport = async () => {
     if (!latestResult) return;
@@ -182,13 +179,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           </Button>
         </div>
         {payNotice ? <p className="text-sm text-amber-200">{payNotice}</p> : null}
-        <p className="text-xs text-slate-500">
-          {canTelegramPay
-            ? 'Оплата проходит внутри Telegram. После успешной оплаты откроется полный отчёт.'
-            : isTelegramMiniApp() && !paymentsApi
-              ? 'Для оплаты в Telegram задайте VITE_TELEGRAM_PAYMENTS_URL на HTTPS-сервер с createInvoiceLink (см. папку server/). Пока отчёт открывается без оплаты.'
-              : 'В браузере отчёт открывается без оплаты. В Telegram Mini App подключите сервер оплат — см. папку server/.'}
-        </p>
       </div>
 
       <div className="rounded-xl border border-emerald-200 bg-white p-5 space-y-3">
