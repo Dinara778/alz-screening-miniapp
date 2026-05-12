@@ -124,62 +124,43 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         </div>
 
         {step === 0 && (
-          <div className="relative z-10 space-y-5 text-center">
-            <div className="flex justify-center gap-2 text-4xl sm:text-5xl">
+          <div className="relative z-10 space-y-5 text-center sm:text-left">
+            <div className="flex justify-center gap-2 text-4xl sm:text-5xl sm:justify-start">
               <span>🧘</span>
               <span>🧠</span>
               <span>🌸</span>
             </div>
-            <h1 className="text-balance text-2xl font-extrabold leading-tight text-emerald-950 drop-shadow-sm sm:text-3xl dark:text-emerald-50">
-              Тест: индекс когнитивной эффективности
+            <h1 className="inline-block rounded-xl bg-gradient-to-br from-emerald-900 to-teal-950 px-4 py-3 text-2xl font-bold leading-tight text-white shadow-md sm:text-3xl">
+              🧠 Тест: индекс когнитивной эффективности
             </h1>
-            <p className="text-pretty text-base font-medium leading-relaxed text-emerald-900/90 dark:text-emerald-100/90">
-              Короткий дружелюбный замер внимания и когнитивной устойчивости — персональный профиль и мягкие
-              рекомендации. Это не диагноз, а опора для заботы о себе.
-            </p>
-            <div className="rounded-2xl border-2 border-orange-200/80 bg-orange-50/90 p-4 text-left text-sm text-slate-800 shadow-inner dark:border-orange-800/50 dark:bg-orange-950/30 dark:text-slate-200">
-              <div className="mb-2 flex items-center gap-2 font-bold text-emerald-900 dark:text-emerald-200">
-                <span className="text-xl">📋</span> Что измеряет тест
+            <div className="rounded-xl border-2 border-emerald-200/90 bg-gradient-to-br from-emerald-50 to-teal-50/80 p-4 text-left dark:border-emerald-700/50 dark:from-emerald-950/50 dark:to-slate-800/80">
+              <div className="font-semibold text-emerald-950 dark:text-emerald-100">📋 Что измеряет тест</div>
+              <div className="mt-2 space-y-2 text-sm text-slate-900 dark:text-slate-200 sm:text-base">
+                <div>⚡ Скорость обработки информации (как быстро мозг реагирует и переключается).</div>
+                <div>🎯 Стабильность внимания (насколько внимание устойчиво к отвлечениям).</div>
+                <div>〰️ Вариативность реакций (насколько мозг работает &quot;ровно&quot;, без &quot;рывков&quot;).</div>
+                <div>🧩 Рабочая память (удержание информации в моменте).</div>
+                <div>💪 Когнитивная выносливость (как быстро мозг начинает уставать).</div>
               </div>
-              <ul className="space-y-2 pl-1">
-                <li className="flex gap-2">
-                  <span className="text-lg">⚡</span>
-                  <span>Скорость обработки информации</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-lg">🎯</span>
-                  <span>Стабильность внимания</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-lg">〰️</span>
-                  <span>Вариативность реакций</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-lg">🧩</span>
-                  <span>Рабочая память</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-lg">💪</span>
-                  <span>Когнитивная выносливость</span>
-                </li>
-              </ul>
             </div>
-            <Button type="button" className="w-full text-base sm:w-auto" onClick={goNext}>
-              Далее
-            </Button>
+            <div className="flex justify-center sm:justify-start">
+              <Button type="button" className="text-base" onClick={goNext}>
+                Далее
+              </Button>
+            </div>
           </div>
         )}
 
         {step === 1 && (
           <div className="relative z-10 space-y-4">
             <div className="text-center text-5xl">✨</div>
-            <h2 className="text-center text-xl font-bold text-emerald-950 dark:text-emerald-50">Как к вам обращаться?</h2>
+            <h2 className="text-center text-xl font-bold text-emerald-950 dark:text-emerald-50">Как вас зовут?</h2>
             <p className="text-center text-sm font-medium text-emerald-800/90 dark:text-emerald-200/90">
               Имя сохранится только на этом устройстве
             </p>
             <input
               className={inputClass}
-              placeholder="Ваше имя"
+              placeholder="Имя"
               value={name}
               autoFocus
               onChange={(e) => {
@@ -207,7 +188,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
             </p>
             <input
               className={inputClass}
-              placeholder="+7 …"
+              placeholder="Телефон"
               type="tel"
               value={phone}
               autoFocus
@@ -273,7 +254,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
             </p>
             <input
               className={inputClass}
-              placeholder="Например, 42"
+              placeholder="Возраст"
               type="number"
               min={18}
               max={100}
@@ -304,7 +285,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
             </p>
             <input
               className={inputClass}
-              placeholder="Образование (например, высшее педагогическое)"
+              placeholder="Образование"
               value={education}
               autoFocus
               onChange={(e) => {
@@ -314,7 +295,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
             />
             <input
               className={inputClass}
-              placeholder="Электронная почта"
+              placeholder="Почта"
               type="email"
               value={email}
               onChange={(e) => {
@@ -334,6 +315,9 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
               </Button>
             </div>
             <TimerHint />
+            <p className="text-center text-sm text-slate-500 dark:text-slate-400">
+              🕒 Тест можно пройти за 5 минут на весь тест
+            </p>
           </form>
         )}
       </div>
@@ -349,7 +333,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
   );
 };
 
-/** Короткий «таймер»-намёк под кнопкой старта: спокойный обратный отсчёт 5→0 один раз при появлении шага. */
+/** Ориентир по времени + мини-обратный отсчёт (формулировка «на весь тест»). */
 function TimerHint() {
   const [n, setN] = useState(5);
   useEffect(() => {
@@ -365,7 +349,7 @@ function TimerHint() {
   return (
     <div className="space-y-1 text-center">
       <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">
-        ⏱️ Ориентир по времени: <span className="text-orange-700 dark:text-orange-300">~5 минут</span> на всё прохождение
+        ⏱️ Ориентир по времени: <span className="text-orange-700 dark:text-orange-300">~5 минут</span> на весь тест
       </p>
       <p className="text-xs text-slate-600 dark:text-slate-400">
         Мини-таймер: {n > 0 ? `${n}…` : 'готово к старту ✓'}
