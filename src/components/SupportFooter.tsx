@@ -1,4 +1,4 @@
-const TELEGRAM_SUPPORT_URL = 'https://t.me/dinarareads';
+export const TELEGRAM_SUPPORT_URL = 'https://t.me/dinarareads';
 
 type Props = { showSupport?: boolean; showDeveloperCredit?: boolean };
 
