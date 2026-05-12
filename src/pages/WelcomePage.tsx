@@ -12,7 +12,6 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
   const [sex, setSex] = useState<ParticipantProfile['sex']>('Женский');
   const [age, setAge] = useState('');
   const [education, setEducation] = useState('');
-  const [pcConfidence, setPcConfidence] = useState<ParticipantProfile['pcConfidence']>(3);
   const formSessionIdRef = useRef(`welcome-${Date.now()}`);
   const hasSentFormStartRef = useRef(false);
 
@@ -52,7 +51,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         sex,
         age: parsedAge,
         education: education.trim(),
-        pcConfidence,
+        pcConfidence: 3,
       },
     }).catch(() => {
       // Ignore analytics errors to keep UX stable.
@@ -66,7 +65,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
       age: parsedAge,
       education: education.trim(),
       educationYears: 12,
-      pcConfidence,
+      pcConfidence: 3,
     });
   };
 
@@ -98,11 +97,6 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
           </select>
           <input className="rounded-xl border p-3" placeholder="Возраст" type="number" min={18} max={100} value={age} onChange={(e) => { sendFormStartedEvent('age'); setAge(e.target.value); }} required />
           <input className="rounded-xl border p-3" placeholder="Образование" value={education} onChange={(e) => { sendFormStartedEvent('education'); setEducation(e.target.value); }} required />
-          <label className="text-sm text-slate-700">
-            Насколько уверенно пользуетесь ПК (1 — только с помощью, 5 — уверенно и часто):
-          </label>
-          <input className="w-full" type="range" min={1} max={5} step={1} value={pcConfidence} onChange={(e) => { sendFormStartedEvent('pcConfidence'); setPcConfidence(Number(e.target.value) as ParticipantProfile['pcConfidence']); }} />
-          <div className="text-sm font-semibold">Оценка: {pcConfidence}</div>
         </div>
 
         <Button type="submit">Начать</Button>

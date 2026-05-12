@@ -92,13 +92,13 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           областям — в формате, удобном для самостоятельной работы с данными.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-          <div className="text-lg font-bold">1490 ₽</div>
+          <div className="text-lg font-bold">399 ₽</div>
           <Button
             className={sellingCtaClass}
             type="button"
             onClick={() => setStage('full-report')}
           >
-            Получить полный анализ когнитивной устойчивости — 1490 ₽
+            Получить полный анализ когнитивной устойчивости — 399 ₽
           </Button>
         </div>
         <p className="text-xs text-slate-500">

@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
+import { SupportFooter } from './components/SupportFooter';
 import { useApp } from './context/AppContext';
+import type { AppStage } from './types';
 import { pickStudyWordList } from './utils/generateStimuli';
 import { HistoryPage } from './pages/HistoryPage';
 import { FullReportPage } from './pages/FullReportPage';
@@ -7,6 +9,8 @@ import { ResultPage } from './pages/ResultPage';
 import { TestPage } from './pages/TestPage';
 import { ConsultationRequestPage } from './pages/ConsultationRequestPage';
 import { WelcomePage } from './pages/WelcomePage';
+
+const STAGES_HIDE_SUPPORT_FOOTER: AppStage[] = ['flanker', 'reaction', 'stroop'];
 
 function App() {
   const app = useApp();
@@ -49,6 +53,7 @@ function App() {
       {app.stage === 'result' && <ResultPage onRestart={app.resetSession} />}
       {app.stage === 'full-report' && <FullReportPage />}
       {app.stage === 'consultation-request' && <ConsultationRequestPage />}
+      <SupportFooter showSupport={!STAGES_HIDE_SUPPORT_FOOTER.includes(app.stage)} />
     </main>
   );
 }

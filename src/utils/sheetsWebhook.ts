@@ -19,23 +19,27 @@ type AnalyticsEventPayload = {
   [key: string]: unknown;
 };
 
-export const sendAnalyticsEventToSheets = async (
-  event: AnalyticsEventPayload,
-): Promise<void> => {
-  if (!WEBHOOK_URL) return;
+export const sendAnalyticsEventToSheets = async (event: AnalyticsEventPayload): Promise<boolean> => {
+  if (!WEBHOOK_URL) return false;
 
   const payload = {
     ...event,
     timestamp: event.timestamp ?? new Date().toISOString(),
   };
 
-  await fetch(WEBHOOK_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
+  try {
+    const res = await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      redirect: 'follow',
+      body: JSON.stringify(payload),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 };
 
 export const sendSessionToSheets = async (session: SessionResult): Promise<void> => {
