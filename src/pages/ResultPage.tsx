@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '../components/Button';
 import { DomainProfileCard } from '../components/DomainProfileCard';
 import { Footer } from '../components/Footer';
+import { ResultOverloadMap } from '../components/ResultOverloadMap';
 import { useApp } from '../context/AppContext';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { buildResultShareText, getShareTestLink, shareOrCopyResultText } from '../utils/shareResult';
@@ -32,8 +33,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       setShareNotice('Не удалось открыть шаринг. Скопируйте текст вручную или откройте ссылку на тест.');
     }
   };
-
-  const activePatterns = a.patterns.filter((p) => p.active);
 
   const handlePayFullReport = async () => {
     if (!latestResult) return;
@@ -105,25 +104,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-3">
-        <h2 className="text-lg font-semibold text-slate-900">Основные зоны перегрузки</h2>
-        {activePatterns.length ? (
-          <ul className="space-y-2">
-            {activePatterns.map((p) => (
-              <li key={p.id} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-slate-800">
-                <span className="font-semibold">{p.title}</span>
-                <span className="text-slate-600"> — {p.description}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-slate-600">
-            Выраженных закономерностей перегрузки по правилам расчёта не зафиксировано. Профиль выглядит устойчивым в
-            рамках этого замера.
-          </p>
-        )}
-      </section>
-
+      <ResultOverloadMap overloadMap={a.overloadMap} />
       <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
         <h2 className="text-lg font-semibold text-slate-900">Профиль доменов</h2>
         <div className="space-y-4">
