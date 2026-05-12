@@ -3,6 +3,8 @@ import { AppStage, ParticipantProfile, SessionResult, TrialResult } from '../typ
 import { clearProgress, loadHistory, saveProgress, saveSession } from '../utils/storage';
 import { sendAnalyticsEventToSheets, sendSessionToSheets } from '../utils/sheetsWebhook';
 
+type ConsultationReturnStage = 'result' | 'full-report';
+
 type FaceAnswer = { faceId: number; selected: string; correct: string };
 
 type AppState = {
@@ -32,6 +34,8 @@ type AppState = {
   setParticipant: (v: ParticipantProfile | null) => void;
   resetSession: () => void;
   saveResult: (r: SessionResult) => void;
+  consultationReturnTo: ConsultationReturnStage | null;
+  setConsultationReturnTo: (v: ConsultationReturnStage | null) => void;
 };
 
 const Ctx = createContext<AppState | null>(null);
@@ -50,6 +54,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [history, setHistory] = useState<SessionResult[]>(() => loadHistory());
   const [sessionSeed, setSessionSeed] = useState(() => Date.now());
   const [participant, setParticipant] = useState<ParticipantProfile | null>(null);
+  const [consultationReturnTo, setConsultationReturnTo] = useState<ConsultationReturnStage | null>(null);
   const sentStageEventsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -111,6 +116,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     setFaceAnswers([]);
     setLatestResult(null);
     setParticipant(null);
+    setConsultationReturnTo(null);
     setSessionSeed(Date.now());
     clearProgress();
   };
@@ -153,6 +159,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       setParticipant,
       resetSession,
       saveResult: saveResultFn,
+      consultationReturnTo,
+      setConsultationReturnTo,
     }),
     [
       stage,
@@ -168,6 +176,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       history,
       sessionSeed,
       participant,
+      consultationReturnTo,
     ],
   );
 

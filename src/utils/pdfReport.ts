@@ -1,6 +1,6 @@
 export const downloadCognitiveReportPdf = async (
   element: HTMLElement,
-  filename = 'cognitive-report.pdf',
+  filename = 'otchet.pdf',
 ): Promise<void> => {
   const html2pdf = (await import('html2pdf.js')).default;
   await html2pdf()

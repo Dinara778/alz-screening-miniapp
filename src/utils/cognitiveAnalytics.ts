@@ -184,7 +184,7 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
       ],
       recommendations: [
         'уменьшить количество параллельных задач',
-        'использовать режим одного фокуса',
+        'работать с одной главной задачей за раз',
         'снижать количество переключений внимания',
       ],
     },
@@ -194,7 +194,7 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
       active: switchingOverload,
       description: 'Мозг тратит слишком много ресурсов на обработку конкурирующей информации.',
       livedExperience: [
-        'сложно удерживать фокус',
+        'сложно удерживать сосредоточение',
         'появляется ощущение перегруженности',
         'мозг быстрее устаёт от информационного шума',
       ],
@@ -266,7 +266,7 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
       score: attentionScore,
       shortDescription:
         attentionScore >= 70
-          ? 'Удержание фокуса при конкурирующих стимулах в пределах нормы для короткой сессии.'
+          ? 'Удержание сосредоточения при конкурирующих стимулах в пределах нормы для короткого замера.'
           : 'Точность и устойчивость внимания под конфликтом снижаются быстрее обычного.',
     },
     {
@@ -293,7 +293,7 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
       score: flexibilityScore,
       shortDescription:
         flexibilityScore >= 70
-          ? 'Конфликт «смысл vs цвет» обрабатывается без критического роста затрат.'
+          ? 'Конфликт «смысла и цвета» обрабатывается без критического роста затрат.'
           : 'Конфликтная задача требует больше ресурсов: растут задержки или ошибки.',
     },
     {
@@ -376,7 +376,7 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
     });
   if (!stabilizationTips.length) {
     stabilizationTips.push(
-      { text: 'Сохранять чередование фокуса 25–50 минут и короткое восстановление 5–10 минут.' },
+      { text: 'Сохранять чередование сосредоточенной работы 25–50 минут и короткое восстановление 5–10 минут.' },
       { text: 'Фиксировать один главный канал входящей информации в рабочем окне.' },
     );
   }

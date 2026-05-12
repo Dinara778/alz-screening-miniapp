@@ -19,11 +19,11 @@ export const HistoryPage = ({ onBack }: { onBack: () => void }) => {
           </div>
           <div>
             Индекс устойчивости: <span className="font-medium">{analytics.index.value}/100</span> — {analytics.index.label}
-            <span className="text-slate-600"> ({analytics.activePatternCount} активных паттернов)</span>
+            <span className="text-slate-600"> ({analytics.activePatternCount} активных закономерностей)</span>
           </div>
           <div className="text-sm text-slate-600">
-            Память {h.wordMemory.immediateScore}/{h.wordMemory.delayedScore}; Flanker точность {h.flanker.incongruentAccuracy.toFixed(1)}%;
-            Реакция CV {h.reaction.cv.toFixed(1)}%; Stroop ошибки {h.stroop.incongruentErrorRate.toFixed(1)}%; Лица-имена {h.faceName.score}/3
+            Память {h.wordMemory.immediateScore}/{h.wordMemory.delayedScore}; фланкер точность {h.flanker.incongruentAccuracy.toFixed(1)}%;
+            реакция вариативность {h.reaction.cv.toFixed(1)}%; струп ошибки {h.stroop.incongruentErrorRate.toFixed(1)}%; лица-имена {h.faceName.score}/3
           </div>
         </div>
         );

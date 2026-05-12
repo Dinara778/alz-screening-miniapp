@@ -76,15 +76,11 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         <h1 className="inline-block rounded-xl bg-emerald-900 px-4 py-2 text-3xl font-bold text-white">
           Поведенческий тест на замер индекса когнитивной эффективности (30+)
         </h1>
-        <div className="rounded-xl border border-slate-700 bg-slate-900 p-3 text-xs text-slate-200">
-          Продукт позиционируется как cognitive analytics: поведенческий замер и персональный отчёт по
-          метрикам внимания и обработки информации. Это не медицинская диагностика.
-        </div>
         <div className="rounded-xl border-2 border-emerald-200 bg-emerald-50 p-4">
           <div className="font-semibold text-emerald-950">Что измеряет тест:</div>
           <div className="mt-2 space-y-1 text-slate-900">
             <div>1. Скорость обработки информации (как быстро мозг реагирует и переключается).</div>
-            <div>2 Стабильность внимания (насколько внимание устойчиво к отвлечениям).</div>
+            <div>2. Стабильность внимания (насколько внимание устойчиво к отвлечениям).</div>
             <div>3. Вариативность реакций (насколько мозг работает &quot;ровно&quot;, без &quot;рывков&quot;).</div>
             <div>4. Рабочая память (удержание информации в моменте).</div>
             <div>5. Когнитивная выносливость (как быстро мозг начинает уставать).</div>
@@ -112,7 +108,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         <Button type="submit">Начать</Button>
       </form>
       <Button type="button" variant="secondary" onClick={onHistory}>
-        История сессий
+        История прохождений
       </Button>
     </div>
   );

@@ -95,14 +95,14 @@ export const TestPage = () => {
 
     const outcome = reaction.react();
     if (outcome.status === 'anticipation') {
-      setReactionPrompt('Антиципация (<100 мс), повтор');
+      setReactionPrompt('Слишком быстрая реакция (<100 мс), повтор');
       setAttemptTick((v) => v + 1);
       return;
     }
 
     if (outcome.status === 'success') {
       app.setReactionSuccessful([...app.reactionSuccessful, outcome.rt ?? 0]);
-      setReactionPrompt(`RT: ${Math.round(outcome.rt ?? 0)} мс`);
+      setReactionPrompt(`Время реакции: ${Math.round(outcome.rt ?? 0)} мс`);
       setAttemptTick((v) => v + 1);
     }
   };
@@ -225,7 +225,7 @@ export const TestPage = () => {
   if (app.stage === 'flanker-instruction') {
     return (
       <TestInstruction
-        title="Задание 2: Flanker"
+        title="Задание 2: фланкер"
         text={
           'Сейчас на экране будут появляться пять стрелок в ряд.\n' +
           'Ваша задача — смотреть только на среднюю стрелку и нажимать ту кнопку, куда показывает  средняя стрелка (влево или вправо).\n\n' +
@@ -250,7 +250,7 @@ export const TestPage = () => {
 
     return (
       <div className="space-y-4 text-center">
-        <h2 className="text-xl font-bold">Flanker {flanker.index + 1}/20</h2>
+        <h2 className="text-xl font-bold">Фланкер {flanker.index + 1}/20</h2>
         <ProgressBar value={flanker.index} max={20} />
         <div className="text-5xl font-mono tracking-widest">{flanker.current?.arrows}</div>
         <div className="flex justify-center gap-3">
@@ -286,7 +286,7 @@ export const TestPage = () => {
         <button className={`mx-auto h-40 w-40 rounded-full text-white font-bold ${isStimulusVisible ? 'bg-green-500' : 'bg-slate-400'}`} onClick={handleReactionPress}>
           {reactionPrompt}
         </button>
-        <p>Антиципации: {app.reactionAnticipations + reaction.anticipations}</p>
+        <p>Слишком ранние нажатия: {app.reactionAnticipations + reaction.anticipations}</p>
       </div>
     );
   }
@@ -317,7 +317,7 @@ export const TestPage = () => {
           {faceStudyIndex < 2 ? (
             <Button onClick={() => setFaceStudyIndex((v) => v + 1)}>Далее</Button>
           ) : (
-            <Button onClick={() => app.setStage('stroop-instruction')}>Перейти к Stroop</Button>
+            <Button onClick={() => app.setStage('stroop-instruction')}>Перейти к заданию Струп</Button>
           )}
         </div>
       </div>
@@ -327,12 +327,12 @@ export const TestPage = () => {
   if (app.stage === 'stroop-instruction') {
     return (
       <TestInstruction
-        title="Задание 4: Stroop"
+        title="Задание 4: струп"
         text={
           'На экране будет отображаться слово цвета (например, КРАСНЫЙ, СИНИЙ, ЗЕЛЕНЫЙ), окрашенное в один из цветов.\n' +
           'Ваша задача: выбрать ЦВЕТ ШРИФТА, а не прочитанное слово.\n' +
           'Используйте кнопки Красный / Синий / Зеленый.\n' +
-          'Всего 30 проб: 10 конгруэнтных, 10 неконгруэнтных и 10 нейтральных.\n' +
+          'Всего 30 проб: 10 с совпадением слова и цвета букв, 10 конфликтных и 10 нейтральных.\n' +
           'Работайте максимально быстро и точно.'
         }
         onStart={() => app.setStage('stroop')}
@@ -351,7 +351,7 @@ export const TestPage = () => {
 
     return (
       <div className="space-y-4 text-center">
-        <h2 className="text-xl font-bold">Stroop {stroop.index + 1}/30</h2>
+        <h2 className="text-xl font-bold">Струп {stroop.index + 1}/30</h2>
         <ProgressBar value={stroop.index} max={30} />
         <div className={`text-4xl font-bold ${colorClass}`}>{s?.word}</div>
         <div className="grid grid-cols-3 gap-2">

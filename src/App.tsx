@@ -4,6 +4,7 @@ import { HistoryPage } from './pages/HistoryPage';
 import { FullReportPage } from './pages/FullReportPage';
 import { ResultPage } from './pages/ResultPage';
 import { TestPage } from './pages/TestPage';
+import { ConsultationRequestPage } from './pages/ConsultationRequestPage';
 import { WelcomePage } from './pages/WelcomePage';
 
 function App() {
@@ -45,6 +46,7 @@ function App() {
       ].includes(app.stage) && <TestPage key={app.sessionSeed} />}
       {app.stage === 'result' && <ResultPage onRestart={app.resetSession} />}
       {app.stage === 'full-report' && <FullReportPage />}
+      {app.stage === 'consultation-request' && <ConsultationRequestPage />}
     </main>
   );
 }

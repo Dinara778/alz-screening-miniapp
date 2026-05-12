@@ -50,8 +50,8 @@ export const buildCognitiveProfile = (session: SessionResult): CognitiveProfile 
         a.domains.find((d) => d.key === 'attentionStability')?.shortDescription ?? '',
       recommendations: a.patterns.find((p) => p.id === 'switching_overload')?.recommendations ?? [],
       metrics: [
-        `Flanker accuracy: ${a.metrics.flankerIncongruentAccuracy.toFixed(1)}%`,
-        `Flanker CV: ${a.metrics.flankerIncongruentCv.toFixed(1)}%`,
+        `Точность фланкера: ${a.metrics.flankerIncongruentAccuracy.toFixed(1)}%`,
+        `Вариативность фланкера: ${a.metrics.flankerIncongruentCv.toFixed(1)}%`,
       ],
       overloaded: a.patterns.some((p) => p.id === 'switching_overload' && p.active),
     },
@@ -71,9 +71,9 @@ export const buildCognitiveProfile = (session: SessionResult): CognitiveProfile 
       interpretation: `Скорость: ${a.domains.find((d) => d.key === 'reactionSpeed')?.shortDescription ?? ''} Стабильность: ${a.domains.find((d) => d.key === 'reactionStability')?.shortDescription ?? ''}`,
       recommendations: a.patterns.find((p) => p.id === 'high_reactivity')?.recommendations ?? [],
       metrics: [
-        `Median RT: ${Math.round(a.metrics.reactionMedianRt)} мс`,
-        `CV: ${a.metrics.reactionCv.toFixed(1)}%`,
-        `Anticipations: ${a.metrics.reactionAnticipations}`,
+        `Медиана времени реакции: ${Math.round(a.metrics.reactionMedianRt)} мс`,
+        `Вариативность: ${a.metrics.reactionCv.toFixed(1)}%`,
+        `Преждевременные реакции: ${a.metrics.reactionAnticipations}`,
       ],
       overloaded: a.patterns.some((p) => p.id === 'high_reactivity' && p.active),
     },
@@ -85,7 +85,7 @@ export const buildCognitiveProfile = (session: SessionResult): CognitiveProfile 
       interpretation: a.domains.find((d) => d.key === 'cognitiveFlexibility')?.shortDescription ?? '',
       recommendations: a.patterns.find((p) => p.id === 'switching_overload')?.recommendations ?? [],
       metrics: [
-        `Interference: ${a.metrics.stroopInterferenceMs.toFixed(0)} мс`,
+        `Конфликт (разница времени): ${a.metrics.stroopInterferenceMs.toFixed(0)} мс`,
         `Ошибки: ${a.metrics.stroopIncongruentErrorRate.toFixed(1)}%`,
       ],
       overloaded: a.patterns.some((p) => p.id === 'switching_overload' && p.active),
@@ -99,7 +99,7 @@ export const buildCognitiveProfile = (session: SessionResult): CognitiveProfile 
       recommendations: a.patterns.find((p) => p.id === 'retention_drop')?.recommendations ?? [],
       metrics: [
         `Отсроченно: ${a.metrics.wordDelayedScore}/5`,
-        `Δ: ${a.metrics.wordDelta}`,
+        `Разница немедленного и отсроченного: ${a.metrics.wordDelta}`,
         `Лица-имена: ${a.metrics.faceNameScore}/3`,
       ],
       overloaded: a.patterns.some((p) => p.id === 'retention_drop' && p.active),

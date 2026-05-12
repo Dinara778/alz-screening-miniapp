@@ -11,7 +11,7 @@ const sellingCtaClass =
   'bg-red-600 text-white hover:bg-red-500 shadow-lg shadow-red-600/30';
 
 export const FullReportPage = () => {
-  const { latestResult, participant, setStage } = useApp();
+  const { latestResult, participant, setStage, setConsultationReturnTo } = useApp();
   const [step, setStep] = useState(0);
   const [reportEmail, setReportEmail] = useState('');
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -41,7 +41,7 @@ export const FullReportPage = () => {
   if (!latestResult || !analytics) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-slate-900">
-        Нет данных сессии. Вернитесь на главный экран.
+        Нет данных о прохождении. Вернитесь на главный экран.
         <div className="mt-3">
           <Button variant="secondary" onClick={() => setStage('welcome')}>
             На главную
@@ -75,7 +75,7 @@ export const FullReportPage = () => {
     try {
       await downloadCognitiveReportPdf(
         pdfRef.current,
-        `cognitive-report-${latestResult.id.slice(0, 8)}.pdf`,
+        `otchet-${latestResult.id.slice(0, 8)}.pdf`,
       );
     } finally {
       setPdfBusy(false);
@@ -92,7 +92,7 @@ export const FullReportPage = () => {
     >
       <div className="border-b-2 border-slate-900 pb-4 mb-6">
         <div className="text-2xl font-bold tracking-tight">Полный анализ когнитивной устойчивости</div>
-        <div className="text-sm text-slate-600 mt-1">Персональный cognitive analytics report</div>
+        <div className="text-sm text-slate-600 mt-1">Персональный аналитический отчёт</div>
         <div className="mt-4 flex flex-wrap gap-4 text-sm">
           <span>Дата: {fmt(latestResult.date)}</span>
           <span>Индекс: {analytics.index.value}/100</span>
@@ -104,7 +104,7 @@ export const FullReportPage = () => {
       <h2 className="text-lg font-bold mb-2">1. Общий когнитивный профиль</h2>
       <p className="mb-4 text-slate-800">
         Индекс когнитивной устойчивости отражает согласованность внимания, темпа реакции и удержания
-        информации в рамках одной сессии замера.
+        информации в рамках одного прохождения замера.
       </p>
 
       <h2 className="text-lg font-bold mb-2">2. Расшифровка доменов</h2>
@@ -150,21 +150,20 @@ export const FullReportPage = () => {
       <ul className="mb-4 list-disc pl-5">
         <li>наблюдение за динамикой внимания</li>
         <li>отслеживание изменений состояния</li>
-        <li>weekly cognitive tracking</li>
-        <li>персональные cognitive insights</li>
-        <li>углублённый разбор когнитивных паттернов</li>
+        <li>еженедельное отслеживание показателей внимания</li>
+        <li>персональные выводы по динамике</li>
+        <li>углублённый разбор закономерностей в ответах</li>
       </ul>
 
       <div className="border border-slate-300 rounded-lg p-4 mt-6 bg-slate-50">
         <div className="font-bold text-slate-900">Личный разбор когнитивного профиля</div>
         <p className="mt-2 text-slate-800">
-          Индивидуальный cognitive review онлайн, 30–40 минут. Стоимость: 5490 ₽. На сайте: «Записаться
-          на разбор».
+          Индивидуальный разбор удалённо, 30–40 минут. Стоимость: 5490 ₽. На сайте: «Записаться на разбор».
         </p>
       </div>
 
       {reportEmail.trim() ? (
-        <p className="mt-4 text-sm text-slate-600">Email для отправки расширенного отчёта: {reportEmail.trim()}</p>
+        <p className="mt-4 text-sm text-slate-600">Электронная почта для отправки расширенного отчёта: {reportEmail.trim()}</p>
       ) : null}
     </div>
   );
@@ -175,7 +174,7 @@ export const FullReportPage = () => {
       body: (
         <div className="space-y-4">
           <p className="text-slate-700">
-            Ниже — агрегированный индекс по метрикам сессии. Это не диагноз, а поведенческий снимок
+            Ниже — сводный индекс по метрикам этого прохождения. Это не диагноз, а поведенческий снимок
             устойчивости внимания и обработки информации.
           </p>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -210,7 +209,7 @@ export const FullReportPage = () => {
                 </div>
                 <p className="mt-2 text-sm text-slate-700">{d.shortDescription}</p>
                 <p className="mt-1 text-xs text-slate-500">
-                  В повседневности это проявляется как качество удержания фокуса и ровность темпа в длинных
+                  В повседневности это проявляется как качество удержания сосредоточения и ровность темпа в длинных
                   блоках внимания.
                 </p>
               </li>
@@ -311,15 +310,15 @@ export const FullReportPage = () => {
       <div className="space-y-5">
         <h1 className="text-2xl font-bold">Получение расширенного отчёта</h1>
         <p className="text-slate-700">
-          Мы подготовим для вас персональный расширенный cognitive report с подробной расшифровкой
-          результатов и отправим его на вашу почту.
+          Мы подготовим для вас персональный расширенный отчёт с подробной расшифровкой результатов и отправим его
+          на вашу почту.
         </p>
         <form className="space-y-3" onSubmit={handleEmailSubmit}>
           <input
             className="w-full rounded-xl border border-slate-300 p-3"
             type="email"
             required
-            placeholder="Email"
+            placeholder="Электронная почта"
             value={reportEmail}
             onChange={(e) => setReportEmail(e.target.value)}
           />
@@ -327,7 +326,7 @@ export const FullReportPage = () => {
             <Button variant="secondary" type="button" onClick={() => setStep(4)}>
               Назад
             </Button>
-            <Button type="submit">Сохранить и перейти к PDF</Button>
+            <Button type="submit">Сохранить и перейти к файлу отчёта</Button>
           </div>
         </form>
       </div>
@@ -341,12 +340,12 @@ export const FullReportPage = () => {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Отчёт готов</h1>
       <p className="text-slate-700">
-        PDF формируется в браузере из тех же данных, что и экранный отчёт. В MVP отправка письма будет
-        подключена на сервере; адрес уже сохранён для интеграции.
+        Файл отчёта формируется в браузере из тех же данных, что и экранный отчёт. Отправка письма будет подключена
+        на сервере позже; адрес уже сохранён для интеграции.
       </p>
       <div className="flex flex-wrap gap-3">
         <Button type="button" disabled={pdfBusy} onClick={handlePdf}>
-          {pdfBusy ? 'Формирование…' : 'Скачать PDF'}
+          {pdfBusy ? 'Формирование…' : 'Скачать отчёт'}
         </Button>
         <Button variant="secondary" type="button" onClick={() => setStage('welcome')}>
           Завершить
@@ -356,13 +355,20 @@ export const FullReportPage = () => {
       <div className="rounded-xl border border-emerald-200 bg-white p-5 space-y-3">
         <h2 className="text-xl font-semibold text-emerald-950">Личный разбор когнитивного профиля</h2>
         <p className="text-slate-700">
-          Если вы хотите глубже понять свои когнитивные паттерны и получить персональную интерпретацию
-          результатов, можно пройти индивидуальный cognitive review.
+          Если вы хотите глубже понять закономерности в своих ответах и получить персональное толкование
+          результатов, можно пройти индивидуальный разбор с экспертом.
         </p>
-        <p className="text-sm text-slate-600">Формат: онлайн, 30–40 минут, персональный разбор результатов.</p>
+        <p className="text-sm text-slate-600">Формат: удалённо, 30–40 минут, персональный разбор результатов.</p>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <span className="font-semibold text-slate-900">5490 ₽</span>
-          <Button className={sellingCtaClass} type="button">
+          <Button
+            className={sellingCtaClass}
+            type="button"
+            onClick={() => {
+              setConsultationReturnTo('full-report');
+              setStage('consultation-request');
+            }}
+          >
             Записаться на разбор
           </Button>
         </div>

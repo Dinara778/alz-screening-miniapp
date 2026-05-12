@@ -6,7 +6,7 @@ const sellingCtaClass =
   'bg-red-600 text-white hover:bg-red-500 shadow-lg shadow-red-600/30';
 
 export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
-  const { latestResult, setStage } = useApp();
+  const { latestResult, setStage, setConsultationReturnTo } = useApp();
   if (!latestResult) return null;
   const a = buildCognitiveAnalytics(latestResult);
 
@@ -15,10 +15,10 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-slate-100">
-        <div className="text-xs uppercase tracking-widest text-slate-400">Cognitive analytics</div>
+        <div className="text-xs uppercase tracking-widest text-slate-400">Аналитика по метрикам</div>
         <h1 className="text-2xl font-bold mt-1">Базовый когнитивный профиль</h1>
         <p className="text-sm text-slate-400 mt-2">
-          Data-driven отчёт по одной сессии. Не медицинская оценка и не диагноз.
+          Отчёт по одному прохождению замера. Не медицинская оценка и не диагноз.
         </p>
       </div>
 
@@ -52,7 +52,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           </ul>
         ) : (
           <p className="text-sm text-slate-600">
-            Выраженных паттернов перегрузки по правилам сессии не зафиксировано. Профиль выглядит устойчивым в
+            Выраженных закономерностей перегрузки по правилам расчёта не зафиксировано. Профиль выглядит устойчивым в
             рамках этого замера.
           </p>
         )}
@@ -88,8 +88,8 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       <div className="rounded-xl bg-slate-900 text-white p-5 space-y-4">
         <div className="text-xs uppercase tracking-widest text-slate-400">Полный анализ</div>
         <p className="text-slate-200 text-sm leading-relaxed">
-          Расширенный cognitive report: карта перегрузки, драйверы концентрации и структурированный разбор по
-          доменам — в формате, удобном для самостоятельной работы с данными.
+          Расширенный отчёт: карта перегрузки, главные факторы влияния на концентрацию и структурированный разбор по
+          областям — в формате, удобном для самостоятельной работы с данными.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
           <div className="text-lg font-bold">1490 ₽</div>
@@ -102,21 +102,28 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           </Button>
         </div>
         <p className="text-xs text-slate-500">
-          MVP: оплата не подключена — после нажатия открывается полный отчёт. Цена отображается для проверки
-          готовности платить.
+          Оплата пока не подключена: после нажатия открывается полный отчёт. Цена показана для проверки готовности
+          платить.
         </p>
       </div>
 
       <div className="rounded-xl border border-emerald-200 bg-white p-5 space-y-3">
         <h2 className="text-xl font-semibold text-emerald-950">Личный разбор когнитивного профиля</h2>
         <p className="text-slate-700 text-sm leading-relaxed">
-          Если вы хотите глубже понять свои когнитивные паттерны и получить персональную интерпретацию
-          результатов, можно пройти индивидуальный cognitive review.
+          Если вы хотите глубже понять закономерности в своих ответах и получить персональное толкование
+          результатов, можно пройти индивидуальный разбор с экспертом.
         </p>
-        <p className="text-sm text-slate-600">Онлайн · 30–40 минут · персональный разбор</p>
+        <p className="text-sm text-slate-600">Удалённо · 30–40 минут · персональный разбор</p>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <span className="font-semibold text-slate-900">5490 ₽</span>
-          <Button className={sellingCtaClass} type="button">
+          <Button
+            className={sellingCtaClass}
+            type="button"
+            onClick={() => {
+              setConsultationReturnTo('result');
+              setStage('consultation-request');
+            }}
+          >
             Записаться на разбор
           </Button>
         </div>
