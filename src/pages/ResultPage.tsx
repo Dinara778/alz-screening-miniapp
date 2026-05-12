@@ -1,144 +1,131 @@
 import { Button } from '../components/Button';
 import { useApp } from '../context/AppContext';
-import { buildCognitiveProfile } from '../utils/cognitiveProfile';
+import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
+
+const sellingCtaClass =
+  'bg-red-600 text-white hover:bg-red-500 shadow-lg shadow-red-600/30';
 
 export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
-  const { latestResult } = useApp();
+  const { latestResult, setStage } = useApp();
   if (!latestResult) return null;
-  const profile = buildCognitiveProfile(latestResult);
-  const sellingCtaClass =
-    'bg-red-600 text-white hover:bg-red-500 shadow-lg shadow-red-600/30';
+  const a = buildCognitiveAnalytics(latestResult);
+
+  const activePatterns = a.patterns.filter((p) => p.active);
 
   return (
-    <div className="space-y-5">
-      <h1 className="text-2xl font-bold">Ваш когнитивный профиль</h1>
-      <div className="rounded-xl border border-emerald-300 bg-white p-4 space-y-3">
-        <div className="text-sm text-emerald-900">Индекс когнитивной устойчивости</div>
-        <div className="text-5xl font-bold text-emerald-900">{profile.cognitiveStabilityIndex}</div>
-        <p className="text-slate-700">{profile.overloadText}</p>
-        <p className="text-sm text-slate-600">
-          Индикаторы когнитивной перегрузки: {profile.overloadIndicators} из 5
+    <div className="space-y-6">
+      <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-slate-100">
+        <div className="text-xs uppercase tracking-widest text-slate-400">Cognitive analytics</div>
+        <h1 className="text-2xl font-bold mt-1">Базовый когнитивный профиль</h1>
+        <p className="text-sm text-slate-400 mt-2">
+          Data-driven отчёт по одной сессии. Не медицинская оценка и не диагноз.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="rounded-xl bg-white p-4 border border-emerald-200">
-          <h2 className="font-semibold mb-2">Сильные стороны</h2>
-          {profile.strengths.length ? (
-            <ul className="text-sm text-slate-700 space-y-1">
-              {profile.strengths.map((s) => (
-                <li key={s}>• {s}</li>
-              ))}
-            </ul>
-          ) : (
-            <div className="text-sm text-slate-600">Сильные стороны уточняются в динамике при повторных замерах.</div>
-          )}
+      <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
+        <div className="text-sm font-medium text-slate-500">Индекс когнитивной устойчивости</div>
+        <div className="flex flex-wrap items-end gap-3">
+          <span className="text-5xl font-bold tabular-nums text-slate-900">{a.index.value}</span>
+          <span className="text-slate-600 mb-1">/ 100</span>
         </div>
-        <div className="rounded-xl bg-white p-4 border border-amber-200">
-          <h2 className="font-semibold mb-2">Зоны когнитивной перегрузки</h2>
-          {profile.overloadZones.length ? (
-            <ul className="text-sm text-slate-700 space-y-1">
-              {profile.overloadZones.map((s) => (
-                <li key={s}>• {s}</li>
-              ))}
-            </ul>
-          ) : (
-            <div className="text-sm text-slate-600">Выраженных зон перегрузки сейчас не обнаружено.</div>
-          )}
+        <div className="h-4 rounded-full bg-slate-200 overflow-hidden">
+          <div className={`h-full ${a.index.barColorClass}`} style={{ width: `${a.index.value}%` }} />
         </div>
-      </div>
-
-      <div className="space-y-3">
-        {profile.domains.map((d) => (
-          <div
-            key={d.key}
-            className={`rounded-xl p-4 border ${
-              d.level === 'strong'
-                ? 'bg-emerald-50 border-emerald-200'
-                : d.level === 'watch'
-                  ? 'bg-amber-50 border-amber-200'
-                  : 'bg-orange-50 border-orange-200'
-            }`}
-          >
-            <div className="font-semibold">{d.title}</div>
-            <div className="text-sm mt-1 text-slate-700">{d.interpretation}</div>
-            <div className="text-sm mt-2 text-slate-600">{d.metrics.join(' · ')}</div>
-            <div className="text-sm mt-2">
-              <span className="font-medium">Персональные рекомендации:</span>
-              <ul className="mt-1 space-y-1 text-slate-700">
-                {d.recommendations.map((r) => (
-                  <li key={r}>• {r}</li>
-                ))}
-              </ul>
-            </div>
+        <div>
+          <div className={`inline-block rounded-lg px-3 py-1 text-sm font-semibold text-white ${a.index.barColorClass}`}>
+            {a.index.label}
           </div>
-        ))}
+          <p className="mt-3 text-slate-700 leading-relaxed">{a.index.description}</p>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-3">
+        <h2 className="text-lg font-semibold text-slate-900">Основные зоны перегрузки</h2>
+        {activePatterns.length ? (
+          <ul className="space-y-2">
+            {activePatterns.map((p) => (
+              <li key={p.id} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-slate-800">
+                <span className="font-semibold">{p.title}</span>
+                <span className="text-slate-600"> — {p.description}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-slate-600">
+            Выраженных паттернов перегрузки по правилам сессии не зафиксировано. Профиль выглядит устойчивым в
+            рамках этого замера.
+          </p>
+        )}
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
+        <h2 className="text-lg font-semibold text-slate-900">Профиль доменов</h2>
+        <div className="space-y-4">
+          {a.domains.map((d) => (
+            <div key={d.key} className="border border-slate-100 rounded-lg p-3 bg-slate-50/80">
+              <div className="flex justify-between gap-2 text-sm">
+                <span className="font-medium text-slate-900">{d.title}</span>
+                <span className="tabular-nums text-slate-600">{d.score}</span>
+              </div>
+              <div className="mt-2 h-2 rounded-full bg-slate-200 overflow-hidden">
+                <div className="h-2 rounded-full bg-emerald-800" style={{ width: `${d.score}%` }} />
+              </div>
+              <p className="mt-2 text-sm text-slate-700">{d.shortDescription}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-2">
+        <h2 className="text-lg font-semibold text-slate-900">Краткие рекомендации</h2>
+        <ul className="list-disc pl-5 text-sm text-slate-800 space-y-1">
+          {a.stabilizationTips.slice(0, 5).map((t) => (
+            <li key={t.text}>{t.text}</li>
+          ))}
+        </ul>
+      </section>
+
+      <div className="rounded-xl bg-slate-900 text-white p-5 space-y-4">
+        <div className="text-xs uppercase tracking-widest text-slate-400">Полный анализ</div>
+        <p className="text-slate-200 text-sm leading-relaxed">
+          Расширенный cognitive report: карта перегрузки, драйверы концентрации и структурированный разбор по
+          доменам — в формате, удобном для самостоятельной работы с данными.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+          <div className="text-lg font-bold">1490 ₽</div>
+          <Button
+            className={sellingCtaClass}
+            type="button"
+            onClick={() => setStage('full-report')}
+          >
+            Получить полный анализ когнитивной устойчивости — 1490 ₽
+          </Button>
+        </div>
+        <p className="text-xs text-slate-500">
+          MVP: оплата не подключена — после нажатия открывается полный отчёт. Цена отображается для проверки
+          готовности платить.
+        </p>
       </div>
 
-      <div className="rounded-xl bg-slate-950 text-white p-5 space-y-3">
-        <p>
-          Ваши результаты показывают не только скорость реакции, но и то, насколько стабильно мозг работает под нагрузкой.
-        </p>
-        <p>
-          Даже при нормальной скорости мышления мозг может терять устойчивость:
-          <br />— при переключении внимания,
-          <br />— в условиях перегрузки,
-          <br />— при длительной концентрации,
-          <br />— под информационным шумом.
-        </p>
-        <p>Полный анализ когнитивной устойчивости поможет увидеть:</p>
-        <ul className="space-y-1 text-slate-200">
-          <li>• какие именно механизмы внимания проседают первыми,</li>
-          <li>• насколько стабильно мозг удерживает темп работы,</li>
-          <li>• как меняется точность под нагрузкой,</li>
-          <li>• есть ли признаки когнитивного переутомления,</li>
-          <li>• какие паттерны снижают ясность мышления именно у вас.</li>
-        </ul>
-        <p className="text-slate-200">
-          Это не общие советы, а персональный анализ ваших реакций, вариативности и устойчивости внимания.
-        </p>
-        <div className="rounded-lg bg-slate-800 p-3 text-sm">
-          <div className="font-semibold mb-1">Что доступно в полном анализе когнитивной устойчивости:</div>
-          <div>1. Ваш когнитивный профиль: карта сильных и слабых сторон, сравнение доменов, доминирующий тип нагрузки.</div>
-          <div>2. Что сильнее всего влияет на концентрацию: перегрузка переключением, нестабильность внимания, реактивность, истощение.</div>
-          <div>3. Как меняется работа мозга под нагрузкой: где падает точность, растет вариативность и быстрее наступает усталость.</div>
-          <div>4. Персональные рекомендации: по вашим метрикам, с причинно-следственными объяснениями и практиками.</div>
-        </div>
-      </div>
-      <div className="rounded-xl border border-emerald-300 bg-white p-5 space-y-3">
+      <div className="rounded-xl border border-emerald-200 bg-white p-5 space-y-3">
         <h2 className="text-xl font-semibold text-emerald-950">Личный разбор когнитивного профиля</h2>
-        <p className="text-slate-700">
-          Если вам сложно самостоятельно интерпретировать результаты или вы хотите глубже понять свои когнитивные паттерны, вы можете получить персональный разбор результатов.
+        <p className="text-slate-700 text-sm leading-relaxed">
+          Если вы хотите глубже понять свои когнитивные паттерны и получить персональную интерпретацию
+          результатов, можно пройти индивидуальный cognitive review.
         </p>
-        <div className="rounded-lg bg-emerald-50 p-3 text-sm text-slate-800">
-          <div className="font-semibold mb-1">Во время разбора:</div>
-          <ul className="space-y-1">
-            <li>• подробно объясняются ваши показатели,</li>
-            <li>• анализируются скрытые паттерны когнитивной перегрузки,</li>
-            <li>• разбирается, как именно нагрузка влияет на внимание и ясность мышления,</li>
-            <li>• определяются ключевые факторы снижения устойчивости,</li>
-            <li>• формируется персональный план улучшения концентрации и когнитивной устойчивости.</li>
-          </ul>
-        </div>
-        <div className="grid gap-2 text-sm text-slate-700">
-          <div><span className="font-semibold text-slate-900">Формат:</span> индивидуально • онлайн • 30-40 минут</div>
-          <div className="font-semibold text-slate-900">Особенно полезно, если вы:</div>
-          <ul className="space-y-1">
-            <li>• быстро устаете от информации,</li>
-            <li>• замечаете нестабильность концентрации,</li>
-            <li>• ощущаете "перегруженную голову",</li>
-            <li>• хотите понять свои реальные когнитивные паттерны,</li>
-            <li>• хотите улучшить устойчивость внимания и ясность мышления.</li>
-          </ul>
-        </div>
-        <div className="rounded-lg bg-slate-900 px-4 py-3 text-white flex items-center justify-between gap-3">
-          <span className="font-semibold">Стоимость личного разбора: 5900 ₽</span>
-          <Button className={sellingCtaClass}>Записаться на разбор</Button>
+        <p className="text-sm text-slate-600">Онлайн · 30–40 минут · персональный разбор</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <span className="font-semibold text-slate-900">5490 ₽</span>
+          <Button className={sellingCtaClass} type="button">
+            Записаться на разбор
+          </Button>
         </div>
       </div>
+
       <div className="flex flex-wrap gap-3">
-        <Button className={sellingCtaClass}>Открыть Полный анализ когнитивной устойчивости за 1490 ₽</Button>
-        <Button variant="secondary" onClick={onRestart}>Пройти снова</Button>
+        <Button variant="secondary" onClick={onRestart}>
+          Пройти снова
+        </Button>
       </div>
     </div>
   );

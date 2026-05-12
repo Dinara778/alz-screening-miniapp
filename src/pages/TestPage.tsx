@@ -8,7 +8,7 @@ import { useFlankerTest } from '../hooks/useFlankerTest';
 import { useReactionTest } from '../hooks/useReactionTest';
 import { useStroopTest } from '../hooks/useStroopTest';
 import { useTimer } from '../hooks/useTimer';
-import { buildCognitiveProfile } from '../utils/cognitiveProfile';
+import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { WORDS } from '../utils/generateStimuli';
 import { buildStatus, normalizeWords, scoreFaceName, scoreFlanker, scoreReaction, scoreStroop, scoreWordMemory } from '../utils/scoring';
 
@@ -143,7 +143,7 @@ export const TestPage = () => {
     const faceScore = mappedAnswers.filter((a) => a.selected === a.correct).length;
     const fn = scoreFaceName(faceScore, mappedAnswers);
 
-    const profileFlags = buildCognitiveProfile({
+    const profileFlags = buildCognitiveAnalytics({
       id: 'preview',
       date: new Date().toISOString(),
       flags: 0,
@@ -163,7 +163,7 @@ export const TestPage = () => {
       reaction: rx,
       stroop: st,
       faceName: fn,
-    }).overloadIndicators;
+    }).activePatternCount;
 
     app.saveResult({
       id: crypto.randomUUID(),

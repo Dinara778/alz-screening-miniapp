@@ -1,4 +1,5 @@
 import { SessionResult } from '../types';
+import { buildCognitiveAnalytics } from './cognitiveAnalytics';
 
 type DomainLevel = 'strong' | 'watch' | 'overload';
 
@@ -27,295 +28,100 @@ export type CognitiveProfile = {
   overloadZones: string[];
 };
 
-const avg = (arr: number[]): number =>
-  arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+const levelFromScore = (score: number): DomainLevel => {
+  if (score >= 72) return 'strong';
+  if (score >= 48) return 'watch';
+  return 'overload';
+};
 
+const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
+
+/** Совместимость с историей и сохранением: строит «старый» профиль из новой аналитики. */
 export const buildCognitiveProfile = (session: SessionResult): CognitiveProfile => {
-  const domains: DomainProfile[] = [];
+  const a = buildCognitiveAnalytics(session);
 
-  const delayed = session.wordMemory.delayedScore;
-  const delta = session.wordMemory.immediateScore - session.wordMemory.delayedScore;
-  if (delayed >= 4 && delta <= 1) {
-    domains.push({
-      key: 'wordMemory',
-      title: 'Удержание информации после переключения внимания',
-      level: 'strong',
-      score: 95,
-      interpretation:
-        'Мозг хорошо удерживает информацию даже после переключения внимания.',
-      recommendations: [
-        'Поддерживайте текущий режим фокус-сессий и пауз.',
-      ],
-      metrics: [`Отсроченно: ${delayed}/5`, `Потеря после переключения: ${delta}`],
-      overloaded: false,
-    });
-  } else if (delayed === 3 || delta === 2) {
-    domains.push({
-      key: 'wordMemory',
-      title: 'Удержание информации после переключения внимания',
-      level: 'watch',
-      score: 70,
-      interpretation:
-        'При нагрузке часть информации начинает теряться. Это часто связано с перегрузкой, усталостью и большим количеством переключений внимания.',
-      recommendations: [
-        'Уменьшить многозадачность.',
-        'Работать короткими фокус-сессиями.',
-        'Сократить постоянные переключения.',
-        'Тренировать удержание информации.',
-      ],
-      metrics: [`Отсроченно: ${delayed}/5`, `Потеря после переключения: ${delta}`],
-      overloaded: false,
-    });
-  } else {
-    domains.push({
-      key: 'wordMemory',
-      title: 'Удержание информации после переключения внимания',
-      level: 'overload',
-      score: 40,
-      interpretation:
-        'Мозгу сложно стабильно удерживать новую информацию после отвлечения. В повседневной жизни это может ощущаться как забывание деталей, выпадение мыслей и необходимость повторно возвращаться к информации.',
-      recommendations: [
-        'Уменьшить многозадачность.',
-        'Работать короткими фокус-сессиями.',
-        'Сократить постоянные переключения.',
-        'Тренировать удержание информации.',
-      ],
-      metrics: [`Отсроченно: ${delayed}/5`, `Потеря после переключения: ${delta}`],
-      overloaded: true,
-    });
-  }
-
-  const flankerAcc = session.flanker.incongruentAccuracy;
-  const flankerCv = session.flanker.incongruentCv;
-  if (flankerAcc >= 85 && flankerCv <= 25) {
-    domains.push({
+  const domainMap: DomainProfile[] = [
+    {
       key: 'flanker',
-      title: 'Стабильность внимания под нагрузкой',
-      level: 'strong',
-      score: 95,
-      interpretation: 'Внимание работает стабильно даже при отвлекающих стимулах.',
-      recommendations: ['Сохраняйте текущий режим концентрации.'],
-      metrics: [`Точность: ${flankerAcc.toFixed(1)}%`, `Вариативность: ${flankerCv.toFixed(1)}%`],
-      overloaded: false,
-    });
-  } else if (
-    (flankerAcc >= 70 && flankerAcc <= 84) ||
-    (flankerCv >= 26 && flankerCv <= 40)
-  ) {
-    domains.push({
-      key: 'flanker',
-      title: 'Стабильность внимания под нагрузкой',
-      level: 'watch',
-      score: 70,
+      title: 'Устойчивость внимания',
+      level: levelFromScore(a.domains.find((d) => d.key === 'attentionStability')?.score ?? 50),
+      score: a.domains.find((d) => d.key === 'attentionStability')?.score ?? 50,
       interpretation:
-        'Под нагрузкой внимание начинает работать менее стабильно. Возможны скачки концентрации и повышенная утомляемость от большого количества стимулов.',
-      recommendations: [
-        'Уменьшить количество параллельных стимулов.',
-        'Избегать постоянного переключения контекста.',
-        'Использовать циклы глубокой концентрации.',
-        'Снижать информационный шум.',
+        a.domains.find((d) => d.key === 'attentionStability')?.shortDescription ?? '',
+      recommendations: a.patterns.find((p) => p.id === 'switching_overload')?.recommendations ?? [],
+      metrics: [
+        `Flanker accuracy: ${a.metrics.flankerIncongruentAccuracy.toFixed(1)}%`,
+        `Flanker CV: ${a.metrics.flankerIncongruentCv.toFixed(1)}%`,
       ],
-      metrics: [`Точность: ${flankerAcc.toFixed(1)}%`, `Вариативность: ${flankerCv.toFixed(1)}%`],
-      overloaded: false,
-    });
-  } else {
-    domains.push({
-      key: 'flanker',
-      title: 'Стабильность внимания под нагрузкой',
-      level: 'overload',
-      score: 40,
-      interpretation:
-        'Мозг может работать быстро, но нестабильно. Это может проявляться как ощущение перегруженности, ошибки в простых задачах и резкие колебания концентрации.',
-      recommendations: [
-        'Уменьшить количество параллельных стимулов.',
-        'Избегать постоянного переключения контекста.',
-        'Использовать циклы глубокой концентрации.',
-        'Снижать информационный шум.',
+      overloaded: a.patterns.some((p) => p.id === 'switching_overload' && p.active),
+    },
+    {
+      key: 'reaction',
+      title: 'Скорость и стабильность реакции',
+      level: levelFromScore(
+        ((a.domains.find((d) => d.key === 'reactionSpeed')?.score ?? 50) +
+          (a.domains.find((d) => d.key === 'reactionStability')?.score ?? 50)) /
+          2,
+      ),
+      score: Math.round(
+        ((a.domains.find((d) => d.key === 'reactionSpeed')?.score ?? 50) +
+          (a.domains.find((d) => d.key === 'reactionStability')?.score ?? 50)) /
+          2,
+      ),
+      interpretation: `Скорость: ${a.domains.find((d) => d.key === 'reactionSpeed')?.shortDescription ?? ''} Стабильность: ${a.domains.find((d) => d.key === 'reactionStability')?.shortDescription ?? ''}`,
+      recommendations: a.patterns.find((p) => p.id === 'high_reactivity')?.recommendations ?? [],
+      metrics: [
+        `Median RT: ${Math.round(a.metrics.reactionMedianRt)} мс`,
+        `CV: ${a.metrics.reactionCv.toFixed(1)}%`,
+        `Anticipations: ${a.metrics.reactionAnticipations}`,
       ],
-      metrics: [`Точность: ${flankerAcc.toFixed(1)}%`, `Вариативность: ${flankerCv.toFixed(1)}%`],
-      overloaded: true,
-    });
-  }
-
-  const reactionCv = session.reaction.cv;
-  const anticip = session.reaction.anticipations;
-  const reactionRecs = [
-    'Восстановление режима сна.',
-    'Уменьшение переутомления.',
-    'Снижение информационной перегрузки.',
-    'Тренировка устойчивого внимания.',
+      overloaded: a.patterns.some((p) => p.id === 'high_reactivity' && p.active),
+    },
+    {
+      key: 'stroop',
+      title: 'Когнитивная гибкость',
+      level: levelFromScore(a.domains.find((d) => d.key === 'cognitiveFlexibility')?.score ?? 50),
+      score: a.domains.find((d) => d.key === 'cognitiveFlexibility')?.score ?? 50,
+      interpretation: a.domains.find((d) => d.key === 'cognitiveFlexibility')?.shortDescription ?? '',
+      recommendations: a.patterns.find((p) => p.id === 'switching_overload')?.recommendations ?? [],
+      metrics: [
+        `Interference: ${a.metrics.stroopInterferenceMs.toFixed(0)} мс`,
+        `Ошибки: ${a.metrics.stroopIncongruentErrorRate.toFixed(1)}%`,
+      ],
+      overloaded: a.patterns.some((p) => p.id === 'switching_overload' && p.active),
+    },
+    {
+      key: 'wordMemory',
+      title: 'Удержание информации',
+      level: levelFromScore(a.domains.find((d) => d.key === 'informationRetention')?.score ?? 50),
+      score: a.domains.find((d) => d.key === 'informationRetention')?.score ?? 50,
+      interpretation: a.domains.find((d) => d.key === 'informationRetention')?.shortDescription ?? '',
+      recommendations: a.patterns.find((p) => p.id === 'retention_drop')?.recommendations ?? [],
+      metrics: [
+        `Отсроченно: ${a.metrics.wordDelayedScore}/5`,
+        `Δ: ${a.metrics.wordDelta}`,
+        `Лица-имена: ${a.metrics.faceNameScore}/3`,
+      ],
+      overloaded: a.patterns.some((p) => p.id === 'retention_drop' && p.active),
+    },
+    {
+      key: 'faceName',
+      title: 'Ассоциативное удержание',
+      level: levelFromScore(a.metrics.faceNameScore * 33),
+      score: clamp(a.metrics.faceNameScore * 33),
+      interpretation: 'Связь визуального образа и подписи после отвлечения.',
+      recommendations: a.patterns.find((p) => p.id === 'retention_drop')?.recommendations ?? [],
+      metrics: [`Точность: ${a.metrics.faceNameScore}/3`],
+      overloaded: a.metrics.faceNameScore <= 1,
+    },
   ];
-  let reactionInterpretation = '';
-  let reactionLevel: DomainLevel = 'watch';
-  let reactionScore = 70;
-  let reactionOverloaded = false;
-  if (reactionCv <= 20 && anticip <= 1) {
-    reactionInterpretation = 'Скорость обработки информации остаётся стабильной и ровной.';
-    reactionLevel = 'strong';
-    reactionScore = 95;
-  } else if ((reactionCv >= 21 && reactionCv <= 35) || (anticip >= 2 && anticip <= 3)) {
-    reactionInterpretation = 'Когнитивный темп начинает становиться менее стабильным при нагрузке и усталости.';
-  } else {
-    reactionInterpretation =
-      'Скорость реакции заметно колеблется. Это часто ощущается как нестабильная продуктивность, скачки концентрации и быстрое когнитивное истощение.';
-    reactionLevel = 'overload';
-    reactionScore = 40;
-    reactionOverloaded = true;
-  }
-  if (anticip > 3) {
-    reactionInterpretation +=
-      ' Также наблюдается повышенная импульсивность реакций — склонность отвечать раньше полной обработки информации.';
-  }
-  domains.push({
-    key: 'reaction',
-    title: 'Стабильность когнитивного темпа',
-    level: reactionLevel,
-    score: reactionScore,
-    interpretation: reactionInterpretation,
-    recommendations: reactionRecs,
-    metrics: [`CV: ${reactionCv.toFixed(1)}%`, `Преждевременные реакции: ${anticip}`],
-    overloaded: reactionOverloaded,
-  });
-
-  const stroopInc = session.stroop.trials.filter((t) => t.type === 'incongruent');
-  const stroopCong = session.stroop.trials.filter((t) => t.type === 'congruent');
-  const incRt = avg(stroopInc.filter((t) => t.correct && t.rt !== null).map((t) => t.rt as number));
-  const congRt = avg(stroopCong.filter((t) => t.correct && t.rt !== null).map((t) => t.rt as number));
-  const interference = Math.max(0, incRt - congRt);
-  const stroopErr = session.stroop.incongruentErrorRate;
-  const stroopCv = session.stroop.incongruentCv;
-  const stroopRecs = [
-    'Уменьшить многозадачность.',
-    'Дозировать информационную нагрузку.',
-    'Чередовать концентрацию и восстановление.',
-    'Тренировать когнитивную гибкость.',
-  ];
-
-  if (interference <= 150 && stroopErr <= 10 && stroopCv <= 25) {
-    domains.push({
-      key: 'stroop',
-      title: 'Когнитивная гибкость',
-      level: 'strong',
-      score: 95,
-      interpretation:
-        'Мозг хорошо сохраняет точность и устойчивость в условиях конфликтной информации.',
-      recommendations: ['Сохраняйте текущий режим управления нагрузкой.'],
-      metrics: [
-        `Interference: ${interference.toFixed(0)} мс`,
-        `Ошибки: ${stroopErr.toFixed(1)}%`,
-        `Вариативность: ${stroopCv.toFixed(1)}%`,
-      ],
-      overloaded: false,
-    });
-  } else if (
-    (interference >= 151 && interference <= 250) ||
-    (stroopErr >= 11 && stroopErr <= 25) ||
-    (stroopCv >= 26 && stroopCv <= 45)
-  ) {
-    domains.push({
-      key: 'stroop',
-      title: 'Когнитивная гибкость',
-      level: 'watch',
-      score: 70,
-      interpretation:
-        'При высокой когнитивной нагрузке мозгу требуется больше ресурсов для удержания точности и подавления отвлекающей информации.',
-      recommendations: stroopRecs,
-      metrics: [
-        `Interference: ${interference.toFixed(0)} мс`,
-        `Ошибки: ${stroopErr.toFixed(1)}%`,
-        `Вариативность: ${stroopCv.toFixed(1)}%`,
-      ],
-      overloaded: false,
-    });
-  } else {
-    domains.push({
-      key: 'stroop',
-      title: 'Когнитивная гибкость',
-      level: 'overload',
-      score: 40,
-      interpretation:
-        'В сложных задачах внимание начинает работать нестабильно. Это может проявляться как ощущение перегруженности, сложности с переключением и повышенная утомляемость.',
-      recommendations: stroopRecs,
-      metrics: [
-        `Interference: ${interference.toFixed(0)} мс`,
-        `Ошибки: ${stroopErr.toFixed(1)}%`,
-        `Вариативность: ${stroopCv.toFixed(1)}%`,
-      ],
-      overloaded: true,
-    });
-  }
-
-  const face = session.faceName.score;
-  if (face === 3) {
-    domains.push({
-      key: 'faceName',
-      title: 'Ассоциативное удержание информации',
-      level: 'strong',
-      score: 95,
-      interpretation:
-        'Мозг хорошо формирует и удерживает новые ассоциативные связи.',
-      recommendations: ['Поддерживайте текущий режим усвоения информации.'],
-      metrics: [`Точность: ${face}/3`],
-      overloaded: false,
-    });
-  } else if (face === 2) {
-    domains.push({
-      key: 'faceName',
-      title: 'Ассоциативное удержание информации',
-      level: 'watch',
-      score: 70,
-      interpretation:
-        'При высокой нагрузке удержание новых ассоциаций может становиться менее стабильным.',
-      recommendations: [
-        'Использовать смысловые ассоциации.',
-        'Уменьшать фоновую перегрузку.',
-        'Тренировать удержание контекста.',
-        'Использовать визуальное кодирование информации.',
-      ],
-      metrics: [`Точность: ${face}/3`],
-      overloaded: false,
-    });
-  } else {
-    domains.push({
-      key: 'faceName',
-      title: 'Ассоциативное удержание информации',
-      level: 'overload',
-      score: 40,
-      interpretation:
-        'Мозгу сложнее удерживать новые ассоциативные связи. В жизни это может ощущаться как забывание имён, контекста разговоров и новых деталей.',
-      recommendations: [
-        'Использовать смысловые ассоциации.',
-        'Уменьшать фоновую перегрузку.',
-        'Тренировать удержание контекста.',
-        'Использовать визуальное кодирование информации.',
-      ],
-      metrics: [`Точность: ${face}/3`],
-      overloaded: true,
-    });
-  }
-
-  const overloadIndicators = domains.filter((d) => d.overloaded).length;
-  const cognitiveStabilityIndex = Math.max(
-    0,
-    Math.min(100, Math.round(avg(domains.map((d) => d.score)))),
-  );
-
-  let overloadText =
-    'Когнитивная система работает стабильно. Есть отдельные зоны утомления, но общая устойчивость сохраняется.';
-  if (overloadIndicators >= 2 && overloadIndicators <= 3) {
-    overloadText =
-      'Мозг начинает терять стабильность под нагрузкой. Это может влиять на концентрацию, ясность мышления и когнитивную выносливость.';
-  } else if (overloadIndicators >= 4) {
-    overloadText =
-      'Нагрузка и истощение уже заметно влияют на качество работы внимания и памяти. Обычно в таком состоянии люди ощущают когнитивную усталость и перегруженность.';
-  }
 
   return {
-    cognitiveStabilityIndex,
-    overloadIndicators,
-    overloadText,
-    domains,
-    strengths: domains.filter((d) => d.level === 'strong').map((d) => d.title),
-    overloadZones: domains.filter((d) => d.level === 'overload').map((d) => d.title),
+    cognitiveStabilityIndex: a.index.value,
+    overloadIndicators: a.activePatternCount,
+    overloadText: a.index.description,
+    domains: domainMap,
+    strengths: a.domains.filter((d) => d.score >= 75).map((d) => d.title),
+    overloadZones: a.patterns.filter((p) => p.active).map((p) => p.title),
   };
 };

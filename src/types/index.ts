@@ -87,7 +87,8 @@ export type AppStage =
   | 'stroop-instruction'
   | 'stroop'
   | 'face-test'
-  | 'result';
+  | 'result'
+  | 'full-report';
 
 export type SavedProgress = {
   stage: AppStage;

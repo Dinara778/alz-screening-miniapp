@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useApp } from './context/AppContext';
 import { HistoryPage } from './pages/HistoryPage';
+import { FullReportPage } from './pages/FullReportPage';
 import { ResultPage } from './pages/ResultPage';
 import { TestPage } from './pages/TestPage';
 import { WelcomePage } from './pages/WelcomePage';
@@ -43,6 +44,7 @@ function App() {
         'face-test',
       ].includes(app.stage) && <TestPage key={app.sessionSeed} />}
       {app.stage === 'result' && <ResultPage onRestart={app.resetSession} />}
+      {app.stage === 'full-report' && <FullReportPage />}
     </main>
   );
 }
