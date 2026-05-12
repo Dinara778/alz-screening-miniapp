@@ -11,6 +11,10 @@ interface TelegramWebApp {
   initData: string;
   initDataUnsafe: Record<string, unknown>;
   isExpanded?: boolean;
+  /** Bot API 8.0+: мини-апп на весь экран устройства. */
+  isFullscreen?: boolean;
+  requestFullscreen?: () => void;
+  exitFullscreen?: () => void;
   /** Нативная оплата Telegram (счёт из createInvoiceLink). */
   openInvoice(url: string, callback?: (status: string) => void): void;
   /** Открывает t.me-ссылку (в т.ч. шаринг через t.me/share/url). */

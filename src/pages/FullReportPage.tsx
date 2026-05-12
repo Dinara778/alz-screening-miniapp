@@ -11,14 +11,12 @@ import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
 const REPORT_EMAIL_PREFIX = 'corta_report_email_';
 
-const sellingCtaClass =
-  'bg-red-600 text-white hover:bg-red-500 shadow-lg shadow-red-600/30';
-
 export const FullReportPage = () => {
   const { latestResult, participant, setStage } = useApp();
   const [step, setStep] = useState(0);
   const [reportEmail, setReportEmail] = useState('');
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const [consultationBusy, setConsultationBusy] = useState(false);
   const [consultationNotice, setConsultationNotice] = useState<string | null>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
@@ -78,10 +76,16 @@ export const FullReportPage = () => {
   const handlePdf = async () => {
     if (!pdfRef.current) return;
     setPdfBusy(true);
+    setPdfError(null);
     try {
       await downloadCognitiveReportPdf(
         pdfRef.current,
         `otchet-${latestResult.id.slice(0, 8)}.pdf`,
+      );
+    } catch (e) {
+      console.error('[pdf]', e);
+      setPdfError(
+        'Не удалось сохранить файл. Откройте мини-приложение через меню (⋯) → «Открыть в браузере» и повторите.',
       );
     } finally {
       setPdfBusy(false);
@@ -225,13 +229,20 @@ export const FullReportPage = () => {
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <div className="text-sm text-slate-600">Индекс когнитивной устойчивости</div>
             <div className="text-5xl font-bold text-slate-900">{analytics.index.value}</div>
-            <div className="mt-2 h-3 rounded-full bg-slate-200 overflow-hidden">
+            <p className="mt-1 text-xs text-slate-500">
+              Нормированная шкала 0–100: полоса — значение, цветная метка ниже — зона интерпретации.
+            </p>
+            <div className="mt-2 h-3 rounded-full border border-slate-300 bg-slate-100 shadow-inner dark:border-slate-600 dark:bg-slate-900/80">
               <div
-                className={`h-full ${analytics.index.barColorClass}`}
+                className="h-full rounded-full bg-slate-700 dark:bg-slate-300"
                 style={{ width: `${analytics.index.value}%` }}
               />
             </div>
-            <div className="mt-3 font-semibold text-slate-900">{analytics.index.label}</div>
+            <div
+              className={`mt-3 inline-block rounded-lg border border-black/10 px-2.5 py-1 text-sm font-semibold text-white shadow-sm ring-1 ring-black/5 ${analytics.index.barColorClass}`}
+            >
+              {analytics.index.label}
+            </div>
             <p className="mt-2 text-slate-700">{analytics.index.description}</p>
           </div>
         </div>
@@ -293,7 +304,11 @@ export const FullReportPage = () => {
     },
   ];
 
-  const hiddenPdfLayer = <div className="pointer-events-none fixed left-[-12000px] top-0 w-[210mm]">{pdfMarkup}</div>;
+  const hiddenPdfLayer = (
+    <div className="pdf-export-root pointer-events-none fixed left-[-12000px] top-0 z-0 w-[210mm] max-w-[210mm]">
+      {pdfMarkup}
+    </div>
+  );
 
   if (step <= 4) {
     const s = screens[step];
@@ -371,8 +386,9 @@ export const FullReportPage = () => {
         Файл отчёта формируется в браузере из тех же данных, что и экранный отчёт. Отправка письма будет подключена
         на сервере позже; адрес уже сохранён для интеграции.
       </p>
+      {pdfError ? <p className="text-sm text-amber-900">{pdfError}</p> : null}
       <div className="flex flex-wrap gap-3">
-        <Button type="button" disabled={pdfBusy} onClick={handlePdf}>
+        <Button type="button" disabled={pdfBusy} onClick={() => void handlePdf()}>
           {pdfBusy ? 'Формирование…' : 'Скачать отчёт'}
         </Button>
         <Button variant="secondary" type="button" onClick={() => setStage('welcome')}>
@@ -390,7 +406,7 @@ export const FullReportPage = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <span className="font-semibold text-slate-900">5490 ₽</span>
           <Button
-            className={sellingCtaClass}
+            variant="sell"
             type="button"
             disabled={consultationBusy}
             onClick={() => void handlePayConsultation()}

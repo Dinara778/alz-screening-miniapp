@@ -4,13 +4,12 @@ type Props = {
   onContinue: () => void;
 };
 
-/** Фон: взрослая дружная команда (Unsplash). Можно заменить на свой файл в /public. */
+/** Фон героя; при желании замените на свой файл в /public. */
 const HERO_BG =
-  'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1920&q=88';
+  'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1920&q=88';
 
 /**
- * Приветственный экран: фото людей 35+, типографика в духе muse (жирное corta. + тонкие капсы),
- * приветствие и кнопка «Продолжить».
+ * Приветственный экран: фото, типографика corta., приветствие и кнопка «Начать».
  */
 export const CortaIntroPage = ({ onContinue }: Props) => {
   return (
@@ -36,10 +35,6 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
             >
               corta<span className="font-black">.</span>
             </p>
-            <div className="mt-4 flex flex-wrap justify-between gap-x-6 gap-y-2 border-t border-white/25 pt-4 font-caps text-[0.62rem] font-extralight uppercase tracking-[0.32em] text-white/85 sm:text-[0.7rem] sm:tracking-[0.38em]">
-              <span className="text-left">Corta Lab · studio</span>
-              <span className="text-right sm:ml-auto">Since 2025</span>
-            </div>
           </div>
 
           <div className="mt-10 max-w-md space-y-3 px-1">
@@ -53,18 +48,15 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
           </div>
         </div>
 
-        <div className="mt-8 flex flex-col items-center gap-4 pb-2">
+        <div className="mt-8 flex flex-col items-center pb-2">
           <Button
             type="button"
-            variant="secondary"
-            className="min-w-[220px] border-2 border-white/90 bg-white/15 px-8 text-base font-semibold text-white shadow-lg backdrop-blur-md hover:bg-white/25 dark:border-white/90 dark:bg-white/15 dark:hover:bg-white/25"
+            variant="sell"
+            className="min-w-[220px] px-8 text-base"
             onClick={onContinue}
           >
-            Продолжить
+            Начать
           </Button>
-          <p className="text-center text-[10px] font-light uppercase tracking-widest text-white/45">
-            Фото: Unsplash · командная встреча
-          </p>
         </div>
       </div>
     </section>

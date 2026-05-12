@@ -401,9 +401,27 @@ export const TestPage = () => {
         <ProgressBar value={stroop.index} max={30} />
         <div className={`text-4xl font-bold ${colorClass}`}>{s?.word}</div>
         <div className="grid grid-cols-3 gap-2">
-          <Button className="!bg-red-700 !text-white hover:!bg-red-600" onClick={() => stroop.answer('red')}>Красный</Button>
-          <Button className="!bg-blue-700 !text-white hover:!bg-blue-600" onClick={() => stroop.answer('blue')}>Синий</Button>
-          <Button className="!bg-green-700 !text-white hover:!bg-green-600" onClick={() => stroop.answer('green')}>Зеленый</Button>
+          <button
+            type="button"
+            className="rounded-xl bg-red-600 px-2 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-red-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:text-base"
+            onClick={() => stroop.answer('red')}
+          >
+            Красный
+          </button>
+          <button
+            type="button"
+            className="rounded-xl bg-blue-600 px-2 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-blue-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:text-base"
+            onClick={() => stroop.answer('blue')}
+          >
+            Синий
+          </button>
+          <button
+            type="button"
+            className="rounded-xl bg-green-600 px-2 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-green-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:text-base"
+            onClick={() => stroop.answer('green')}
+          >
+            Зеленый
+          </button>
         </div>
       </div>,
     );

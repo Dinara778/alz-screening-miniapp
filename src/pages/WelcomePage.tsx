@@ -77,16 +77,31 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         onSubmit={submit}
       >
         <h1 className="inline-block rounded-xl bg-gradient-to-br from-emerald-900 to-teal-950 px-4 py-3 text-2xl font-bold leading-tight text-white shadow-md sm:text-3xl">
-          🧠 Тест: индекс когнитивной эффективности
+          Тест: индекс когнитивной эффективности
         </h1>
         <div className="rounded-xl border-2 border-emerald-200/90 bg-gradient-to-br from-emerald-50 to-teal-50/80 p-4 dark:border-emerald-700/50 dark:from-emerald-950/50 dark:to-slate-800/80">
-          <div className="font-semibold text-emerald-950 dark:text-emerald-100">📋 Что измеряет тест</div>
+          <div className="font-semibold text-emerald-950 dark:text-emerald-100">Параметры замера</div>
           <div className="mt-2 space-y-2 text-slate-900 dark:text-slate-200">
-            <div>⚡ Скорость обработки информации (как быстро мозг реагирует и переключается).</div>
-            <div>🎯 Стабильность внимания (насколько внимание устойчиво к отвлечениям).</div>
-            <div>〰️ Вариативность реакций (насколько мозг работает &quot;ровно&quot;, без &quot;рывков&quot;).</div>
-            <div>🧩 Рабочая память (удержание информации в моменте).</div>
-            <div>💪 Когнитивная выносливость (как быстро мозг начинает уставать).</div>
+            <div>
+              <span className="font-mono text-xs text-emerald-800 dark:text-emerald-300">[1]</span> Скорость обработки
+              информации (как быстро мозг реагирует и переключается).
+            </div>
+            <div>
+              <span className="font-mono text-xs text-emerald-800 dark:text-emerald-300">[2]</span> Стабильность внимания
+              (насколько внимание устойчиво к отвлечениям).
+            </div>
+            <div>
+              <span className="font-mono text-xs text-emerald-800 dark:text-emerald-300">[3]</span> Вариативность
+              реакций (насколько мозг работает &quot;ровно&quot;, без &quot;рывков&quot;).
+            </div>
+            <div>
+              <span className="font-mono text-xs text-emerald-800 dark:text-emerald-300">[4]</span> Рабочая память
+              (удержание информации в моменте).
+            </div>
+            <div>
+              <span className="font-mono text-xs text-emerald-800 dark:text-emerald-300">[5]</span> Когнитивная
+              выносливость (как быстро мозг начинает уставать).
+            </div>
           </div>
         </div>
 
@@ -160,11 +175,11 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
           />
         </div>
 
-        <Button type="submit">✨ Начать тест</Button>
-        <p className="text-center text-sm text-slate-500 dark:text-slate-400">🕒 Около 5 минут · без медицинского диагноза</p>
+        <Button type="submit">Начать тест</Button>
+        <p className="text-center text-sm text-slate-500 dark:text-slate-400">Тест можно пройти за 5 минут</p>
       </form>
       <Button type="button" variant="secondary" onClick={onHistory}>
-        📚 История прохождений
+        История прохождений
       </Button>
       <Footer />
     </div>

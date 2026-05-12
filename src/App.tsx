@@ -4,6 +4,7 @@ import { useApp } from './context/AppContext';
 import type { AppStage } from './types';
 import { pickStudyWordList } from './utils/generateStimuli';
 import { applyTelegramTheme } from './utils/telegramTheme';
+import { enterTelegramImmersiveMode, exitTelegramImmersiveMode } from './utils/telegramViewport';
 import { HistoryPage } from './pages/HistoryPage';
 import { FullReportPage } from './pages/FullReportPage';
 import { ResultPage } from './pages/ResultPage';
@@ -13,6 +14,24 @@ import { CortaIntroPage } from './pages/CortaIntroPage';
 import { WelcomePage } from './pages/WelcomePage';
 
 const STAGES_HIDE_SUPPORT_FOOTER: AppStage[] = ['flanker', 'reaction', 'stroop'];
+
+/** После «Начать» и на всём прохождении теста — expand + requestFullscreen (если поддерживается). */
+const STAGES_TELEGRAM_IMMERSIVE: AppStage[] = [
+  'welcome',
+  'history',
+  'word-study',
+  'word-immediate',
+  'flanker-instruction',
+  'flanker',
+  'reaction-instruction',
+  'reaction',
+  'interference-wait',
+  'word-delayed',
+  'face-study',
+  'stroop-instruction',
+  'stroop',
+  'face-test',
+];
 
 /** Все этапы экрана прохождения теста — без строки о разработчике внизу */
 const STAGES_HIDE_DEVELOPER_CREDIT: AppStage[] = [
@@ -42,6 +61,16 @@ function App() {
     tg.MainButton?.hide();
     applyTelegramTheme();
   }, []);
+
+  useEffect(() => {
+    if (app.stage === 'corta-intro') {
+      exitTelegramImmersiveMode();
+      return;
+    }
+    if (STAGES_TELEGRAM_IMMERSIVE.includes(app.stage)) {
+      enterTelegramImmersiveMode();
+    }
+  }, [app.stage]);
 
   return (
     <main className="max-w-2xl mx-auto min-h-screen px-4 py-6 text-slate-950 shadow-brand bg-gradient-to-b from-emerald-50/95 via-white to-teal-50/80 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100 dark:shadow-none">
