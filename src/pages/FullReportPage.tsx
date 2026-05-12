@@ -1,6 +1,8 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '../components/Button';
+import { DomainProfileCard } from '../components/DomainProfileCard';
 import { useApp } from '../context/AppContext';
+import { formatDomainInterpretationPlain } from '../copy/cognitiveDomainInterpretationsMid52';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { downloadCognitiveReportPdf } from '../utils/pdfReport';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
@@ -108,10 +110,15 @@ export const FullReportPage = () => {
       </p>
 
       <h2 className="text-lg font-bold mb-2">2. Расшифровка доменов</h2>
-      <ul className="mb-4 space-y-2">
+      <ul className="mb-4 space-y-4 list-none pl-0">
         {analytics.domains.map((d) => (
           <li key={d.key}>
-            <span className="font-semibold">{d.title}</span> — {d.score}/100. {d.shortDescription}
+            <div className="font-semibold">
+              {d.title} — {d.score}/100
+            </div>
+            <div className="mt-1 text-sm whitespace-pre-line leading-relaxed">
+              {formatDomainInterpretationPlain(d.interpretation)}
+            </div>
           </li>
         ))}
       </ul>
@@ -200,21 +207,11 @@ export const FullReportPage = () => {
             Пять доменов описывают разные стороны обработки: от устойчивости к отвлечению до удержания
             контекста после нагрузки.
           </p>
-          <ul className="space-y-3">
+          <div className="space-y-3">
             {analytics.domains.map((d) => (
-              <li key={d.key} className="rounded-lg border border-slate-200 p-3 bg-white">
-                <div className="font-semibold">{d.title}</div>
-                <div className="mt-1 h-2 rounded bg-slate-200">
-                  <div className="h-2 rounded bg-emerald-800" style={{ width: `${d.score}%` }} />
-                </div>
-                <p className="mt-2 text-sm text-slate-700">{d.shortDescription}</p>
-                <p className="mt-1 text-xs text-slate-500">
-                  В повседневности это проявляется как качество удержания сосредоточения и ровность темпа в длинных
-                  блоках внимания.
-                </p>
-              </li>
+              <DomainProfileCard key={d.key} domain={d} />
             ))}
-          </ul>
+          </div>
         </div>
       ),
     },

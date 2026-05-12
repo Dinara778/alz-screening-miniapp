@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '../components/Button';
+import { DomainProfileCard } from '../components/DomainProfileCard';
 import { Footer } from '../components/Footer';
 import { useApp } from '../context/AppContext';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
@@ -127,16 +128,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         <h2 className="text-lg font-semibold text-slate-900">Профиль доменов</h2>
         <div className="space-y-4">
           {a.domains.map((d) => (
-            <div key={d.key} className="border border-slate-100 rounded-lg p-3 bg-slate-50/80">
-              <div className="flex justify-between gap-2 text-sm">
-                <span className="font-medium text-slate-900">{d.title}</span>
-                <span className="tabular-nums text-slate-600">{d.score}</span>
-              </div>
-              <div className="mt-2 h-2 rounded-full bg-slate-200 overflow-hidden">
-                <div className="h-2 rounded-full bg-emerald-800" style={{ width: `${d.score}%` }} />
-              </div>
-              <p className="mt-2 text-sm text-slate-700">{d.shortDescription}</p>
-            </div>
+            <DomainProfileCard key={d.key} domain={d} />
           ))}
         </div>
       </section>

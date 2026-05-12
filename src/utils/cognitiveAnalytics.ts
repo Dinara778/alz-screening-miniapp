@@ -1,4 +1,5 @@
-import { SessionResult } from '../types';
+import type { CognitiveDomainKey, SessionResult } from '../types';
+import { getDomainInterpretationMid52, type DomainInterpretationCopy } from '../copy/cognitiveDomainInterpretationsMid52';
 import { avg, cv, median } from './metrics';
 import { MIN_VALID_REACTION_RT_MS, sanitizeReactionRts } from './reactionMetrics';
 
@@ -49,18 +50,15 @@ export type CognitivePattern = {
   recommendations: string[];
 };
 
-export type DomainKey =
-  | 'attentionStability'
-  | 'reactionSpeed'
-  | 'reactionStability'
-  | 'cognitiveFlexibility'
-  | 'informationRetention';
+export type { CognitiveDomainKey as DomainKey } from '../types';
 
 export type DomainScore = {
-  key: DomainKey;
+  key: CognitiveDomainKey;
   title: string;
   score: number;
+  /** Краткая строка (для совместимости): «О чём говорит результат». */
   shortDescription: string;
+  interpretation: DomainInterpretationCopy;
 };
 
 export type OverloadMapItem = {
@@ -346,18 +344,6 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
     ? clampScore(100 - m.reactionCv * 1.1 - m.reactionAnticipations * 6)
     : 50;
 
-  let reactionSpeedShort: string;
-  if (!reactionTrusted) {
-    reactionSpeedShort = 'Недостаточно валидных данных реакции для оценки темпа.';
-  } else if (reactionSpeedScore >= 70) {
-    reactionSpeedShort = 'Темп обработки сигнала в комфортном диапазоне.';
-  } else if (m.reactionMedianRt > 520) {
-    reactionSpeedShort =
-      'Темп ответа медленнее среднего; при этом допустима осторожная, ровная обработка сигнала.';
-  } else {
-    reactionSpeedShort = 'Темп ответа быстрее или менее ровный относительно оптимального диапазона.';
-  }
-
   const flexibilityScore = clampScore(
     100 -
       Math.min(m.stroopInterferenceMs / 4.5, 45) -
@@ -371,50 +357,23 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
       Math.max(0, m.wordDelta - 2) * 12,
   );
 
+  const mkDomain = (key: CognitiveDomainKey, title: string, score: number): DomainScore => {
+    const interpretation = getDomainInterpretationMid52(key);
+    return {
+      key,
+      title,
+      score,
+      shortDescription: interpretation.aboutResult,
+      interpretation,
+    };
+  };
+
   const domains: DomainScore[] = [
-    {
-      key: 'attentionStability',
-      title: 'Устойчивость внимания',
-      score: attentionScore,
-      shortDescription:
-        attentionScore >= 70
-          ? 'Удержание сосредоточения при конкурирующих стимулах в пределах нормы для короткого замера.'
-          : 'Точность и устойчивость внимания под конфликтом снижаются быстрее обычного.',
-    },
-    {
-      key: 'reactionSpeed',
-      title: 'Скорость реакции',
-      score: reactionSpeedScore,
-      shortDescription: reactionSpeedShort,
-    },
-    {
-      key: 'reactionStability',
-      title: 'Стабильность реакции',
-      score: reactionStabilityScore,
-      shortDescription: !reactionTrusted
-        ? 'Недостаточно валидных данных реакции для оценки стабильности.'
-        : reactionStabilityScore >= 70
-          ? 'Мало разброса по времени реакции и мало преждевременных ответов.'
-          : 'Вариативность реакций или преждевременные ответы повышают нестабильность.',
-    },
-    {
-      key: 'cognitiveFlexibility',
-      title: 'Когнитивная гибкость',
-      score: flexibilityScore,
-      shortDescription:
-        flexibilityScore >= 70
-          ? 'Конфликт «смысла и цвета» обрабатывается без критического роста затрат.'
-          : 'Конфликтная задача требует больше ресурсов: растут задержки или ошибки.',
-    },
-    {
-      key: 'informationRetention',
-      title: 'Удержание информации',
-      score: retentionScore,
-      shortDescription:
-        retentionScore >= 70
-          ? 'Удержание списка и ассоциаций после интерференции в хорошем диапазоне.'
-          : 'После нагрузки заметнее потеря деталей или ассоциативных связей.',
-    },
+    mkDomain('attentionStability', 'Устойчивость внимания', attentionScore),
+    mkDomain('reactionSpeed', 'Скорость реакции', reactionSpeedScore),
+    mkDomain('reactionStability', 'Стабильность реакции', reactionStabilityScore),
+    mkDomain('cognitiveFlexibility', 'Когнитивная гибкость', flexibilityScore),
+    mkDomain('informationRetention', 'Удержание информации', retentionScore),
   ];
 
   const rawIndex = avg(domains.map((d) => d.score));

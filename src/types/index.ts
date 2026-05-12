@@ -1,5 +1,13 @@
 export type TrialType = 'congruent' | 'incongruent' | 'neutral';
 
+/** Ключи доменов когнитивного профиля (индекс, отчёты, PDF). */
+export type CognitiveDomainKey =
+  | 'attentionStability'
+  | 'reactionSpeed'
+  | 'reactionStability'
+  | 'cognitiveFlexibility'
+  | 'informationRetention';
+
 export type TrialResult = {
   type: TrialType;
   rt: number | null;
