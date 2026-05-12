@@ -25,7 +25,7 @@ body {
   @apply m-0;
   background: var(--app-bg);
   color: var(--app-text);
-  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 }
 
 #root {

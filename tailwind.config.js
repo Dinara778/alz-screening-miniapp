@@ -4,8 +4,9 @@ export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
-      /** Только логотип «corta.» на экране интро — остальной интерфейс: Inter из index.css */
+      /** Nunito — бренд corta.; sans — Plus Jakarta Sans (см. index.css). */
       fontFamily: {
+        sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
         display: ['Nunito', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
