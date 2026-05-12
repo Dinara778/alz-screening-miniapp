@@ -39,6 +39,20 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         <p className="text-sm text-slate-400 mt-2">
           Отчёт по одному прохождению замера. Не медицинская оценка и не диагноз.
         </p>
+        {!a.validation.interpretationTrusted ? (
+          <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+            <p className="font-medium">Ограниченная достоверность данных этого замера</p>
+            {a.validation.warnings.length ? (
+              <ul className="mt-2 list-disc pl-5 text-amber-900/90 space-y-1">
+                {a.validation.warnings.map((w) => (
+                  <li key={w}>{w}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-1 text-amber-900/90">Повторите тест при полном прохождении всех блоков.</p>
+            )}
+          </div>
+        ) : null}
       </div>
 
       <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">

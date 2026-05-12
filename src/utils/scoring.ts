@@ -1,5 +1,6 @@
 import { FaceNameResult, FlankerResult, ReactionResult, SessionResult, StroopResult, TrialResult, WordMemoryResult } from '../types';
 import { avg, cv, median } from './metrics';
+import { sanitizeReactionRts } from './reactionMetrics';
 
 export const normalizeWords = (text: string): string[] =>
   text
@@ -52,10 +53,11 @@ export const scoreFlanker = (trials: TrialResult[]): FlankerResult => {
 };
 
 export const scoreReaction = (successfulRTs: number[], anticipations: number): ReactionResult => {
-  const cvVal = cv(successfulRTs);
+  const { cleaned } = sanitizeReactionRts(successfulRTs);
+  const cvVal = cleaned.length ? cv(cleaned) : 0;
   return {
     successfulRTs,
-    medianRt: median(successfulRTs),
+    medianRt: cleaned.length ? median(cleaned) : 0,
     cv: cvVal,
     anticipations,
     redFlag: cvVal > 35 || anticipations > 3,

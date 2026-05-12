@@ -1,7 +1,34 @@
 import { SessionResult } from '../types';
+import { avg, cv, median } from './metrics';
+import { MIN_VALID_REACTION_RT_MS, sanitizeReactionRts } from './reactionMetrics';
 
-const avg = (arr: number[]): number =>
-  arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+const clampScore = (n: number): number => Math.max(0, Math.min(100, Math.round(n)));
+
+/** Балл домена «скорость реакции» по медиане RT (мс): медленный, но валидный ответ не обнуляет шкалу. */
+export const reactionSpeedDomainScoreFromMedian = (medianRtMs: number): number => {
+  if (!Number.isFinite(medianRtMs) || medianRtMs <= 0) return 50;
+  const fast = 220;
+  const slow = 920;
+  const span = slow - fast;
+  const u = (medianRtMs - fast) / span;
+  const raw = 88 - u * 76;
+  return clampScore(Math.max(12, Math.min(96, raw)));
+};
+
+const finiteAvg = (arr: number[]): number => {
+  const ok = arr.filter((x) => Number.isFinite(x));
+  if (!ok.length) return NaN;
+  return ok.reduce((a, b) => a + b, 0) / ok.length;
+};
+
+const stroopInterferenceSafe = (session: SessionResult): number => {
+  const inc = session.stroop.trials.filter((t) => t.type === 'incongruent');
+  const cong = session.stroop.trials.filter((t) => t.type === 'congruent');
+  const incRt = finiteAvg(inc.filter((t) => t.correct && t.rt !== null).map((t) => t.rt as number));
+  const congRt = finiteAvg(cong.filter((t) => t.correct && t.rt !== null).map((t) => t.rt as number));
+  if (!Number.isFinite(incRt) || !Number.isFinite(congRt)) return 0;
+  return Math.max(0, incRt - congRt);
+};
 
 export type IndexBandKey = 'green' | 'lightGreen' | 'yellow' | 'orange' | 'red';
 
@@ -53,6 +80,12 @@ export type MicroRecommendation = {
   text: string;
 };
 
+export type CognitiveAnalyticsValidation = {
+  /** Итоговые формулировки индекса не заменяют полноценный замер при критических пробелах данных */
+  interpretationTrusted: boolean;
+  warnings: string[];
+};
+
 export type CognitiveAnalytics = {
   metrics: {
     reactionMedianRt: number;
@@ -76,20 +109,14 @@ export type CognitiveAnalytics = {
   stabilizationTips: MicroRecommendation[];
   /** Legacy-compatible count for session.flags */
   activePatternCount: number;
-};
-
-const stroopInterference = (session: SessionResult): number => {
-  const inc = session.stroop.trials.filter((t) => t.type === 'incongruent');
-  const cong = session.stroop.trials.filter((t) => t.type === 'congruent');
-  const incRt = avg(inc.filter((t) => t.correct && t.rt !== null).map((t) => t.rt as number));
-  const congRt = avg(cong.filter((t) => t.correct && t.rt !== null).map((t) => t.rt as number));
-  return Math.max(0, incRt - congRt);
+  validation: CognitiveAnalyticsValidation;
 };
 
 const interpretIndex = (value: number): IndexInterpretation => {
-  if (value >= 80) {
+  const safe = Number.isFinite(value) ? value : 50;
+  if (safe >= 80) {
     return {
-      value,
+      value: safe,
       bandKey: 'green',
       label: 'Высокая когнитивная устойчивость',
       description:
@@ -97,9 +124,9 @@ const interpretIndex = (value: number): IndexInterpretation => {
       barColorClass: 'bg-emerald-600',
     };
   }
-  if (value >= 60) {
+  if (safe >= 60) {
     return {
-      value,
+      value: safe,
       bandKey: 'lightGreen',
       label: 'Умеренно стабильное состояние',
       description:
@@ -107,9 +134,9 @@ const interpretIndex = (value: number): IndexInterpretation => {
       barColorClass: 'bg-lime-500',
     };
   }
-  if (value >= 40) {
+  if (safe >= 40) {
     return {
-      value,
+      value: safe,
       bandKey: 'yellow',
       label: 'Нестабильность под нагрузкой',
       description:
@@ -117,9 +144,9 @@ const interpretIndex = (value: number): IndexInterpretation => {
       barColorClass: 'bg-amber-400',
     };
   }
-  if (value >= 20) {
+  if (safe >= 20) {
     return {
-      value,
+      value: safe,
       bandKey: 'orange',
       label: 'Выраженная перегрузка внимания',
       description:
@@ -128,7 +155,7 @@ const interpretIndex = (value: number): IndexInterpretation => {
     };
   }
   return {
-    value,
+    value: safe,
     bandKey: 'red',
     label: 'Критически низкая устойчивость',
     description:
@@ -137,16 +164,63 @@ const interpretIndex = (value: number): IndexInterpretation => {
   };
 };
 
-const clampScore = (n: number): number => Math.max(0, Math.min(100, Math.round(n)));
+const degradedIndex = (value: number): IndexInterpretation => ({
+  value: Number.isFinite(value) ? clampScore(value) : 50,
+  bandKey: 'yellow',
+  label: 'Ограниченная достоверность профиля',
+  description:
+    'Часть исходных данных отсутствует, некорректна или неполна. Итоговые формулировки не заменяют повторный замер при полном прохождении блоков.',
+  barColorClass: 'bg-slate-400',
+});
+
+const collectMetricWarnings = (
+  session: SessionResult,
+  reactionCleaned: number[],
+  reactionDropped: number,
+): string[] => {
+  const w: string[] = [];
+  if (reactionDropped > 0) {
+    w.push(
+      `Отброшено ${reactionDropped} значений времени реакции (< ${MIN_VALID_REACTION_RT_MS} мс или не число).`,
+    );
+  }
+  if (!session.reaction.successfulRTs?.length) w.push('Нет данных простой реакции (RT).');
+  else if (reactionCleaned.length === 0) w.push('После проверки не осталось валидных RT для расчёта реакции.');
+  else if (reactionCleaned.length < 3) {
+    w.push('Мало валидных проб реакции (< 3); оценки скорости и стабильности менее надёжны.');
+  }
+
+  const stroopInc = session.stroop.trials.filter((t) => t.type === 'incongruent');
+  if (!stroopInc.length) w.push('Нет неконгруэнтных проб Струпа.');
+  else if (!stroopInc.some((t) => t.correct && t.rt !== null)) {
+    w.push('Нет корректных ответов на неконгруэнтные пробы Струпа.');
+  }
+
+  const flankInc = session.flanker.trials.filter((t) => t.type === 'incongruent');
+  if (!flankInc.length) w.push('Нет неконгруэнтных проб фланкера.');
+
+  return w;
+};
 
 export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalytics => {
+  const { cleaned: reactionRtsClean, droppedInvalid: reactionDropped } = sanitizeReactionRts(
+    session.reaction.successfulRTs,
+  );
+
+  const warnings = collectMetricWarnings(session, reactionRtsClean, reactionDropped);
+
+  const reactionMedianRt = reactionRtsClean.length ? median(reactionRtsClean) : 0;
+  const reactionCv = reactionRtsClean.length ? cv(reactionRtsClean) : 0;
+
+  const stroopInterferenceMs = stroopInterferenceSafe(session);
+
   const m = {
-    reactionMedianRt: session.reaction.medianRt,
-    reactionCv: session.reaction.cv,
+    reactionMedianRt,
+    reactionCv,
     reactionAnticipations: session.reaction.anticipations,
     flankerIncongruentAccuracy: session.flanker.incongruentAccuracy,
     flankerIncongruentCv: session.flanker.incongruentCv,
-    stroopInterferenceMs: stroopInterference(session),
+    stroopInterferenceMs,
     stroopIncongruentErrorRate: session.stroop.incongruentErrorRate,
     stroopIncongruentCv: session.stroop.incongruentCv,
     wordDelayedScore: session.wordMemory.delayedScore,
@@ -155,8 +229,27 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
     faceNameScore: session.faceName.score,
   };
 
-  const rtNorm = m.reactionMedianRt <= 320;
-  const rtHighVar = m.reactionCv > 28;
+  for (const [key, val] of Object.entries(m) as [keyof typeof m, number][]) {
+    if (typeof val === 'number' && (!Number.isFinite(val) || Number.isNaN(val))) {
+      warnings.push(`Некорректное значение метрики «${String(key)}» (NaN / не число).`);
+    }
+  }
+
+  const stroopIncTrials = session.stroop.trials.filter((t) => t.type === 'incongruent');
+  const flankIncTrials = session.flanker.trials.filter((t) => t.type === 'incongruent');
+
+  const reactionTrusted = reactionRtsClean.length >= 3;
+  const interpretationTrusted =
+    reactionTrusted &&
+    flankIncTrials.length > 0 &&
+    stroopIncTrials.some((t) => t.correct && t.rt !== null);
+
+  if (reactionTrusted && m.reactionMedianRt === 0) {
+    warnings.push('Медиана времени реакции равна 0 при непустой выборке — проверьте сбор RT.');
+  }
+
+  const rtNorm = reactionTrusted && m.reactionMedianRt > 0 && m.reactionMedianRt <= 320;
+  const rtHighVar = reactionTrusted && m.reactionCv > 28;
   const attentionInstability =
     (rtHighVar && rtNorm) ||
     (m.flankerIncongruentCv > 32 && m.flankerIncongruentAccuracy >= 72);
@@ -167,7 +260,7 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
   const retentionDrop = m.wordDelayedScore < 3 || m.wordDelta >= 2;
 
   const highReactivity =
-    m.reactionAnticipations >= 3 ||
+    (reactionTrusted && m.reactionAnticipations >= 3) ||
     m.stroopIncongruentErrorRate > 18 ||
     m.flankerIncongruentAccuracy < 65;
 
@@ -242,10 +335,26 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
   const attentionScore = clampScore(
     m.flankerIncongruentAccuracy * 0.65 + (40 - Math.min(m.flankerIncongruentCv, 40)) * 0.9,
   );
-  const reactionSpeedScore = clampScore(115 - m.reactionMedianRt / 4.5);
-  const reactionStabilityScore = clampScore(
-    100 - m.reactionCv * 1.1 - m.reactionAnticipations * 6,
-  );
+
+  const reactionSpeedScore = reactionTrusted
+    ? reactionSpeedDomainScoreFromMedian(m.reactionMedianRt)
+    : 50;
+  const reactionStabilityScore = reactionTrusted
+    ? clampScore(100 - m.reactionCv * 1.1 - m.reactionAnticipations * 6)
+    : 50;
+
+  let reactionSpeedShort: string;
+  if (!reactionTrusted) {
+    reactionSpeedShort = 'Недостаточно валидных данных реакции для оценки темпа.';
+  } else if (reactionSpeedScore >= 70) {
+    reactionSpeedShort = 'Темп обработки сигнала в комфортном диапазоне.';
+  } else if (m.reactionMedianRt > 520) {
+    reactionSpeedShort =
+      'Темп ответа медленнее среднего; при этом допустима осторожная, ровная обработка сигнала.';
+  } else {
+    reactionSpeedShort = 'Темп ответа быстрее или менее ровный относительно оптимального диапазона.';
+  }
+
   const flexibilityScore = clampScore(
     100 -
       Math.min(m.stroopInterferenceMs / 4.5, 45) -
@@ -273,17 +382,15 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
       key: 'reactionSpeed',
       title: 'Скорость реакции',
       score: reactionSpeedScore,
-      shortDescription:
-        reactionSpeedScore >= 70
-          ? 'Темп обработки сигнала без лишней задержки.'
-          : 'Темп ответа выше комфортного диапазона для ровной работы.',
+      shortDescription: reactionSpeedShort,
     },
     {
       key: 'reactionStability',
       title: 'Стабильность реакции',
       score: reactionStabilityScore,
-      shortDescription:
-        reactionStabilityScore >= 70
+      shortDescription: !reactionTrusted
+        ? 'Недостаточно валидных данных реакции для оценки стабильности.'
+        : reactionStabilityScore >= 70
           ? 'Мало разброса по времени реакции и мало преждевременных ответов.'
           : 'Вариативность реакций или преждевременные ответы повышают нестабильность.',
     },
@@ -307,11 +414,15 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
     },
   ];
 
-  const indexValue = clampScore(avg(domains.map((d) => d.score)));
-  const index = interpretIndex(indexValue);
+  const rawIndex = avg(domains.map((d) => d.score));
+  const indexValue = Number.isFinite(rawIndex) ? clampScore(rawIndex) : 50;
+  const index = interpretationTrusted ? interpretIndex(indexValue) : degradedIndex(indexValue);
 
   const cognitiveExhaustion =
-    m.reactionCv > 38 && m.reactionMedianRt > 360 && domains.filter((d) => d.score < 55).length >= 2;
+    reactionTrusted &&
+    m.reactionCv > 38 &&
+    m.reactionMedianRt > 360 &&
+    domains.filter((d) => d.score < 55).length >= 2;
 
   const loadResistanceDrop =
     domains.filter((d) => d.score < 50).length >= 3 && indexValue < 55;
@@ -363,7 +474,9 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
   if (m.stroopIncongruentErrorRate > 15 || m.flankerIncongruentCv > 30) {
     drivers.push({ text: 'перегрузка стимуляцией', weight: 3 });
   }
-  if (m.reactionCv > 30) drivers.push({ text: 'высокий информационный шум внутри задачи', weight: 2 });
+  if (reactionTrusted && m.reactionCv > 30) {
+    drivers.push({ text: 'высокий информационный шум внутри задачи', weight: 2 });
+  }
   if (retentionDrop) drivers.push({ text: 'снижение устойчивости при длительной концентрации', weight: 2 });
   if (highReactivity) drivers.push({ text: 'высокая реактивность на скорость', weight: 2 });
   drivers.sort((a, b) => b.weight - a.weight);
@@ -392,5 +505,9 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
     concentrationDrivers: drivers,
     stabilizationTips: stabilizationTips.slice(0, 8),
     activePatternCount,
+    validation: {
+      interpretationTrusted,
+      warnings,
+    },
   };
 };

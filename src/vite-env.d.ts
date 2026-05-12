@@ -1,5 +1,10 @@
 /// <reference types="vite/client" />
 
+interface Window {
+  /** Dev-only: вызов из консоли для self-validation scoring pipeline */
+  __COGNITIVE_SELF_TEST__?: () => string;
+}
+
 interface ImportMetaEnv {
   readonly VITE_SHEETS_WEBHOOK_URL?: string;
 }
