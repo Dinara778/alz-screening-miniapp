@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+*.local
+
+# Vite cache
+node_modules/.vite/
+
+# Env
+.env
+.env.*.local
+
+# OS / IDE
+.DS_Store
+*.tsbuildinfo
+
+# Logs
+npm-debug.log*
