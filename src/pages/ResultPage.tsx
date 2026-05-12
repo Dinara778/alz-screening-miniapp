@@ -120,19 +120,13 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       </div>
 
       <section className="rounded-xl border border-emerald-100 bg-white p-5 shadow-sm dark:border-emerald-900/40 dark:bg-slate-800/90">
-        <div className="text-sm font-medium text-emerald-800 dark:text-emerald-300">📈 Индекс когнитивной устойчивости</div>
+        <div className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">📈 Индекс когнитивной устойчивости</div>
         <div className="flex flex-wrap items-end gap-3">
           <span className="text-5xl font-bold tabular-nums text-slate-900 dark:text-slate-100">{a.index.value}</span>
           <span className="text-slate-600 dark:text-slate-400 mb-1">/ 100</span>
         </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Нормированная шкала 0–100: полоса — значение, цветная метка — зона интерпретации.
-        </p>
-        <div className="h-4 rounded-full border border-slate-300 bg-slate-100 shadow-inner dark:border-slate-600 dark:bg-slate-900/80">
-          <div
-            className="h-full rounded-full bg-slate-700 transition-[width] dark:bg-slate-300"
-            style={{ width: `${a.index.value}%` }}
-          />
+        <div className="mt-2 h-4 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600/80">
+          <div className={`h-full ${a.index.barColorClass}`} style={{ width: `${a.index.value}%` }} />
         </div>
         <div>
           <div
@@ -181,7 +175,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           данными.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-          <div className="text-lg font-bold tabular-nums">399 ₽</div>
+          <div className="text-lg font-bold tabular-nums text-white">399 ₽</div>
           <Button
             variant="sell"
             type="button"
@@ -196,14 +190,14 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       </div>
 
       <div className="rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-5 shadow-sm dark:border-emerald-800 dark:from-emerald-950/40 dark:to-slate-900">
-        <h2 className="text-xl font-semibold text-emerald-950 dark:text-emerald-100">🎓 Личный разбор когнитивного профиля</h2>
+        <h2 className="text-xl font-bold text-emerald-950 dark:text-emerald-100">🎓 Личный разбор когнитивного профиля</h2>
         <p className="text-slate-700 text-sm leading-relaxed">
           Если вы хотите глубже понять закономерности в своих ответах и получить персональное толкование
           результатов, можно пройти индивидуальный разбор с экспертом.
         </p>
         <p className="text-sm text-slate-600">Удалённо · 30–40 минут · персональный разбор</p>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <span className="font-semibold text-slate-900">5490 ₽</span>
+          <span className="text-lg font-bold text-slate-900">5490 ₽</span>
           <Button
             variant="sell"
             type="button"

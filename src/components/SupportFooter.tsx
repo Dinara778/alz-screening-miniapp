@@ -9,7 +9,7 @@ export const SupportFooter = ({
   if (!showSupport && !showDeveloperCredit) return null;
 
   return (
-    <footer className="mt-8 border-t border-slate-200 pt-4 text-center text-sm text-slate-600">
+    <footer className="mt-auto w-full shrink-0 border-t border-slate-200 pt-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-center text-sm text-slate-600 dark:border-slate-700 dark:text-slate-400">
       {showSupport ? (
         <div className="mb-3">
           <a

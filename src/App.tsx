@@ -44,36 +44,38 @@ function App() {
   }, []);
 
   return (
-    <main className="max-w-2xl mx-auto min-h-screen px-4 py-6 text-slate-950 shadow-brand bg-gradient-to-b from-emerald-50/95 via-white to-teal-50/80 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100 dark:shadow-none">
-      {app.stage === 'corta-intro' && <CortaIntroPage onContinue={() => app.setStage('welcome')} />}
-      {app.stage === 'welcome' && (
-        <WelcomePage
-          onStart={(profile) => {
-            app.setParticipant(profile);
-            app.setStudyWordList(pickStudyWordList(app.sessionSeed));
-            app.setStage('word-study');
-          }}
-          onHistory={() => app.setStage('history')}
-        />
-      )}
-      {app.stage === 'history' && <HistoryPage onBack={() => app.setStage('welcome')} />}
-      {[
-        'word-study',
-        'word-immediate',
-        'flanker-instruction',
-        'flanker',
-        'reaction-instruction',
-        'reaction',
-        'interference-wait',
-        'word-delayed',
-        'face-study',
-        'stroop-instruction',
-        'stroop',
-        'face-test',
-      ].includes(app.stage) && <TestPage key={app.sessionSeed} />}
-      {app.stage === 'result' && <ResultPage onRestart={app.resetSession} />}
-      {app.stage === 'full-report' && <FullReportPage />}
-      {app.stage === 'consultation-request' && <ConsultationRequestPage />}
+    <main className="mx-auto flex min-h-screen max-w-2xl flex-col bg-gradient-to-b from-emerald-50 via-white to-teal-50 px-4 py-6 text-slate-950 shadow-brand dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100 dark:shadow-none">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {app.stage === 'corta-intro' && <CortaIntroPage onContinue={() => app.setStage('welcome')} />}
+        {app.stage === 'welcome' && (
+          <WelcomePage
+            onStart={(profile) => {
+              app.setParticipant(profile);
+              app.setStudyWordList(pickStudyWordList(app.sessionSeed));
+              app.setStage('word-study');
+            }}
+            onHistory={() => app.setStage('history')}
+          />
+        )}
+        {app.stage === 'history' && <HistoryPage onBack={() => app.setStage('welcome')} />}
+        {[
+          'word-study',
+          'word-immediate',
+          'flanker-instruction',
+          'flanker',
+          'reaction-instruction',
+          'reaction',
+          'interference-wait',
+          'word-delayed',
+          'face-study',
+          'stroop-instruction',
+          'stroop',
+          'face-test',
+        ].includes(app.stage) && <TestPage key={app.sessionSeed} />}
+        {app.stage === 'result' && <ResultPage onRestart={app.resetSession} />}
+        {app.stage === 'full-report' && <FullReportPage />}
+        {app.stage === 'consultation-request' && <ConsultationRequestPage />}
+      </div>
       {app.stage !== 'welcome' && app.stage !== 'corta-intro' && app.stage !== 'result' && (
         <SupportFooter
           showSupport={!STAGES_HIDE_SUPPORT_FOOTER.includes(app.stage)}

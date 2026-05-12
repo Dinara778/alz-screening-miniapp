@@ -8,7 +8,7 @@ export const DomainProfileCard = ({ domain }: Props) => {
   return (
     <div className="border border-slate-100 rounded-lg p-3 bg-slate-50/80">
       <div className="flex justify-between gap-2 text-sm">
-        <span className="font-medium text-slate-900">{title}</span>
+        <span className="font-semibold text-slate-900">{title}</span>
         <span className="tabular-nums text-slate-600">{score}</span>
       </div>
       <div className="mt-2 h-2 rounded-full bg-slate-200 overflow-hidden">

@@ -226,17 +226,11 @@ export const FullReportPage = () => {
             Ниже — сводный индекс по метрикам этого прохождения. Это не диагноз, а поведенческий снимок
             устойчивости внимания и обработки информации.
           </p>
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <div className="text-sm text-slate-600">Индекс когнитивной устойчивости</div>
-            <div className="text-5xl font-bold text-slate-900">{analytics.index.value}</div>
-            <p className="mt-1 text-xs text-slate-500">
-              Нормированная шкала 0–100: полоса — значение, цветная метка ниже — зона интерпретации.
-            </p>
-            <div className="mt-2 h-3 rounded-full border border-slate-300 bg-slate-100 shadow-inner dark:border-slate-600 dark:bg-slate-900/80">
-              <div
-                className="h-full rounded-full bg-slate-700 dark:bg-slate-300"
-                style={{ width: `${analytics.index.value}%` }}
-              />
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-800/60 dark:bg-emerald-950/30">
+            <div className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">Индекс когнитивной устойчивости</div>
+            <div className="text-5xl font-bold text-slate-900 dark:text-slate-100">{analytics.index.value}</div>
+            <div className="mt-2 h-3 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600/80">
+              <div className={`h-full ${analytics.index.barColorClass}`} style={{ width: `${analytics.index.value}%` }} />
             </div>
             <div
               className={`mt-3 inline-block rounded-lg border border-black/10 px-2.5 py-1 text-sm font-semibold text-white shadow-sm ring-1 ring-black/5 ${analytics.index.barColorClass}`}
@@ -397,14 +391,14 @@ export const FullReportPage = () => {
       </div>
 
       <div className="rounded-xl border border-emerald-200 bg-white p-5 space-y-3">
-        <h2 className="text-xl font-semibold text-emerald-950">Личный разбор когнитивного профиля</h2>
+        <h2 className="text-xl font-bold text-emerald-950">Личный разбор когнитивного профиля</h2>
         <p className="text-slate-700">
           Если вы хотите глубже понять закономерности в своих ответах и получить персональное толкование
           результатов, можно пройти индивидуальный разбор с экспертом.
         </p>
         <p className="text-sm text-slate-600">Формат: удалённо, 30–40 минут, персональный разбор результатов.</p>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <span className="font-semibold text-slate-900">5490 ₽</span>
+          <span className="text-lg font-bold text-slate-900">5490 ₽</span>
           <Button
             variant="sell"
             type="button"

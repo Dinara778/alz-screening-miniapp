@@ -37,11 +37,11 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
             </p>
           </div>
 
-          <div className="mt-10 max-w-md space-y-3 px-1">
-            <h1 className="text-2xl font-semibold leading-snug tracking-tight text-white drop-shadow-md sm:text-3xl">
+          <div className="mt-10 max-w-md space-y-3 px-1 font-sans">
+            <h1 className="text-2xl font-bold leading-snug tracking-tight text-white drop-shadow-md sm:text-3xl">
               Добро пожаловать в Corta
             </h1>
-            <p className="text-sm font-light leading-relaxed text-white/90 sm:text-base">
+            <p className="text-sm font-normal leading-relaxed text-white/90 sm:text-base">
               Короткий замер внимания и когнитивной устойчивости — персональный профиль и адресные рекомендации
               для когнитивного благополучия.
             </p>

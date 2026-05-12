@@ -11,9 +11,9 @@ export const Button = ({ variant = 'primary', className = '', ...props }: Props)
     secondary:
       'bg-white/90 border-2 border-emerald-800 text-emerald-950 hover:bg-emerald-50 dark:bg-slate-800/90 dark:border-emerald-500/60 dark:text-emerald-100 dark:hover:bg-slate-700',
     danger: 'bg-gradient-to-br from-red-700 to-red-900 text-white shadow-md shadow-red-900/20 hover:from-red-600 hover:to-red-800',
-    /** CTA оплаты: бордовый, без градиента primary */
+    /** CTA оплаты: тот же насыщенный красный, что в ранних версиях (399 ₽ и разбор). */
     sell:
-      'border border-white/15 bg-[#722F37] text-white shadow-lg shadow-black/30 hover:bg-[#632a31] active:bg-[#56252b]',
+      'bg-red-600 text-white shadow-lg shadow-red-600/35 hover:bg-red-500 active:bg-red-700 border border-red-700/30',
   }[variant];
 
   return (
