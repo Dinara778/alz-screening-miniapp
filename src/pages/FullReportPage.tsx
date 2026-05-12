@@ -1,10 +1,12 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '../components/Button';
 import { DomainProfileCard } from '../components/DomainProfileCard';
+import { ResultOverloadMap } from '../components/ResultOverloadMap';
 import { useApp } from '../context/AppContext';
 import { formatDomainInterpretationPlain } from '../copy/cognitiveDomainInterpretationsMid52';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { downloadCognitiveReportPdf } from '../utils/pdfReport';
+import { openTelegramInvoiceForProduct } from '../utils/telegramPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
 const REPORT_EMAIL_PREFIX = 'corta_report_email_';
@@ -13,10 +15,12 @@ const sellingCtaClass =
   'bg-red-600 text-white hover:bg-red-500 shadow-lg shadow-red-600/30';
 
 export const FullReportPage = () => {
-  const { latestResult, participant, setStage, setConsultationReturnTo } = useApp();
+  const { latestResult, participant, setStage } = useApp();
   const [step, setStep] = useState(0);
   const [reportEmail, setReportEmail] = useState('');
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [consultationBusy, setConsultationBusy] = useState(false);
+  const [consultationNotice, setConsultationNotice] = useState<string | null>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
 
   const analytics = useMemo(() => {
@@ -81,6 +85,40 @@ export const FullReportPage = () => {
       );
     } finally {
       setPdfBusy(false);
+    }
+  };
+
+  const handlePayConsultation = async () => {
+    if (!latestResult) return;
+    setConsultationNotice(null);
+    setConsultationBusy(true);
+    try {
+      const r = await openTelegramInvoiceForProduct('consultation', latestResult.id);
+      if (r.status === 'paid') {
+        setConsultationNotice('Оплата прошла. Менеджер свяжется с вами для согласования времени разбора.');
+        return;
+      }
+      if (r.status === 'skipped') {
+        const byReason: Record<(typeof r)['reason'], string> = {
+          not_telegram: 'Оплата доступна только в Telegram. Откройте мини-приложение из бота.',
+          no_api_url: 'Не задан адрес сервера оплаты (VITE_TELEGRAM_PAYMENTS_URL).',
+          no_init_data: 'Откройте мини-приложение из Telegram (из бота), затем повторите оплату.',
+          no_open_invoice: 'Обновите Telegram или откройте мини-приложение в актуальной версии клиента.',
+        };
+        setConsultationNotice(byReason[r.reason]);
+        return;
+      }
+      if (r.status === 'cancelled') {
+        setConsultationNotice('Оплата отменена.');
+        return;
+      }
+      if (r.status === 'failed') {
+        setConsultationNotice(`Оплата не завершена (${r.detail}).`);
+        return;
+      }
+      setConsultationNotice(r.message);
+    } finally {
+      setConsultationBusy(false);
     }
   };
 
@@ -218,18 +256,11 @@ export const FullReportPage = () => {
     {
       title: 'Персональная карта перегрузки',
       body: (
-        <div className="space-y-3">
-          {analytics.overloadMap.map((o) => (
-            <div
-              key={o.id}
-              className={`rounded-xl border p-4 ${o.active ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white'}`}
-            >
-              <div className="font-semibold">{o.title}</div>
-              <div className="text-sm text-slate-700 mt-1">{o.explanation}</div>
-              <div className="text-sm text-slate-600 mt-2">Как проявляется: {o.lifeManifestation}</div>
-            </div>
-          ))}
-        </div>
+        <ResultOverloadMap
+          overloadMap={analytics.overloadMap}
+          overloadMapIntro={analytics.index.overloadMapIntro}
+          overloadVisualTier={analytics.index.overloadVisualTier}
+        />
       ),
     },
     {
@@ -361,14 +392,13 @@ export const FullReportPage = () => {
           <Button
             className={sellingCtaClass}
             type="button"
-            onClick={() => {
-              setConsultationReturnTo('full-report');
-              setStage('consultation-request');
-            }}
+            disabled={consultationBusy}
+            onClick={() => void handlePayConsultation()}
           >
-            Записаться на разбор
+            {consultationBusy ? 'Открываем оплату…' : 'Записаться на разбор — 5490 ₽'}
           </Button>
         </div>
+        {consultationNotice ? <p className="text-sm text-emerald-900">{consultationNotice}</p> : null}
       </div>
 
     </div>

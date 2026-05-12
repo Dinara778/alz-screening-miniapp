@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildCognitiveAnalytics, reactionSpeedDomainScoreFromMedian } from '../utils/cognitiveAnalytics';
+import { getGranularIndexInterpretation } from '../utils/indexInterpretationBands';
 import { scoreReaction } from '../utils/scoring';
 import { formatCognitiveSelfValidationText, runCognitiveSelfValidation } from './cognitiveSelfTest';
 import {
@@ -26,6 +27,21 @@ describe('scoreReaction sanitization', () => {
     const r = scoreReaction([0, 0, 280, 300, 310], 0);
     expect(r.medianRt).toBe(300);
     expect(r.successfulRTs).toEqual([0, 0, 280, 300, 310]);
+  });
+});
+
+describe('granular cognitive index interpretation', () => {
+  it('uses distinct labels and copy for 67 vs 52', () => {
+    const i67 = getGranularIndexInterpretation(67);
+    const i52 = getGranularIndexInterpretation(52);
+    expect(i67.granularId).toBe('60_69');
+    expect(i52.granularId).toBe('50_59');
+    expect(i67.label).toContain('Умеренная');
+    expect(i52.label).toContain('Заметная');
+    expect(i67.description).toContain('высокой нагрузке');
+    expect(i52.description).toContain('истощается');
+    expect(i67.recommendations[0]).not.toBe(i52.recommendations[0]);
+    expect(i67.overloadVisualTier).not.toBe(i52.overloadVisualTier);
   });
 });
 

@@ -1,7 +1,13 @@
 import type { CognitiveDomainKey, SessionResult } from '../types';
 import { getDomainInterpretationMid52, type DomainInterpretationCopy } from '../copy/cognitiveDomainInterpretationsMid52';
 import { avg, cv, median } from './metrics';
+import {
+  getGranularIndexInterpretation,
+  type IndexInterpretation,
+} from './indexInterpretationBands';
 import { MIN_VALID_REACTION_RT_MS, sanitizeReactionRts } from './reactionMetrics';
+
+export type { IndexBandKey, IndexInterpretation, OverloadVisualTier } from './indexInterpretationBands';
 
 const clampScore = (n: number): number => Math.max(0, Math.min(100, Math.round(n)));
 
@@ -29,16 +35,6 @@ const stroopInterferenceSafe = (session: SessionResult): number => {
   const congRt = finiteAvg(cong.filter((t) => t.correct && t.rt !== null).map((t) => t.rt as number));
   if (!Number.isFinite(incRt) || !Number.isFinite(congRt)) return 0;
   return Math.max(0, incRt - congRt);
-};
-
-export type IndexBandKey = 'green' | 'lightGreen' | 'yellow' | 'orange' | 'red';
-
-export type IndexInterpretation = {
-  value: number;
-  bandKey: IndexBandKey;
-  label: string;
-  description: string;
-  barColorClass: string;
 };
 
 export type CognitivePattern = {
@@ -110,66 +106,26 @@ export type CognitiveAnalytics = {
   validation: CognitiveAnalyticsValidation;
 };
 
-const interpretIndex = (value: number): IndexInterpretation => {
-  const safe = Number.isFinite(value) ? value : 50;
-  if (safe >= 80) {
-    return {
-      value: safe,
-      bandKey: 'green',
-      label: 'Высокая когнитивная устойчивость',
-      description:
-        'Внимание работает стабильно даже при нагрузке. Мозг хорошо удерживает темп обработки информации и устойчивость концентрации.',
-      barColorClass: 'bg-emerald-600',
-    };
-  }
-  if (safe >= 60) {
-    return {
-      value: safe,
-      bandKey: 'lightGreen',
-      label: 'Умеренно стабильное состояние',
-      description:
-        'В целом внимание работает устойчиво, но при высокой нагрузке начинают появляться признаки нестабильности.',
-      barColorClass: 'bg-lime-500',
-    };
-  }
-  if (safe >= 40) {
-    return {
-      value: safe,
-      bandKey: 'yellow',
-      label: 'Нестабильность под нагрузкой',
-      description:
-        'Сейчас внимание начинает быстрее терять устойчивость при когнитивной нагрузке и переключении контекста.',
-      barColorClass: 'bg-amber-400',
-    };
-  }
-  if (safe >= 20) {
-    return {
-      value: safe,
-      bandKey: 'orange',
-      label: 'Выраженная перегрузка внимания',
-      description:
-        'Мозг работает в режиме повышенной перегрузки. Устойчивость внимания и стабильность обработки информации снижены.',
-      barColorClass: 'bg-orange-500',
-    };
-  }
+const degradedIndex = (value: number): IndexInterpretation => {
+  const v = Number.isFinite(value) ? clampScore(value) : 50;
   return {
-    value: safe,
-    bandKey: 'red',
-    label: 'Критически низкая устойчивость',
+    value: v,
+    bandKey: 'yellow',
+    granularId: 'degraded',
+    label: 'Ограниченная достоверность профиля',
     description:
-      'Сейчас внимание и устойчивость мышления работают нестабильно даже при умеренной нагрузке.',
-    barColorClass: 'bg-red-600',
+      'Часть исходных данных отсутствует, некорректна или неполна. Итоговые формулировки не заменяют повторный замер при полном прохождении блоков.',
+    barColorClass: 'bg-slate-400',
+    recommendations: [
+      'Повторите замер, полностью пройдя все блоки теста без пропусков.',
+      'Проверьте стабильность интернет-соединения и устройства перед следующей попыткой.',
+      'Число индекса ниже ориентировочно из имеющихся данных — не опирайтесь на него как на полный профиль.',
+    ],
+    overloadMapIntro:
+      'Из-за неполных данных карта перегрузки ниже ориентировочная: при повторном прохождении она станет точнее и персональнее.',
+    overloadVisualTier: 1,
   };
 };
-
-const degradedIndex = (value: number): IndexInterpretation => ({
-  value: Number.isFinite(value) ? clampScore(value) : 50,
-  bandKey: 'yellow',
-  label: 'Ограниченная достоверность профиля',
-  description:
-    'Часть исходных данных отсутствует, некорректна или неполна. Итоговые формулировки не заменяют повторный замер при полном прохождении блоков.',
-  barColorClass: 'bg-slate-400',
-});
 
 const collectMetricWarnings = (
   session: SessionResult,
@@ -378,7 +334,7 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
 
   const rawIndex = avg(domains.map((d) => d.score));
   const indexValue = Number.isFinite(rawIndex) ? clampScore(rawIndex) : 50;
-  const index = interpretationTrusted ? interpretIndex(indexValue) : degradedIndex(indexValue);
+  const index = interpretationTrusted ? getGranularIndexInterpretation(indexValue) : degradedIndex(indexValue);
 
   const cognitiveExhaustion =
     reactionTrusted &&
@@ -443,12 +399,26 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
   if (highReactivity) drivers.push({ text: 'высокая реактивность на скорость', weight: 2 });
   drivers.sort((a, b) => b.weight - a.weight);
 
-  const stabilizationTips: MicroRecommendation[] = [];
+  const fromBand: MicroRecommendation[] = index.recommendations.map((text) => ({ text }));
+  const fromPatterns: MicroRecommendation[] = [];
   patterns
     .filter((p) => p.active)
     .forEach((p) => {
-      p.recommendations.forEach((t) => stabilizationTips.push({ text: t }));
+      p.recommendations.forEach((t) => fromPatterns.push({ text: t }));
     });
+
+  const stabilizationTips: MicroRecommendation[] = [];
+  const seenTip = new Set<string>();
+  const pushUnique = (items: MicroRecommendation[]) => {
+    for (const { text } of items) {
+      const k = text.trim();
+      if (!k || seenTip.has(k)) continue;
+      seenTip.add(k);
+      stabilizationTips.push({ text });
+    }
+  };
+  pushUnique(fromBand);
+  pushUnique(fromPatterns);
   if (!stabilizationTips.length) {
     stabilizationTips.push(
       { text: 'Сохранять чередование сосредоточенной работы 25–50 минут и короткое восстановление 5–10 минут.' },

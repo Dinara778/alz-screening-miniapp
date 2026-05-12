@@ -1,4 +1,4 @@
-import type { OverloadMapItem } from '../utils/cognitiveAnalytics';
+import type { OverloadMapItem, OverloadVisualTier } from '../utils/cognitiveAnalytics';
 
 type StaticItem = {
   id: string;
@@ -48,17 +48,34 @@ const OVERLOAD_MAP_STATIC: StaticItem[] = [
   },
 ];
 
+const activeRowClassByTier: Record<OverloadVisualTier, string> = {
+  0: 'border-emerald-200 bg-emerald-50 text-slate-900',
+  1: 'border-lime-300 bg-lime-50 text-slate-900',
+  2: 'border-amber-300 bg-amber-50 text-slate-900',
+  3: 'border-orange-400 bg-orange-50 text-slate-900',
+};
+
+const inactiveRowClass = 'border-slate-100 bg-slate-50/80 text-slate-800';
+
 type Props = {
   overloadMap: OverloadMapItem[];
+  overloadMapIntro: string;
+  overloadVisualTier: OverloadVisualTier;
 };
 
 /** Персональная карта перегрузки: пять пунктов с фиксированными текстами; подсветка по active из аналитики. */
-export const ResultOverloadMap = ({ overloadMap }: Props) => {
+export const ResultOverloadMap = ({ overloadMap, overloadMapIntro, overloadVisualTier }: Props) => {
   const activeById = new Map(overloadMap.map((o) => [o.id, o.active]));
+  const activeTone = activeRowClassByTier[overloadVisualTier];
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-3">
       <h2 className="text-lg font-semibold text-slate-900">Персональная карта перегрузки</h2>
+      {overloadMapIntro ? (
+        <p className="text-sm text-slate-600 leading-relaxed border-l-4 border-slate-300 pl-3 py-0.5">
+          {overloadMapIntro}
+        </p>
+      ) : null}
       <div className="space-y-3">
         {OVERLOAD_MAP_STATIC.map((row) => {
           const active = activeById.get(row.id) ?? false;
@@ -66,7 +83,7 @@ export const ResultOverloadMap = ({ overloadMap }: Props) => {
             <div
               key={row.id}
               className={`rounded-lg border p-3 text-sm leading-relaxed ${
-                active ? 'border-amber-300 bg-amber-50 text-slate-900' : 'border-slate-100 bg-slate-50/80 text-slate-800'
+                active ? activeTone : inactiveRowClass
               }`}
             >
               <div className="font-semibold text-slate-900">{row.title}</div>

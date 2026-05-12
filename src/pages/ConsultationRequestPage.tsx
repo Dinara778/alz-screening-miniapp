@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { Button } from '../components/Button';
 import { useApp } from '../context/AppContext';
+import { notifyConsultationLeadServer } from '../utils/consultationLeadNotify';
 import { enqueueConsultationRequest } from '../utils/consultationQueue';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
@@ -46,11 +47,36 @@ export const ConsultationRequestPage = () => {
       participant: participant ?? undefined,
     });
 
-    const delivered = await sendAnalyticsEventToSheets(payload);
+    const [sheetDelivered, leadNotify] = await Promise.all([
+      sendAnalyticsEventToSheets(payload),
+      notifyConsultationLeadServer(trimmed, sessionId, participant ?? undefined),
+    ]);
+
     setSent(true);
-    if (!delivered) {
+
+    const leadOk =
+      leadNotify.ok &&
+      leadNotify.skipped !== true &&
+      Boolean(leadNotify.emailSent || leadNotify.telegramSent);
+    const leadSkipped = leadNotify.ok === true && leadNotify.skipped === true;
+
+    if (!sheetDelivered && !leadOk) {
+      if (leadNotify.ok === false && leadNotify.reason === 'not_configured') {
+        setNetworkHint(
+          'Письмо менеджеру не отправлено: на сервере не настроены SMTP или TELEGRAM_ADMIN_CHAT_ID (см. server/.env.example). Заявка сохранена на устройстве; таблица (VITE_SHEETS_WEBHOOK_URL) тоже недоступна — при необходимости напишите на hello@bookvolon.ru вручную.',
+        );
+      } else {
+        setNetworkHint(
+          'Автоотправка сейчас недоступна (сеть или настройки). Заявка сохранена на устройстве; при необходимости продублируйте почту через поддержку или напишите на hello@bookvolon.ru.',
+        );
+      }
+    } else if (!leadOk && !leadSkipped) {
       setNetworkHint(
-        'Автоотправка на сервер сейчас недоступна (сеть или переменная VITE_SHEETS_WEBHOOK_URL). Заявка сохранена на устройстве; при необходимости продублируйте почту через «Техподдержку» ниже.',
+        'Заявка принята, но уведомление на сервер не дошло. Если письмо менеджеру не пришло, проверьте SMTP на сервере или напишите на hello@bookvolon.ru.',
+      );
+    } else if (leadSkipped && !sheetDelivered) {
+      setNetworkHint(
+        'Откройте мини-приложение внутри Telegram и повторите отправку — тогда заявка уйдёт на сервер письмом/Telegram. Сейчас сработало только локальное сохранение.',
       );
     }
     setBusy(false);

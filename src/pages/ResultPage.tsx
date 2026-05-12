@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Button } from '../components/Button';
 import { DomainProfileCard } from '../components/DomainProfileCard';
 import { Footer } from '../components/Footer';
-import { ResultOverloadMap } from '../components/ResultOverloadMap';
 import { useApp } from '../context/AppContext';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { buildResultShareText, getShareTestLink, shareOrCopyResultText } from '../utils/shareResult';
@@ -12,10 +11,12 @@ const sellingCtaClass =
   'bg-red-600 text-white hover:bg-red-500 shadow-lg shadow-red-600/30';
 
 export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
-  const { latestResult, setStage, setConsultationReturnTo } = useApp();
+  const { latestResult, setStage } = useApp();
   const [shareNotice, setShareNotice] = useState<string | null>(null);
   const [payBusy, setPayBusy] = useState(false);
   const [payNotice, setPayNotice] = useState<string | null>(null);
+  const [consultationBusy, setConsultationBusy] = useState(false);
+  const [consultationNotice, setConsultationNotice] = useState<string | null>(null);
   if (!latestResult) return null;
   const a = buildCognitiveAnalytics(latestResult);
 
@@ -63,6 +64,40 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     }
   };
 
+  const handlePayConsultation = async () => {
+    if (!latestResult) return;
+    setConsultationNotice(null);
+    setConsultationBusy(true);
+    try {
+      const r = await openTelegramInvoiceForProduct('consultation', latestResult.id);
+      if (r.status === 'paid') {
+        setConsultationNotice('Оплата прошла. Менеджер свяжется с вами для согласования времени разбора.');
+        return;
+      }
+      if (r.status === 'skipped') {
+        const byReason: Record<(typeof r)['reason'], string> = {
+          not_telegram: 'Оплата доступна только в Telegram. Откройте мини-приложение из бота.',
+          no_api_url: 'Не задан адрес сервера оплаты (VITE_TELEGRAM_PAYMENTS_URL).',
+          no_init_data: 'Откройте мини-приложение из Telegram (из бота), затем повторите оплату.',
+          no_open_invoice: 'Обновите Telegram или откройте мини-приложение в актуальной версии клиента.',
+        };
+        setConsultationNotice(byReason[r.reason]);
+        return;
+      }
+      if (r.status === 'cancelled') {
+        setConsultationNotice('Оплата отменена.');
+        return;
+      }
+      if (r.status === 'failed') {
+        setConsultationNotice(`Оплата не завершена (${r.detail}).`);
+        return;
+      }
+      setConsultationNotice(r.message);
+    } finally {
+      setConsultationBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-slate-100">
@@ -104,7 +139,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         </div>
       </section>
 
-      <ResultOverloadMap overloadMap={a.overloadMap} />
       <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
         <h2 className="text-lg font-semibold text-slate-900">Профиль доменов</h2>
         <div className="space-y-4">
@@ -137,8 +171,9 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       <div className="rounded-xl bg-slate-900 text-white p-5 space-y-4">
         <div className="text-xs uppercase tracking-widest text-slate-400">Полный анализ</div>
         <p className="text-slate-200 text-sm leading-relaxed">
-          Расширенный отчёт: карта перегрузки, главные факторы влияния на концентрацию и структурированный разбор по
-          областям — в формате, удобном для самостоятельной работы с данными.
+          Расширенный отчёт: персональная карта перегрузки (только в полной версии), главные факторы влияния на
+          концентрацию и структурированный разбор по областям — в формате, удобном для самостоятельной работы с
+          данными.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
           <div className="text-lg font-bold">399 ₽</div>
@@ -166,14 +201,13 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           <Button
             className={sellingCtaClass}
             type="button"
-            onClick={() => {
-              setConsultationReturnTo('result');
-              setStage('consultation-request');
-            }}
+            disabled={consultationBusy}
+            onClick={() => void handlePayConsultation()}
           >
-            Записаться на разбор
+            {consultationBusy ? 'Открываем оплату…' : 'Записаться на разбор — 5490 ₽'}
           </Button>
         </div>
+        {consultationNotice ? <p className="text-sm text-emerald-900">{consultationNotice}</p> : null}
       </div>
 
       <div className="flex flex-wrap gap-3">
