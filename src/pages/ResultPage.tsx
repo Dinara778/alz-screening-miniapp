@@ -4,6 +4,7 @@ import { Footer } from '../components/Footer';
 import { useApp } from '../context/AppContext';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { buildResultShareText, getShareTestLink, shareOrCopyResultText } from '../utils/shareResult';
+import { isTelegramMiniApp, openTelegramInvoiceForProduct, reportPaidStorageKey } from '../utils/telegramPayments';
 
 const sellingCtaClass =
   'bg-red-600 text-white hover:bg-red-500 shadow-lg shadow-red-600/30';
@@ -11,6 +12,8 @@ const sellingCtaClass =
 export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const { latestResult, setStage, setConsultationReturnTo } = useApp();
   const [shareNotice, setShareNotice] = useState<string | null>(null);
+  const [payBusy, setPayBusy] = useState(false);
+  const [payNotice, setPayNotice] = useState<string | null>(null);
   if (!latestResult) return null;
   const a = buildCognitiveAnalytics(latestResult);
 
@@ -30,6 +33,38 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   };
 
   const activePatterns = a.patterns.filter((p) => p.active);
+
+  const paymentsApi = (import.meta.env.VITE_TELEGRAM_PAYMENTS_URL as string | undefined)?.trim();
+  const canTelegramPay = Boolean(paymentsApi && isTelegramMiniApp());
+
+  const handlePayFullReport = async () => {
+    if (!latestResult) return;
+    setPayNotice(null);
+    setPayBusy(true);
+    try {
+      const r = await openTelegramInvoiceForProduct('full_report', latestResult.id);
+      if (r.status === 'paid') {
+        localStorage.setItem(reportPaidStorageKey(latestResult.id), '1');
+        setStage('full-report');
+        return;
+      }
+      if (r.status === 'skipped') {
+        setStage('full-report');
+        return;
+      }
+      if (r.status === 'cancelled') {
+        setPayNotice('Оплата отменена.');
+        return;
+      }
+      if (r.status === 'failed') {
+        setPayNotice(`Оплата не завершена (${r.detail}).`);
+        return;
+      }
+      setPayNotice(r.message);
+    } finally {
+      setPayBusy(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -140,14 +175,19 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           <Button
             className={sellingCtaClass}
             type="button"
-            onClick={() => setStage('full-report')}
+            disabled={payBusy}
+            onClick={() => void handlePayFullReport()}
           >
-            Получить полный анализ когнитивной устойчивости — 399 ₽
+            {payBusy ? 'Открываем оплату…' : 'Получить полный анализ когнитивной устойчивости — 399 ₽'}
           </Button>
         </div>
+        {payNotice ? <p className="text-sm text-amber-200">{payNotice}</p> : null}
         <p className="text-xs text-slate-500">
-          Оплата пока не подключена: после нажатия открывается полный отчёт. Цена показана для проверки готовности
-          платить.
+          {canTelegramPay
+            ? 'Оплата проходит внутри Telegram. После успешной оплаты откроется полный отчёт.'
+            : isTelegramMiniApp() && !paymentsApi
+              ? 'Для оплаты в Telegram задайте VITE_TELEGRAM_PAYMENTS_URL на HTTPS-сервер с createInvoiceLink (см. папку server/). Пока отчёт открывается без оплаты.'
+              : 'В браузере отчёт открывается без оплаты. В Telegram Mini App подключите сервер оплат — см. папку server/.'}
         </p>
       </div>
 

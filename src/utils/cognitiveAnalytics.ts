@@ -248,16 +248,19 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
     warnings.push('Медиана времени реакции равна 0 при непустой выборке — проверьте сбор RT.');
   }
 
-  const rtNorm = reactionTrusted && m.reactionMedianRt > 0 && m.reactionMedianRt <= 320;
-  const rtHighVar = reactionTrusted && m.reactionCv > 28;
+  /**
+   * «Нестабильность внимания» на карте перегрузки и в паттернах —
+   * только при превышении порогов по сырым метрикам (согласовано с red flags в scoring.ts).
+   */
   const attentionInstability =
-    (rtHighVar && rtNorm) ||
-    (m.flankerIncongruentCv > 32 && m.flankerIncongruentAccuracy >= 72);
+    (Number.isFinite(m.flankerIncongruentCv) && m.flankerIncongruentCv > 40) ||
+    (reactionTrusted && Number.isFinite(m.reactionCv) && m.reactionCv > 35) ||
+    (reactionTrusted && m.reactionAnticipations > 3);
 
   const switchingOverload =
     m.flankerIncongruentAccuracy < 72 || m.stroopInterferenceMs > 185;
 
-  const retentionDrop = m.wordDelayedScore < 3 || m.wordDelta >= 2;
+  const retentionDrop = session.wordMemory.redFlag;
 
   const highReactivity =
     (reactionTrusted && m.reactionAnticipations >= 3) ||

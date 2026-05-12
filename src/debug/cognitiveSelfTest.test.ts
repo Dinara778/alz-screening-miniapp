@@ -64,7 +64,7 @@ describe('cognitive self-validation cases', () => {
     const a3 = buildCognitiveAnalytics(buildHighVariabilitySession());
     expect(Math.abs(a1.index.value - a3.index.value)).toBeGreaterThanOrEqual(5);
     expect(a3.patterns.find((p) => p.id === 'attention_instability')?.active).toBe(true);
-    expect(a3.metrics.reactionCv).toBeGreaterThan(28);
+    expect(a3.metrics.reactionCv).toBeGreaterThan(35);
   });
 
   it('empty valid reaction RT: warnings and degraded interpretation', () => {

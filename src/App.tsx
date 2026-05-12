@@ -3,6 +3,7 @@ import { SupportFooter } from './components/SupportFooter';
 import { useApp } from './context/AppContext';
 import type { AppStage } from './types';
 import { pickStudyWordList } from './utils/generateStimuli';
+import { applyTelegramTheme } from './utils/telegramTheme';
 import { HistoryPage } from './pages/HistoryPage';
 import { FullReportPage } from './pages/FullReportPage';
 import { ResultPage } from './pages/ResultPage';
@@ -37,6 +38,7 @@ function App() {
     tg.ready();
     tg.expand();
     tg.MainButton?.hide();
+    applyTelegramTheme();
   }, []);
 
   return (
