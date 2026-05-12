@@ -1,5 +1,6 @@
 import { FormEvent, useRef, useState } from 'react';
 import { Button } from '../components/Button';
+import { Footer } from '../components/Footer';
 import { ParticipantProfile } from '../types';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
@@ -100,10 +101,12 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         </div>
 
         <Button type="submit">Начать</Button>
+        <p className="text-center text-sm text-slate-500">🕒 Тест можно пройти за 5 минут</p>
       </form>
       <Button type="button" variant="secondary" onClick={onHistory}>
         История прохождений
       </Button>
+      <Footer />
     </div>
   );
 };

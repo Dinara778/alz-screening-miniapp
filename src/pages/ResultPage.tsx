@@ -1,14 +1,33 @@
+import { useState } from 'react';
 import { Button } from '../components/Button';
+import { Footer } from '../components/Footer';
 import { useApp } from '../context/AppContext';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
+import { buildResultShareText, getShareTestLink, shareOrCopyResultText } from '../utils/shareResult';
 
 const sellingCtaClass =
   'bg-red-600 text-white hover:bg-red-500 shadow-lg shadow-red-600/30';
 
 export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const { latestResult, setStage, setConsultationReturnTo } = useApp();
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
   if (!latestResult) return null;
   const a = buildCognitiveAnalytics(latestResult);
+
+  const handleShare = async () => {
+    setShareNotice(null);
+    const link = getShareTestLink();
+    const text = buildResultShareText(a.activePatternCount, a.index.value);
+    try {
+      const mode = await shareOrCopyResultText(text, link);
+      if (mode === 'clipboard') {
+        setShareNotice('Текст скопирован в буфер обмена — вставьте его в чат или соцсеть.');
+      }
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') return;
+      setShareNotice('Не удалось открыть шаринг. Скопируйте текст вручную или откройте ссылку на тест.');
+    }
+  };
 
   const activePatterns = a.patterns.filter((p) => p.active);
 
@@ -85,6 +104,17 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         </ul>
       </section>
 
+      <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-3">
+        <h2 className="text-lg font-semibold text-slate-900">Поделиться</h2>
+        <p className="text-sm text-slate-600">
+          Отправьте короткое описание профиля друзьям или сохраните ссылку на тест.
+        </p>
+        <Button variant="secondary" type="button" onClick={() => void handleShare()}>
+          Поделиться результатом
+        </Button>
+        {shareNotice ? <p className="text-sm text-emerald-800">{shareNotice}</p> : null}
+      </section>
+
       <div className="rounded-xl bg-slate-900 text-white p-5 space-y-4">
         <div className="text-xs uppercase tracking-widest text-slate-400">Полный анализ</div>
         <p className="text-slate-200 text-sm leading-relaxed">
@@ -134,6 +164,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           Пройти снова
         </Button>
       </div>
+      <Footer />
     </div>
   );
 };

@@ -53,7 +53,9 @@ function App() {
       {app.stage === 'result' && <ResultPage onRestart={app.resetSession} />}
       {app.stage === 'full-report' && <FullReportPage />}
       {app.stage === 'consultation-request' && <ConsultationRequestPage />}
-      <SupportFooter showSupport={!STAGES_HIDE_SUPPORT_FOOTER.includes(app.stage)} />
+      {app.stage !== 'welcome' && app.stage !== 'result' && (
+        <SupportFooter showSupport={!STAGES_HIDE_SUPPORT_FOOTER.includes(app.stage)} />
+      )}
     </main>
   );
 }

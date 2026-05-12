@@ -1,7 +1,8 @@
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '../components/Button';
 import { ProgressBar } from '../components/ProgressBar';
 import { TestInstruction } from '../components/TestInstruction';
+import { TestProgressBanner } from '../components/TestProgressBanner';
 import { useApp } from '../context/AppContext';
 import { useFaceNameTest } from '../hooks/useFaceNameTest';
 import { useFlankerTest } from '../hooks/useFlankerTest';
@@ -11,8 +12,18 @@ import { useTimer } from '../hooks/useTimer';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { nextFlankerPrepDelayMs, nextReactionStimulusDelayMs, pickStudyWordList } from '../utils/generateStimuli';
 import { buildStatus, normalizeWords, scoreFaceName, scoreFlanker, scoreReaction, scoreStroop, scoreWordMemory } from '../utils/scoring';
+import type { AppStage } from '../types';
 
 const INTERFERENCE_MS = 180000;
+
+function wrapWithTestProgress(stage: AppStage, node: ReactNode) {
+  return (
+    <div className="space-y-4">
+      <TestProgressBanner stage={stage} />
+      {node}
+    </div>
+  );
+}
 
 export const TestPage = () => {
   const app = useApp();
@@ -210,14 +221,14 @@ export const TestPage = () => {
   if (app.stage === 'word-study') {
     const words = app.studyWordList;
     if (words.length < 5) {
-      return (
-        <div className="rounded-xl bg-white p-6 text-slate-700">
-          Подготовка списка слов…
-        </div>
+      return wrapWithTestProgress(
+        'word-study',
+        <div className="rounded-xl bg-white p-6 text-slate-700">Подготовка списка слов…</div>,
       );
     }
-    return (
-      <div className="space-y-4">
+    return wrapWithTestProgress(
+      'word-study',
+      <>
         <h2 className="text-2xl font-bold">Задание 1: Эпизодическая память</h2>
         <div className="rounded-xl bg-white p-4 space-y-2">
           <p>Сейчас вы увидите 5 слов. Ваша задача - внимательно их запомнить.</p>
@@ -228,13 +239,14 @@ export const TestPage = () => {
           </p>
         </div>
         <Button onClick={() => app.setStage('word-immediate')}>Я запомнил(а)</Button>
-      </div>
+      </>,
     );
   }
 
   if (app.stage === 'word-immediate' || app.stage === 'word-delayed') {
     const delayed = app.stage === 'word-delayed';
-    return (
+    return wrapWithTestProgress(
+      app.stage,
       <form className="space-y-4" onSubmit={(e) => submitWords(e, delayed)}>
         <h2 className="text-2xl font-bold">{delayed ? 'Отсроченное воспроизведение' : 'Немедленное воспроизведение'}</h2>
         <p className="text-slate-700">
@@ -244,12 +256,13 @@ export const TestPage = () => {
         </p>
         <textarea className="w-full rounded-xl border p-3" rows={4} value={textInput} onChange={(e) => setTextInput(e.target.value)} placeholder="Введите слова" />
         <Button type="submit">Продолжить</Button>
-      </form>
+      </form>,
     );
   }
 
   if (app.stage === 'flanker-instruction') {
-    return (
+    return wrapWithTestProgress(
+      app.stage,
       <TestInstruction
         title="Задание 2: фланкер"
         text={
@@ -263,7 +276,7 @@ export const TestPage = () => {
           'У вас есть 2 секунды, чтобы ответить. Если не успели — задание считается невыполненным.'
         }
         onStart={() => app.setStage('flanker')}
-      />
+      />,
     );
   }
 
@@ -274,7 +287,8 @@ export const TestPage = () => {
       return null;
     }
 
-    return (
+    return wrapWithTestProgress(
+      app.stage,
       <div className="space-y-4 text-center">
         <h2 className="text-xl font-bold">Фланкер {flanker.index + 1}/20</h2>
         <ProgressBar value={flanker.index} max={20} />
@@ -283,12 +297,13 @@ export const TestPage = () => {
           <Button onClick={() => flanker.answer('<')}>←</Button>
           <Button onClick={() => flanker.answer('>')}>→</Button>
         </div>
-      </div>
+      </div>,
     );
   }
 
   if (app.stage === 'reaction-instruction') {
-    return (
+    return wrapWithTestProgress(
+      app.stage,
       <TestInstruction
         title="Задание 3: Простая сенсомоторная реакция"
         text={
@@ -300,12 +315,13 @@ export const TestPage = () => {
           'Просто будьте внимательны и старайтесь реагировать быстро, но без спешки. У вас всё получится!'
         }
         onStart={() => app.setStage('reaction')}
-      />
+      />,
     );
   }
 
   if (app.stage === 'reaction') {
-    return (
+    return wrapWithTestProgress(
+      app.stage,
       <div className="space-y-4 text-center">
         <h2 className="text-xl font-bold">Реакция {app.reactionSuccessful.length}/30</h2>
         <ProgressBar value={app.reactionSuccessful.length} max={30} />
@@ -313,24 +329,26 @@ export const TestPage = () => {
           {reactionPrompt}
         </button>
         <p>Слишком ранние нажатия: {app.reactionAnticipations + reaction.anticipations}</p>
-      </div>
+      </div>,
     );
   }
 
   if (app.stage === 'interference-wait') {
-    return (
+    return wrapWithTestProgress(
+      app.stage,
       <div className="rounded-xl bg-white p-6 text-center">
         <h2 className="text-2xl font-bold">Ожидание до отсроченного воспроизведения</h2>
         <p className="text-5xl mt-4">{timer.remainingSec}</p>
-      </div>
+      </div>,
     );
   }
 
   if (app.stage === 'face-study') {
     const f = face.trials[faceStudyIndex];
-    return (
+    return wrapWithTestProgress(
+      app.stage,
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold">Задание 5: Лица-имена (изучение)</h2>
+        <h2 className="text-2xl font-bold">Задание 4: Лица-имена (изучение)</h2>
         <p className="text-slate-700">
           Изучите лица и соответствующие имена. Постарайтесь запомнить пары «лицо-имя», после отвлекающего задания будет проверка.
         </p>
@@ -346,12 +364,13 @@ export const TestPage = () => {
             <Button onClick={() => app.setStage('stroop-instruction')}>Перейти к заданию Струп</Button>
           )}
         </div>
-      </div>
+      </div>,
     );
   }
 
   if (app.stage === 'stroop-instruction') {
-    return (
+    return wrapWithTestProgress(
+      app.stage,
       <TestInstruction
         title="Задание 4: струп"
         text={
@@ -362,7 +381,7 @@ export const TestPage = () => {
           'Работайте максимально быстро и точно.'
         }
         onStart={() => app.setStage('stroop')}
-      />
+      />,
     );
   }
 
@@ -375,7 +394,8 @@ export const TestPage = () => {
     const s = stroop.current;
     const colorClass = s?.color === 'red' ? 'text-red-600' : s?.color === 'blue' ? 'text-blue-600' : 'text-green-600';
 
-    return (
+    return wrapWithTestProgress(
+      app.stage,
       <div className="space-y-4 text-center">
         <h2 className="text-xl font-bold">Струп {stroop.index + 1}/30</h2>
         <ProgressBar value={stroop.index} max={30} />
@@ -385,14 +405,15 @@ export const TestPage = () => {
           <Button className="!bg-blue-700 !text-white hover:!bg-blue-600" onClick={() => stroop.answer('blue')}>Синий</Button>
           <Button className="!bg-green-700 !text-white hover:!bg-green-600" onClick={() => stroop.answer('green')}>Зеленый</Button>
         </div>
-      </div>
+      </div>,
     );
   }
 
   if (app.stage === 'face-test') {
-    return (
+    return wrapWithTestProgress(
+      app.stage,
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold">Тестирование лиц-имен</h2>
+        <h2 className="text-2xl font-bold">Задание 5: Проверка лиц-имен</h2>
         <p className="text-slate-700">
           Для каждого лица выберите правильное имя из 3 вариантов. Лица показываются в случайном порядке.
         </p>
@@ -408,7 +429,7 @@ export const TestPage = () => {
           </div>
         ))}
         <Button disabled={!face.isComplete} onClick={finish}>Завершить анализ</Button>
-      </div>
+      </div>,
     );
   }
 

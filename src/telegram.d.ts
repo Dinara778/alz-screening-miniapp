@@ -1,6 +1,8 @@
 interface TelegramWebApp {
   ready(): void;
   expand(): void;
+  /** Открывает t.me-ссылку (в т.ч. шаринг через t.me/share/url). */
+  openTelegramLink(url: string): void;
   colorScheme: 'light' | 'dark';
   themeParams?: Record<string, string>;
   MainButton?: {
