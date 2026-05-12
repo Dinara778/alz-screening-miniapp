@@ -42,8 +42,8 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
               Добро пожаловать в Corta
             </h1>
             <p className="text-sm font-light leading-relaxed text-white/90 sm:text-base">
-              Короткий замер внимания и когнитивной устойчивости — персональный профиль и рекомендации без
-              диагноза.
+              Короткий замер внимания и когнитивной устойчивости — персональный профиль и адресные рекомендации
+              для когнитивного благополучия.
             </p>
           </div>
         </div>
@@ -52,7 +52,7 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
           <Button
             type="button"
             variant="sell"
-            className="min-w-[220px] px-8 text-base"
+            className="min-w-[240px] px-10 py-3.5 text-base font-bold shadow-2xl shadow-black/50 ring-2 ring-white/35 hover:ring-white/55"
             onClick={onContinue}
           >
             Начать
