@@ -12,6 +12,22 @@ import { WelcomePage } from './pages/WelcomePage';
 
 const STAGES_HIDE_SUPPORT_FOOTER: AppStage[] = ['flanker', 'reaction', 'stroop'];
 
+/** Все этапы экрана прохождения теста — без строки о разработчике внизу */
+const STAGES_HIDE_DEVELOPER_CREDIT: AppStage[] = [
+  'word-study',
+  'word-immediate',
+  'flanker-instruction',
+  'flanker',
+  'reaction-instruction',
+  'reaction',
+  'interference-wait',
+  'word-delayed',
+  'face-study',
+  'stroop-instruction',
+  'stroop',
+  'face-test',
+];
+
 function App() {
   const app = useApp();
 
@@ -54,7 +70,10 @@ function App() {
       {app.stage === 'full-report' && <FullReportPage />}
       {app.stage === 'consultation-request' && <ConsultationRequestPage />}
       {app.stage !== 'welcome' && app.stage !== 'result' && (
-        <SupportFooter showSupport={!STAGES_HIDE_SUPPORT_FOOTER.includes(app.stage)} />
+        <SupportFooter
+          showSupport={!STAGES_HIDE_SUPPORT_FOOTER.includes(app.stage)}
+          showDeveloperCredit={!STAGES_HIDE_DEVELOPER_CREDIT.includes(app.stage)}
+        />
       )}
     </main>
   );
