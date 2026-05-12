@@ -74,7 +74,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
     <div className="space-y-6">
       <form className="rounded-2xl bg-white p-6 shadow-sm space-y-4" onSubmit={submit}>
         <h1 className="inline-block rounded-xl bg-emerald-900 px-4 py-2 text-3xl font-bold text-white">
-          Поведенческий тест на замер индекса когнитивной эффективности (30+)
+          Тест: индекс когнитивной эффективности
         </h1>
         <div className="rounded-xl border-2 border-emerald-200 bg-emerald-50 p-4">
           <div className="font-semibold text-emerald-950">Что измеряет тест:</div>

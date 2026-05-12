@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Button } from '../components/Button';
 import { ProgressBar } from '../components/ProgressBar';
 import { TestInstruction } from '../components/TestInstruction';
@@ -9,39 +9,47 @@ import { useReactionTest } from '../hooks/useReactionTest';
 import { useStroopTest } from '../hooks/useStroopTest';
 import { useTimer } from '../hooks/useTimer';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
-import { WORDS } from '../utils/generateStimuli';
+import { nextFlankerPrepDelayMs, nextReactionStimulusDelayMs, pickStudyWordList } from '../utils/generateStimuli';
 import { buildStatus, normalizeWords, scoreFaceName, scoreFlanker, scoreReaction, scoreStroop, scoreWordMemory } from '../utils/scoring';
 
 const INTERFERENCE_MS = 180000;
 
 export const TestPage = () => {
   const app = useApp();
-  const flanker = useFlankerTest();
+  const flanker = useFlankerTest(app.sessionSeed);
   const reaction = useReactionTest();
-  const stroop = useStroopTest();
-  const face = useFaceNameTest();
+  const stroop = useStroopTest(app.sessionSeed);
+  const face = useFaceNameTest(app.sessionSeed);
 
   const [textInput, setTextInput] = useState('');
   const [faceStudyIndex, setFaceStudyIndex] = useState(0);
   const [reactionPrompt, setReactionPrompt] = useState('Ждите сигнал');
   const [isStimulusVisible, setIsStimulusVisible] = useState(false);
   const [attemptTick, setAttemptTick] = useState(0);
+  const reactionRecentDelaysRef = useRef<number[]>([]);
 
   const deadline = app.interferenceStart ? app.interferenceStart + INTERFERENCE_MS : null;
   const timer = useTimer(deadline);
 
   useEffect(() => {
+    if (app.stage === 'reaction-instruction') {
+      reactionRecentDelaysRef.current = [];
+    }
+  }, [app.stage]);
+
+  useEffect(() => {
     if (app.stage !== 'flanker' || flanker.done) return;
+    const prep = nextFlankerPrepDelayMs(app.sessionSeed, flanker.index);
     let timeoutId = 0;
     const startId = window.setTimeout(() => {
       flanker.startTrial();
       timeoutId = window.setTimeout(() => flanker.timeout(), 2000);
-    }, 500);
+    }, prep);
     return () => {
       window.clearTimeout(startId);
       window.clearTimeout(timeoutId);
     };
-  }, [app.stage, flanker.index, flanker.done]);
+  }, [app.stage, flanker.index, flanker.done, app.sessionSeed]);
 
   useEffect(() => {
     if (app.stage !== 'stroop' || stroop.done) return;
@@ -59,7 +67,9 @@ export const TestPage = () => {
     setIsStimulusVisible(false);
     setReactionPrompt('Ждите сигнал');
 
-    const delay = 1000 + Math.random() * 2000;
+    const delay = nextReactionStimulusDelayMs(app.sessionSeed, attemptTick, reactionRecentDelaysRef.current);
+    reactionRecentDelaysRef.current = [...reactionRecentDelaysRef.current.slice(-5), delay];
+
     const startId = window.setTimeout(() => {
       setIsStimulusVisible(true);
       reaction.registerStimulus();
@@ -67,7 +77,7 @@ export const TestPage = () => {
     }, delay);
 
     return () => window.clearTimeout(startId);
-  }, [app.stage, attemptTick, reaction.isDone]);
+  }, [app.stage, attemptTick, reaction.isDone, app.sessionSeed]);
 
   useEffect(() => {
     if (app.stage !== 'reaction') return;
@@ -130,7 +140,9 @@ export const TestPage = () => {
   };
 
   const finish = () => {
-    const wm = scoreWordMemory(app.immediateWords, app.delayedWords);
+    const targets =
+      app.studyWordList.length >= 5 ? app.studyWordList : pickStudyWordList(app.sessionSeed);
+    const wm = scoreWordMemory(app.immediateWords, app.delayedWords, targets);
     const fl = scoreFlanker(app.flankerTrials);
     const rx = scoreReaction(app.reactionSuccessful, app.reactionAnticipations + reaction.anticipations);
     const st = scoreStroop(app.stroopTrials);
@@ -189,13 +201,27 @@ export const TestPage = () => {
     app.setStage('result');
   };
 
+  useEffect(() => {
+    if (app.stage !== 'word-study') return;
+    if (app.studyWordList.length >= 5) return;
+    app.setStudyWordList(pickStudyWordList(app.sessionSeed));
+  }, [app.stage, app.sessionSeed, app.studyWordList.length]);
+
   if (app.stage === 'word-study') {
+    const words = app.studyWordList;
+    if (words.length < 5) {
+      return (
+        <div className="rounded-xl bg-white p-6 text-slate-700">
+          Подготовка списка слов…
+        </div>
+      );
+    }
     return (
       <div className="space-y-4">
         <h2 className="text-2xl font-bold">Задание 1: Эпизодическая память</h2>
         <div className="rounded-xl bg-white p-4 space-y-2">
           <p>Сейчас вы увидите 5 слов. Ваша задача - внимательно их запомнить.</p>
-          <p className="font-semibold">Слова: {WORDS.join(', ')}</p>
+          <p className="font-semibold">Слова: {words.join(', ')}</p>
           <p className="text-sm text-slate-700">
             Через несколько секунд нужно будет воспроизвести слова сразу, а затем повторить их после серии других заданий
             (примерно через 3 минуты).

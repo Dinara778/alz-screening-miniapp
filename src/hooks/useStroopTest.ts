@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 import { TrialResult } from '../types';
 import { createStroopTrials } from '../utils/generateStimuli';
 
-export const useStroopTest = () => {
-  const trials = useMemo(() => createStroopTrials(), []);
+export const useStroopTest = (sessionSeed: number) => {
+  const trials = useMemo(() => createStroopTrials(sessionSeed), [sessionSeed]);
   const [index, setIndex] = useState(0);
   const [results, setResults] = useState<TrialResult[]>([]);
   const [start, setStart] = useState<number | null>(null);

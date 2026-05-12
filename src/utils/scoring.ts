@@ -8,13 +8,29 @@ export const normalizeWords = (text: string): string[] =>
     .map((w) => w.trim())
     .filter(Boolean);
 
-export const scoreWordMemory = (immediateWords: string[], delayedWords: string[]): WordMemoryResult => {
-  const target = ['лес', 'хлеб', 'окно', 'звонок', 'чайка'];
-  const exactScore = (words: string[]) => target.filter((w) => words.includes(w)).length;
+const normWord = (w: string) => w.toLowerCase().trim();
+
+export const scoreWordMemory = (
+  immediateWords: string[],
+  delayedWords: string[],
+  targetWords: string[],
+): WordMemoryResult => {
+  const target = targetWords.map((w) => normWord(w));
+  const exactScore = (words: string[]) => {
+    const set = new Set(words.map(normWord));
+    return target.filter((t) => set.has(t)).length;
+  };
   const immediateScore = exactScore(immediateWords);
   const delayedScore = exactScore(delayedWords);
   const redFlag = delayedScore < 3 || immediateScore - delayedScore >= 3;
-  return { immediateScore, delayedScore, immediateWords, delayedWords, redFlag };
+  return {
+    immediateScore,
+    delayedScore,
+    immediateWords,
+    delayedWords,
+    targetWords: [...targetWords],
+    redFlag,
+  };
 };
 
 export const scoreFlanker = (trials: TrialResult[]): FlankerResult => {

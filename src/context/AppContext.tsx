@@ -36,6 +36,8 @@ type AppState = {
   saveResult: (r: SessionResult) => void;
   consultationReturnTo: ConsultationReturnStage | null;
   setConsultationReturnTo: (v: ConsultationReturnStage | null) => void;
+  studyWordList: string[];
+  setStudyWordList: (v: string[]) => void;
 };
 
 const Ctx = createContext<AppState | null>(null);
@@ -55,6 +57,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [sessionSeed, setSessionSeed] = useState(() => Date.now());
   const [participant, setParticipant] = useState<ParticipantProfile | null>(null);
   const [consultationReturnTo, setConsultationReturnTo] = useState<ConsultationReturnStage | null>(null);
+  const [studyWordList, setStudyWordList] = useState<string[]>([]);
   const sentStageEventsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -117,6 +120,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     setLatestResult(null);
     setParticipant(null);
     setConsultationReturnTo(null);
+    setStudyWordList([]);
     setSessionSeed(Date.now());
     clearProgress();
   };
@@ -124,6 +128,16 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const saveResultFn = (result: SessionResult) => {
     setLatestResult(result);
     saveSession(result);
+    try {
+      const prev = parseInt(localStorage.getItem('alz_completed_sessions') || '0', 10) || 0;
+      localStorage.setItem('alz_completed_sessions', String(prev + 1));
+      const tw = result.wordMemory.targetWords;
+      if (tw?.length) {
+        localStorage.setItem('alz_last_word_sig', [...tw].sort().join('|'));
+      }
+    } catch {
+      // ignore quota / private mode
+    }
     void sendSessionToSheets(result).catch(() => {
       // Ignore webhook errors to keep UX stable.
     });
@@ -161,6 +175,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       saveResult: saveResultFn,
       consultationReturnTo,
       setConsultationReturnTo,
+      studyWordList,
+      setStudyWordList,
     }),
     [
       stage,
@@ -177,6 +193,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       sessionSeed,
       participant,
       consultationReturnTo,
+      studyWordList,
     ],
   );
 

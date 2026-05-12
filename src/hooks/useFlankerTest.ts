@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 import { TrialResult } from '../types';
 import { createFlankerTrials } from '../utils/generateStimuli';
 
-export const useFlankerTest = () => {
-  const trials = useMemo(() => createFlankerTrials(), []);
+export const useFlankerTest = (sessionSeed: number) => {
+  const trials = useMemo(() => createFlankerTrials(sessionSeed), [sessionSeed]);
   const [index, setIndex] = useState(0);
   const [results, setResults] = useState<TrialResult[]>([]);
   const [trialStart, setTrialStart] = useState<number | null>(null);

@@ -12,6 +12,8 @@ export type WordMemoryResult = {
   delayedScore: number;
   immediateWords: string[];
   delayedWords: string[];
+  /** Слова, которые нужно было запомнить (для подсчёта и истории). У старых сессий может отсутствовать. */
+  targetWords?: string[];
   redFlag: boolean;
 };
 

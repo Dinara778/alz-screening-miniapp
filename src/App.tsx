@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useApp } from './context/AppContext';
+import { pickStudyWordList } from './utils/generateStimuli';
 import { HistoryPage } from './pages/HistoryPage';
 import { FullReportPage } from './pages/FullReportPage';
 import { ResultPage } from './pages/ResultPage';
@@ -24,6 +25,7 @@ function App() {
         <WelcomePage
           onStart={(profile) => {
             app.setParticipant(profile);
+            app.setStudyWordList(pickStudyWordList(app.sessionSeed));
             app.setStage('word-study');
           }}
           onHistory={() => app.setStage('history')}
