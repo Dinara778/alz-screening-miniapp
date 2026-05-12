@@ -207,7 +207,7 @@ export const FullReportPage = () => {
       <div className="border border-slate-300 rounded-lg p-4 mt-6 bg-slate-50">
         <div className="font-bold text-slate-900">Личный разбор когнитивного профиля</div>
         <p className="mt-2 text-slate-800">
-          Индивидуальный разбор удалённо, 30–40 минут. Стоимость: 5490 ₽. На сайте: «Записаться на разбор».
+          Индивидуальный разбор удалённо, 30–40 минут. Стоимость: 5 490 ₽. На сайте: «Записаться на разбор».
         </p>
       </div>
 
@@ -398,14 +398,14 @@ export const FullReportPage = () => {
         </p>
         <p className="text-sm text-slate-600">Формат: удалённо, 30–40 минут, персональный разбор результатов.</p>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <span className="text-lg font-bold text-slate-900">5490 ₽</span>
+          <span className="text-lg font-bold text-slate-900">5 490 ₽</span>
           <Button
             variant="sell"
             type="button"
             disabled={consultationBusy}
             onClick={() => void handlePayConsultation()}
           >
-            {consultationBusy ? 'Открываем оплату…' : 'Записаться на разбор — 5490 ₽'}
+            {consultationBusy ? 'Открываем оплату…' : 'Записаться на разбор — 5 490 ₽'}
           </Button>
         </div>
         {consultationNotice ? <p className="text-sm text-emerald-900">{consultationNotice}</p> : null}

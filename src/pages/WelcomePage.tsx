@@ -125,11 +125,6 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
 
         {step === 0 && (
           <div className="relative z-10 space-y-5 text-center sm:text-left">
-            <div className="flex justify-center gap-2 text-4xl sm:text-5xl sm:justify-start">
-              <span>🧘</span>
-              <span>🧠</span>
-              <span>🌸</span>
-            </div>
             <h1 className="inline-block rounded-xl bg-gradient-to-br from-emerald-900 to-teal-950 px-4 py-3 text-2xl font-bold leading-tight text-white shadow-md sm:text-3xl">
               🧠 Тест: индекс когнитивной эффективности
             </h1>
@@ -210,7 +205,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
 
         {step === 3 && (
           <div className="relative z-10 space-y-4">
-            <div className="text-center text-5xl">🌈</div>
+            <div className="text-center text-5xl">👥</div>
             <h2 className="text-center text-xl font-bold text-emerald-950 dark:text-emerald-50">Выберите пол</h2>
             <p className="text-center text-sm font-medium text-emerald-800/90 dark:text-emerald-200/90">
               Нужен для корректной нормы в аналитике
@@ -315,9 +310,6 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
               </Button>
             </div>
             <TimerHint />
-            <p className="text-center text-sm text-slate-500 dark:text-slate-400">
-              🕒 Тест можно пройти за 5 минут на весь тест
-            </p>
           </form>
         )}
       </div>

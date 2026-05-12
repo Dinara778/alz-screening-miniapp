@@ -128,7 +128,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         <div className="mt-2 h-4 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600/80">
           <div className={`h-full ${a.index.barColorClass}`} style={{ width: `${a.index.value}%` }} />
         </div>
-        <div>
+        <div className="mt-3">
           <div
             className={`inline-block rounded-lg border border-black/10 px-3 py-1 text-sm font-semibold text-white shadow-sm ring-1 ring-black/5 ${a.index.barColorClass}`}
           >
@@ -174,8 +174,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           концентрацию и структурированный разбор по областям — в формате, удобном для самостоятельной работы с
           данными.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-          <div className="text-lg font-bold tabular-nums text-white">399 ₽</div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
           <Button
             variant="sell"
             type="button"
@@ -197,14 +196,14 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         </p>
         <p className="text-sm text-slate-600">Удалённо · 30–40 минут · персональный разбор</p>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <span className="text-lg font-bold text-slate-900">5490 ₽</span>
+          <span className="text-lg font-bold text-slate-900">5 490 ₽</span>
           <Button
             variant="sell"
             type="button"
             disabled={consultationBusy}
             onClick={() => void handlePayConsultation()}
           >
-            {consultationBusy ? 'Открываем оплату…' : 'Записаться на разбор — 5490 ₽'}
+            {consultationBusy ? 'Открываем оплату…' : 'Записаться на разбор — 5 490 ₽'}
           </Button>
         </div>
         {consultationNotice ? <p className="text-sm text-emerald-900">{consultationNotice}</p> : null}
