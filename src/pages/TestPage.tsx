@@ -238,7 +238,13 @@ export const TestPage = () => {
             (примерно через 3 минуты).
           </p>
         </div>
-        <Button onClick={() => app.setStage('word-immediate')}>Я запомнил(а)</Button>
+        <Button
+          type="button"
+          className="w-full rounded-2xl py-4 text-base font-bold sm:py-[1.125rem] sm:text-lg"
+          onClick={() => app.setStage('word-immediate')}
+        >
+          Я запомнил(а)
+        </Button>
       </>,
     );
   }
@@ -255,7 +261,12 @@ export const TestPage = () => {
             : 'Введите все слова, которые помните. Можно писать через пробел или запятую. Учитываются только точные совпадения слов.'}
         </p>
         <textarea className="w-full rounded-xl border p-3" rows={4} value={textInput} onChange={(e) => setTextInput(e.target.value)} placeholder="Введите слова" />
-        <Button type="submit">Продолжить</Button>
+        <Button
+          type="submit"
+          className="w-full rounded-2xl py-4 text-base font-bold sm:py-[1.125rem] sm:text-lg"
+        >
+          Продолжить
+        </Button>
       </form>,
     );
   }
@@ -293,9 +304,21 @@ export const TestPage = () => {
         <h2 className="text-xl font-bold">Фланкер {flanker.index + 1}/20</h2>
         <ProgressBar value={flanker.index} max={20} />
         <div className="text-5xl font-mono tracking-widest">{flanker.current?.arrows}</div>
-        <div className="flex justify-center gap-3">
-          <Button onClick={() => flanker.answer('<')}>←</Button>
-          <Button onClick={() => flanker.answer('>')}>→</Button>
+        <div className="grid w-full grid-cols-2 gap-3">
+          <Button
+            type="button"
+            className="w-full py-4 text-2xl font-bold sm:py-5 sm:text-3xl"
+            onClick={() => flanker.answer('<')}
+          >
+            ←
+          </Button>
+          <Button
+            type="button"
+            className="w-full py-4 text-2xl font-bold sm:py-5 sm:text-3xl"
+            onClick={() => flanker.answer('>')}
+          >
+            →
+          </Button>
         </div>
       </div>,
     );
@@ -325,7 +348,13 @@ export const TestPage = () => {
       <div className="space-y-4 text-center">
         <h2 className="text-xl font-bold">Реакция {app.reactionSuccessful.length}/30</h2>
         <ProgressBar value={app.reactionSuccessful.length} max={30} />
-        <button className={`mx-auto h-40 w-40 rounded-full text-white font-bold ${isStimulusVisible ? 'bg-green-500' : 'bg-slate-400'}`} onClick={handleReactionPress}>
+        <button
+          type="button"
+          className={`w-full rounded-2xl py-10 text-lg font-bold text-white shadow-inner transition active:scale-[0.99] sm:py-12 sm:text-xl ${
+            isStimulusVisible ? 'bg-green-500 shadow-green-900/20' : 'bg-slate-400 shadow-slate-900/10'
+          }`}
+          onClick={handleReactionPress}
+        >
           {reactionPrompt}
         </button>
         <p>Слишком ранние нажатия: {app.reactionAnticipations + reaction.anticipations}</p>
@@ -356,12 +385,32 @@ export const TestPage = () => {
           <img src={f.image} alt={f.label} className="h-52 w-full object-cover" />
         </div>
         <div className="text-center text-2xl">{f.correctName}</div>
-        <div className="flex gap-3">
-          <Button variant="secondary" disabled={faceStudyIndex === 0} onClick={() => setFaceStudyIndex((v) => v - 1)}>Назад</Button>
+        <div className="flex w-full flex-col gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full rounded-2xl py-4 text-base font-bold sm:text-lg"
+            disabled={faceStudyIndex === 0}
+            onClick={() => setFaceStudyIndex((v) => v - 1)}
+          >
+            Назад
+          </Button>
           {faceStudyIndex < 2 ? (
-            <Button onClick={() => setFaceStudyIndex((v) => v + 1)}>Далее</Button>
+            <Button
+              type="button"
+              className="w-full rounded-2xl py-4 text-base font-bold sm:py-[1.125rem] sm:text-lg"
+              onClick={() => setFaceStudyIndex((v) => v + 1)}
+            >
+              Далее
+            </Button>
           ) : (
-            <Button onClick={() => app.setStage('stroop-instruction')}>Перейти к заданию Струп</Button>
+            <Button
+              type="button"
+              className="w-full rounded-2xl py-4 text-base font-bold sm:py-[1.125rem] sm:text-lg"
+              onClick={() => app.setStage('stroop-instruction')}
+            >
+              Перейти к заданию Струп
+            </Button>
           )}
         </div>
       </div>,
@@ -400,24 +449,24 @@ export const TestPage = () => {
         <h2 className="text-xl font-bold">Струп {stroop.index + 1}/30</h2>
         <ProgressBar value={stroop.index} max={30} />
         <div className={`text-4xl font-bold ${colorClass}`}>{s?.word}</div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-3">
           <button
             type="button"
-            className="rounded-xl bg-red-600 px-2 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-red-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:text-base"
+            className="w-full rounded-2xl bg-red-600 px-4 py-4 text-base font-bold text-white shadow-md transition hover:bg-red-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:py-[1.125rem] sm:text-lg"
             onClick={() => stroop.answer('red')}
           >
             Красный
           </button>
           <button
             type="button"
-            className="rounded-xl bg-blue-600 px-2 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-blue-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:text-base"
+            className="w-full rounded-2xl bg-blue-600 px-4 py-4 text-base font-bold text-white shadow-md transition hover:bg-blue-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:py-[1.125rem] sm:text-lg"
             onClick={() => stroop.answer('blue')}
           >
             Синий
           </button>
           <button
             type="button"
-            className="rounded-xl bg-green-600 px-2 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-green-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:text-base"
+            className="w-full rounded-2xl bg-green-600 px-4 py-4 text-base font-bold text-white shadow-md transition hover:bg-green-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:py-[1.125rem] sm:text-lg"
             onClick={() => stroop.answer('green')}
           >
             Зеленый
@@ -446,7 +495,14 @@ export const TestPage = () => {
             ))}
           </div>
         ))}
-        <Button disabled={!face.isComplete} onClick={finish}>Завершить анализ</Button>
+        <Button
+          type="button"
+          disabled={!face.isComplete}
+          className="w-full rounded-2xl py-4 text-base font-bold sm:py-[1.125rem] sm:text-lg"
+          onClick={finish}
+        >
+          Завершить анализ
+        </Button>
       </div>,
     );
   }

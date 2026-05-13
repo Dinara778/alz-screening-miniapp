@@ -40,7 +40,7 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
               className="h-[6.25rem] w-[6.25rem] select-none drop-shadow-sm sm:h-32 sm:w-32"
             />
             <p
-              className="font-display text-[clamp(2.5rem,11vw,4.75rem)] font-black leading-[0.92] tracking-[-0.04em] text-slate-900 antialiased dark:text-white"
+              className="font-display text-[clamp(2.85rem,12vw,5.35rem)] font-black leading-[0.92] tracking-[-0.04em] text-slate-900 antialiased dark:text-white"
               style={{ fontFeatureSettings: '"ss01"' }}
             >
               corta<span className="text-emerald-600 dark:text-emerald-400">.</span>
@@ -49,16 +49,16 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
 
           <div className="mx-auto w-full max-w-md rounded-2xl border border-slate-200/90 bg-slate-50/90 px-6 py-6 text-left shadow-sm ring-1 ring-slate-100/80 backdrop-blur-md dark:border-slate-600/60 dark:bg-slate-800/80 dark:ring-slate-700/40 sm:rounded-3xl sm:px-8 sm:py-7">
             <div className="mb-4 h-1 w-12 rounded-full bg-gradient-to-r from-indigo-500 to-teal-500 opacity-90" aria-hidden />
-            <h1 className="font-sans text-2xl font-semibold leading-snug tracking-tight text-slate-900 dark:text-white sm:text-[1.65rem] sm:leading-tight">
+            <h1 className="font-sans text-[1.375rem] font-semibold leading-snug tracking-tight text-slate-900 dark:text-white sm:text-3xl sm:leading-tight">
               Добро пожаловать в{' '}
               <span className="font-display font-extrabold tracking-tight text-emerald-800 dark:text-emerald-300">
                 Corta
               </span>
             </h1>
-            <p className="mt-4 font-sans text-[0.95rem] font-medium leading-relaxed tracking-[-0.01em] text-slate-800 dark:text-slate-200 sm:text-base">
+            <p className="mt-4 font-sans text-base font-medium leading-relaxed tracking-[-0.01em] text-slate-800 dark:text-slate-200 sm:text-lg">
               Тест на память, внимание, скорость реакции. Объективно и сразу.
             </p>
-            <p className="mt-3 font-sans text-sm font-normal leading-relaxed text-slate-500 dark:text-slate-400 sm:text-[0.9375rem]">
+            <p className="mt-3 font-sans text-[0.9375rem] font-normal leading-relaxed text-slate-500 dark:text-slate-400 sm:text-base">
               + адресные рекомендации по вашему когнитивному профилю
             </p>
           </div>
@@ -72,11 +72,11 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
           </div>
         </div>
 
-        <div className="mt-10 flex flex-col items-center pb-1">
+        <div className="mt-10 -mx-5 pb-1 sm:-mx-10">
           <Button
             type="button"
             variant="sell"
-            className="min-w-[240px] px-10 py-3.5 text-base font-bold shadow-xl shadow-red-600/25 ring-2 ring-red-500/20 hover:ring-red-400/35"
+            className="w-full rounded-2xl px-5 py-4 text-base font-bold shadow-xl shadow-red-600/25 ring-2 ring-red-500/20 hover:ring-red-400/35 sm:rounded-3xl sm:py-[1.125rem] sm:text-lg"
             onClick={onContinue}
           >
             Начать

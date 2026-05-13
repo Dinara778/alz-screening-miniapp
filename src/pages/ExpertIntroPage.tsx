@@ -29,27 +29,30 @@ export const ExpertIntroPage = ({ onContinue }: Props) => {
 
       <div className="relative z-10 flex min-h-[min(92dvh,680px)] flex-col justify-between px-5 py-10 sm:px-10 sm:py-12">
         <div className="flex flex-1 flex-col items-center justify-center gap-8 text-center sm:gap-10">
-          <p className="max-w-lg font-sans text-xl font-semibold leading-snug tracking-tight text-slate-900 dark:text-white sm:text-2xl sm:leading-snug">
-            Corta — это научный подход к вашему когнитивному здоровью
-          </p>
+          <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-5">
+            <p className="font-sans text-xl font-semibold leading-snug tracking-tight text-slate-900 dark:text-white sm:text-2xl sm:leading-snug">
+              «Corta — это научный подход к вашему когнитивному здоровью»
+            </p>
+            <div className="w-full max-w-md border-t border-slate-200/80 pt-5 dark:border-slate-600/60">
+              <p className="font-display text-lg font-bold tracking-tight text-slate-900 dark:text-white sm:text-xl">
+                Динара Исаева
+              </p>
+              <p className="mt-1 font-sans text-sm font-medium leading-relaxed text-slate-600 dark:text-slate-300 sm:text-base">
+                Эксперт по когнитивной эффективности
+              </p>
+            </div>
+          </div>
 
-          <div className="mx-auto flex w-full max-w-md flex-col items-center gap-5 rounded-2xl border border-slate-200/90 bg-slate-50/90 px-6 py-8 shadow-sm ring-1 ring-slate-100/80 backdrop-blur-md dark:border-slate-600/60 dark:bg-slate-800/80 dark:ring-slate-700/40 sm:rounded-3xl sm:px-8 sm:py-10">
-            <div className="relative h-36 w-36 shrink-0 overflow-hidden rounded-full ring-4 ring-white shadow-lg ring-offset-2 ring-offset-slate-100 dark:ring-slate-600 dark:ring-offset-slate-800 sm:h-40 sm:w-40">
+          <div className="mx-auto flex w-full max-w-md flex-col items-center rounded-2xl border border-slate-200/90 bg-slate-50/90 px-6 py-8 shadow-sm ring-1 ring-slate-100/80 backdrop-blur-md dark:border-slate-600/60 dark:bg-slate-800/80 dark:ring-slate-700/40 sm:rounded-3xl sm:px-8 sm:py-10">
+            <div className="relative aspect-square h-36 w-36 shrink-0 overflow-hidden rounded-full ring-4 ring-white shadow-lg ring-offset-2 ring-offset-slate-100 dark:ring-slate-600 dark:ring-offset-slate-800 sm:h-40 sm:w-40">
               <img
                 src="/dinara-isaeva.png"
                 alt="Динара Исаева"
-                width={160}
-                height={160}
-                className="h-full w-full object-cover object-[center_15%]"
+                width={320}
+                height={320}
+                className="h-full w-full scale-[1.08] object-cover object-[center_32%]"
+                decoding="async"
               />
-            </div>
-            <div>
-              <h2 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
-                Динара Исаева
-              </h2>
-              <p className="mt-2 font-sans text-sm font-medium leading-relaxed text-slate-600 dark:text-slate-300 sm:text-base">
-                Эксперт по когнитивной эффективности
-              </p>
             </div>
           </div>
 
@@ -62,11 +65,11 @@ export const ExpertIntroPage = ({ onContinue }: Props) => {
           </div>
         </div>
 
-        <div className="mt-10 flex flex-col items-center pb-1">
+        <div className="mt-10 -mx-5 pb-1 sm:-mx-10">
           <Button
             type="button"
             variant="primary"
-            className="min-w-[240px] px-10 py-3.5 text-base font-bold shadow-md"
+            className="w-full rounded-2xl px-5 py-4 text-base font-bold shadow-md sm:rounded-3xl sm:py-[1.125rem] sm:text-lg"
             onClick={onContinue}
           >
             Далее

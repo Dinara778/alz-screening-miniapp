@@ -138,8 +138,12 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
                 <div>💪 Когнитивная выносливость (как быстро мозг начинает уставать).</div>
               </div>
             </div>
-            <div className="flex justify-center sm:justify-start">
-              <Button type="button" className="text-base" onClick={goNext}>
+            <div className="w-full">
+              <Button
+                type="button"
+                className="w-full rounded-2xl py-4 text-base font-bold sm:py-[1.125rem] sm:text-lg"
+                onClick={goNext}
+              >
                 Далее
               </Button>
             </div>
