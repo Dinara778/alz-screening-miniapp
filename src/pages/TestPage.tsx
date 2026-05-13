@@ -259,7 +259,7 @@ export const TestPage = () => {
         <h2 className="text-2xl font-bold">{delayed ? 'Отсроченное воспроизведение' : 'Немедленное воспроизведение'}</h2>
         <p className="text-slate-700">
           {delayed
-            ? 'По истечении времени вам нужно написать 5 слов, которые вы запомнили в начале тестирования.'
+            ? 'Впишите в поле ниже 5 слов, которые вы запомнили в начале тестирования'
             : 'Введите все слова, которые помните. Можно писать через пробел или запятую. Учитываются только точные совпадения слов.'}
         </p>
         <textarea className="w-full rounded-xl border p-3" rows={4} value={textInput} onChange={(e) => setTextInput(e.target.value)} placeholder="Введите слова" />
