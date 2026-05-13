@@ -6,7 +6,7 @@ import { useApp } from '../context/AppContext';
 import { formatDomainInterpretationPlain } from '../copy/cognitiveDomainInterpretationsMid52';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { downloadCognitiveReportPdf } from '../utils/pdfReport';
-import { openTelegramInvoiceForProduct, isReportPaidUnlocked, isPaymentsBackendConfigured } from '../utils/telegramPayments';
+import { isReportPaidUnlocked, isPaymentsBackendConfigured } from '../utils/telegramPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
 const REPORT_EMAIL_PREFIX = 'corta_report_email_';
@@ -17,8 +17,6 @@ export const FullReportPage = () => {
   const [reportEmail, setReportEmail] = useState('');
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
-  const [consultationBusy, setConsultationBusy] = useState(false);
-  const [consultationNotice, setConsultationNotice] = useState<string | null>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
 
   const analytics = useMemo(() => {
@@ -110,43 +108,10 @@ export const FullReportPage = () => {
     }
   };
 
-  const handlePayConsultation = async () => {
+  const handlePayConsultation = () => {
     if (!latestResult) return;
-    if (import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true' || !isPaymentsBackendConfigured()) {
-      setConsultationReturnTo('full-report');
-      setStage('consultation-request');
-      return;
-    }
-    setConsultationNotice(null);
-    setConsultationBusy(true);
-    try {
-      const r = await openTelegramInvoiceForProduct('consultation', latestResult.id);
-      if (r.status === 'paid') {
-        setConsultationNotice('Оплата прошла. Менеджер свяжется с вами для согласования времени сессии.');
-        return;
-      }
-      if (r.status === 'skipped') {
-        const byReason: Record<(typeof r)['reason'], string> = {
-          not_telegram: 'Оплата доступна только в Telegram. Откройте мини-приложение из бота.',
-          no_api_url: 'Не задан адрес сервера оплаты (VITE_TELEGRAM_PAYMENTS_URL).',
-          no_init_data: 'Откройте мини-приложение из Telegram (из бота), затем повторите оплату.',
-          no_open_invoice: 'Обновите Telegram или откройте мини-приложение в актуальной версии клиента.',
-        };
-        setConsultationNotice(byReason[r.reason]);
-        return;
-      }
-      if (r.status === 'cancelled') {
-        setConsultationNotice('Оплата отменена.');
-        return;
-      }
-      if (r.status === 'failed') {
-        setConsultationNotice(`Оплата не завершена (${r.detail}).`);
-        return;
-      }
-      setConsultationNotice(r.message);
-    } finally {
-      setConsultationBusy(false);
-    }
+    setConsultationReturnTo('full-report');
+    setStage('consultation-request');
   };
 
   const fmt = (d: string) => new Date(d).toLocaleDateString('ru-RU');
@@ -207,7 +172,10 @@ export const FullReportPage = () => {
         )}
       </ul>
 
-      <h2 className="text-lg font-bold mb-2">5. Персональные рекомендации</h2>
+      <h2 className="text-lg font-bold mb-2">5. Краткие рекомендации</h2>
+      <p className="mb-3 text-slate-800 text-sm leading-relaxed">
+        Интерпретация по вашим метрикам: на что нужно обратить внимание именно вам с учётом вашего когнитивного профиля:
+      </p>
       <ul className="mb-4 list-disc pl-5">
         {analytics.stabilizationTips.map((t) => (
           <li key={t.text}>{t.text}</li>
@@ -308,8 +276,8 @@ export const FullReportPage = () => {
       body: (
         <div className="space-y-3">
           <p className="text-slate-700 text-sm leading-relaxed">
-            Интерпретация по вашим метрикам: персональные шаги без «программ тренировок» — только то, что следует из
-            профиля этого прохождения.
+            Интерпретация по вашим метрикам: на что нужно обратить внимание именно вам с учётом вашего когнитивного
+            профиля:
           </p>
           <ul className="list-disc pl-5 space-y-2 text-slate-800">
             {analytics.stabilizationTips.map((t) => (
@@ -422,18 +390,22 @@ export const FullReportPage = () => {
         <p className="text-sm text-slate-600">
           Формат: удалённо, 30–40 минут, разбор метрик в формате живой встречи.
         </p>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <span className="text-lg font-bold text-slate-900">5 490 ₽</span>
-          <Button
-            variant="sell"
-            type="button"
-            disabled={consultationBusy}
-            onClick={() => void handlePayConsultation()}
-          >
-            {consultationBusy ? 'Открываем оплату…' : 'Записаться на персональную сессию — 5 490 ₽'}
-          </Button>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <span className="text-lg font-bold text-slate-900">5 490 ₽</span>
+            <Button
+              variant="sell"
+              type="button"
+              onClick={handlePayConsultation}
+            >
+              Записаться на персональную сессию — 5 490 ₽
+            </Button>
+          </div>
+          <p className="text-sm text-slate-600 leading-relaxed">
+            Наш менеджер свяжется с вами по почте, указанной при оплате, в течение 15 минут для согласования удобного
+            времени сессии.
+          </p>
         </div>
-        {consultationNotice ? <p className="text-sm text-emerald-900">{consultationNotice}</p> : null}
       </div>
 
     </div>

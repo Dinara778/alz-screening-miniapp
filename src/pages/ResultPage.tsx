@@ -12,8 +12,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const [shareNotice, setShareNotice] = useState<string | null>(null);
   const [payBusy, setPayBusy] = useState(false);
   const [payNotice, setPayNotice] = useState<string | null>(null);
-  const [consultationBusy, setConsultationBusy] = useState(false);
-  const [consultationNotice, setConsultationNotice] = useState<string | null>(null);
   if (!latestResult) return null;
   const a = buildCognitiveAnalytics(latestResult);
 
@@ -75,44 +73,10 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     }
   };
 
-  const handlePayConsultation = async () => {
+  const handlePayConsultation = () => {
     if (!latestResult) return;
-    if (skipNativePayment) {
-      setConsultationNotice(null);
-      setConsultationReturnTo('result');
-      setStage('consultation-request');
-      return;
-    }
-    setConsultationNotice(null);
-    setConsultationBusy(true);
-    try {
-      const r = await openTelegramInvoiceForProduct('consultation', latestResult.id);
-      if (r.status === 'paid') {
-        setConsultationNotice('Оплата прошла. Менеджер свяжется с вами для согласования времени сессии.');
-        return;
-      }
-      if (r.status === 'skipped') {
-        const byReason: Record<(typeof r)['reason'], string> = {
-          not_telegram: 'Оплата доступна только в Telegram. Откройте мини-приложение из бота.',
-          no_api_url: 'Не задан адрес сервера оплаты (VITE_TELEGRAM_PAYMENTS_URL).',
-          no_init_data: 'Откройте мини-приложение из Telegram (из бота), затем повторите оплату.',
-          no_open_invoice: 'Обновите Telegram или откройте мини-приложение в актуальной версии клиента.',
-        };
-        setConsultationNotice(byReason[r.reason]);
-        return;
-      }
-      if (r.status === 'cancelled') {
-        setConsultationNotice('Оплата отменена.');
-        return;
-      }
-      if (r.status === 'failed') {
-        setConsultationNotice(`Оплата не завершена (${r.detail}).`);
-        return;
-      }
-      setConsultationNotice(r.message);
-    } finally {
-      setConsultationBusy(false);
-    }
+    setConsultationReturnTo('result');
+    setStage('consultation-request');
   };
 
   return (
@@ -213,13 +177,15 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
             variant="sell"
             type="button"
             className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug sm:py-[1.125rem] sm:text-xl"
-            disabled={consultationBusy}
-            onClick={() => void handlePayConsultation()}
+            onClick={handlePayConsultation}
           >
-            {consultationBusy ? 'Открываем оплату…' : 'Записаться на персональную сессию — 5 490 ₽'}
+            Записаться на персональную сессию — 5 490 ₽
           </Button>
+          <p className="text-sm text-slate-600 leading-relaxed">
+            Наш менеджер свяжется с вами по почте, указанной при оплате, в течение 15 минут для согласования удобного
+            времени сессии.
+          </p>
         </div>
-        {consultationNotice ? <p className="text-sm text-emerald-900">{consultationNotice}</p> : null}
       </div>
 
       <div className="flex flex-wrap gap-3">
