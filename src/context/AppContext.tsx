@@ -1,11 +1,51 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppStage, ParticipantProfile, SessionResult, TrialResult } from '../types';
-import { clearProgress, loadHistory, saveProgress, saveSession } from '../utils/storage';
+import {
+  clearProgress,
+  loadHistory,
+  saveProgress,
+  saveSession,
+  shouldRestoreProgress,
+  loadProgress,
+} from '../utils/storage';
+import { pickStudyWordList } from '../utils/generateStimuli';
 import { sendAnalyticsEventToSheets, sendSessionToSheets } from '../utils/sheetsWebhook';
 
 type ConsultationReturnStage = 'result' | 'full-report';
 
 type FaceAnswer = { faceId: number; selected: string; correct: string };
+
+type BootState = {
+  stage: AppStage;
+  sessionSeed: number;
+  interferenceStart: number | null;
+  immediateWords: string[];
+  delayedWords: string[];
+  flankerTrials: TrialResult[];
+  reactionSuccessful: number[];
+  reactionAnticipations: number;
+  stroopTrials: TrialResult[];
+  participant: ParticipantProfile | null;
+  studyWordList: string[];
+};
+
+function buildBootState(): BootState {
+  const raw = loadProgress();
+  const r = shouldRestoreProgress(raw) ? raw : null;
+  return {
+    stage: r?.stage ?? 'corta-intro',
+    sessionSeed: typeof r?.sessionSeed === 'number' ? r.sessionSeed : Date.now(),
+    interferenceStart: r?.startedAt ?? null,
+    immediateWords: r?.immediateWords ?? [],
+    delayedWords: r?.delayedWords ?? [],
+    flankerTrials: r?.flankerTrials ?? [],
+    reactionSuccessful: r?.reactionSuccessful ?? [],
+    reactionAnticipations: r?.reactionAnticipations ?? 0,
+    stroopTrials: r?.stroopTrials ?? [],
+    participant: r?.participant ?? null,
+    studyWordList: Array.isArray(r?.studyWordList) ? r.studyWordList : [],
+  };
+}
 
 type AppState = {
   stage: AppStage;
@@ -33,6 +73,7 @@ type AppState = {
   participant: ParticipantProfile | null;
   setParticipant: (v: ParticipantProfile | null) => void;
   resetSession: () => void;
+  beginNewAssessment: (profile: ParticipantProfile) => void;
   saveResult: (r: SessionResult) => void;
   consultationReturnTo: ConsultationReturnStage | null;
   setConsultationReturnTo: (v: ConsultationReturnStage | null) => void;
@@ -43,31 +84,32 @@ type AppState = {
 const Ctx = createContext<AppState | null>(null);
 
 export const AppProvider = ({ children }: { children: React.ReactNode }) => {
-  const [stage, setStage] = useState<AppStage>('corta-intro');
-  const [interferenceStart, setInterferenceStart] = useState<number | null>(null);
-  const [immediateWords, setImmediateWords] = useState<string[]>([]);
-  const [delayedWords, setDelayedWords] = useState<string[]>([]);
-  const [flankerTrials, setFlankerTrials] = useState<TrialResult[]>([]);
-  const [reactionSuccessful, setReactionSuccessful] = useState<number[]>([]);
-  const [reactionAnticipations, setReactionAnticipations] = useState(0);
-  const [stroopTrials, setStroopTrials] = useState<TrialResult[]>([]);
+  const bootRef = useRef<BootState | null>(null);
+  if (bootRef.current === null) {
+    bootRef.current = buildBootState();
+  }
+  const b = bootRef.current;
+
+  const [stage, setStage] = useState<AppStage>(b.stage);
+  const [interferenceStart, setInterferenceStart] = useState<number | null>(b.interferenceStart);
+  const [immediateWords, setImmediateWords] = useState<string[]>(b.immediateWords);
+  const [delayedWords, setDelayedWords] = useState<string[]>(b.delayedWords);
+  const [flankerTrials, setFlankerTrials] = useState<TrialResult[]>(b.flankerTrials);
+  const [reactionSuccessful, setReactionSuccessful] = useState<number[]>(b.reactionSuccessful);
+  const [reactionAnticipations, setReactionAnticipations] = useState(b.reactionAnticipations);
+  const [stroopTrials, setStroopTrials] = useState<TrialResult[]>(b.stroopTrials);
   const [faceAnswers, setFaceAnswers] = useState<FaceAnswer[]>([]);
   const [latestResult, setLatestResult] = useState<SessionResult | null>(null);
   const [history, setHistory] = useState<SessionResult[]>(() => loadHistory());
-  const [sessionSeed, setSessionSeed] = useState(() => Date.now());
-  const [participant, setParticipant] = useState<ParticipantProfile | null>(null);
+  const [sessionSeed, setSessionSeed] = useState(b.sessionSeed);
+  const [participant, setParticipant] = useState<ParticipantProfile | null>(b.participant);
   const [consultationReturnTo, setConsultationReturnTo] = useState<ConsultationReturnStage | null>(null);
-  const [studyWordList, setStudyWordList] = useState<string[]>([]);
+  const [studyWordList, setStudyWordList] = useState<string[]>(b.studyWordList);
   const sentStageEventsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     sentStageEventsRef.current = new Set();
   }, [sessionSeed]);
-
-  useEffect(() => {
-    // Refresh should always start a new session.
-    clearProgress();
-  }, []);
 
   useEffect(() => {
     saveProgress({
@@ -79,8 +121,31 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       reactionSuccessful,
       reactionAnticipations,
       stroopTrials,
+      sessionSeed,
+      participant,
+      studyWordList,
     });
-  }, [stage, interferenceStart, immediateWords, delayedWords, flankerTrials, reactionSuccessful, reactionAnticipations, stroopTrials]);
+  }, [
+    stage,
+    interferenceStart,
+    immediateWords,
+    delayedWords,
+    flankerTrials,
+    reactionSuccessful,
+    reactionAnticipations,
+    stroopTrials,
+    sessionSeed,
+    participant,
+    studyWordList,
+  ]);
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === 'visible') setHistory(loadHistory());
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
 
   useEffect(() => {
     const key = `${sessionSeed}:${stage}`;
@@ -107,7 +172,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     });
   }, [sessionSeed, stage, participant]);
 
-  const resetSession = () => {
+  const resetSession = useCallback(() => {
     setStage('corta-intro');
     setInterferenceStart(null);
     setImmediateWords([]);
@@ -123,9 +188,28 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     setStudyWordList([]);
     setSessionSeed(Date.now());
     clearProgress();
-  };
+  }, []);
 
-  const saveResultFn = (result: SessionResult) => {
+  const beginNewAssessment = useCallback((profile: ParticipantProfile) => {
+    const seed = Date.now();
+    clearProgress();
+    setSessionSeed(seed);
+    setParticipant(profile);
+    setStudyWordList(pickStudyWordList(seed));
+    setInterferenceStart(null);
+    setImmediateWords([]);
+    setDelayedWords([]);
+    setFlankerTrials([]);
+    setReactionSuccessful([]);
+    setReactionAnticipations(0);
+    setStroopTrials([]);
+    setFaceAnswers([]);
+    setLatestResult(null);
+    setConsultationReturnTo(null);
+    setStage('word-study');
+  }, []);
+
+  const saveResultFn = useCallback((result: SessionResult) => {
     setLatestResult(result);
     saveSession(result);
     try {
@@ -143,7 +227,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     });
     setHistory(loadHistory());
     clearProgress();
-  };
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -172,6 +256,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       participant,
       setParticipant,
       resetSession,
+      beginNewAssessment,
       saveResult: saveResultFn,
       consultationReturnTo,
       setConsultationReturnTo,
@@ -194,6 +279,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       participant,
       consultationReturnTo,
       studyWordList,
+      resetSession,
+      beginNewAssessment,
+      saveResultFn,
     ],
   );
 

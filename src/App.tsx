@@ -2,8 +2,7 @@ import { useEffect } from 'react';
 import { SupportFooter } from './components/SupportFooter';
 import { useApp } from './context/AppContext';
 import type { AppStage } from './types';
-import { pickStudyWordList } from './utils/generateStimuli';
-import { applyTelegramTheme } from './utils/telegramTheme';
+import { applyTelegramTheme, attachTelegramThemeListener } from './utils/telegramTheme';
 import { HistoryPage } from './pages/HistoryPage';
 import { FullReportPage } from './pages/FullReportPage';
 import { ResultPage } from './pages/ResultPage';
@@ -43,6 +42,13 @@ function App() {
     tg.expand();
     tg.MainButton?.hide();
     applyTelegramTheme();
+    requestAnimationFrame(() => applyTelegramTheme());
+    const t = window.setTimeout(() => applyTelegramTheme(), 150);
+    const detachTheme = attachTelegramThemeListener();
+    return () => {
+      window.clearTimeout(t);
+      detachTheme();
+    };
   }, []);
 
   return (
@@ -58,11 +64,7 @@ function App() {
         {app.stage === 'expert-intro' && <ExpertIntroPage onContinue={() => app.setStage('welcome')} />}
         {app.stage === 'welcome' && (
           <WelcomePage
-            onStart={(profile) => {
-              app.setParticipant(profile);
-              app.setStudyWordList(pickStudyWordList(app.sessionSeed));
-              app.setStage('word-study');
-            }}
+            onStart={(profile) => app.beginNewAssessment(profile)}
             onHistory={() => app.setStage('history')}
           />
         )}

@@ -104,6 +104,8 @@ export type AppStage =
   | 'consultation-request';
 
 export type SavedProgress = {
+  /** Время сохранения; старые записи без поля всё ещё восстанавливаются */
+  savedAt?: number;
   stage: AppStage;
   startedAt: number | null;
   immediateWords?: string[];
@@ -112,4 +114,7 @@ export type SavedProgress = {
   reactionSuccessful?: number[];
   reactionAnticipations?: number;
   stroopTrials?: TrialResult[];
+  sessionSeed?: number;
+  participant?: ParticipantProfile | null;
+  studyWordList?: string[];
 };

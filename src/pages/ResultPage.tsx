@@ -34,6 +34,11 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
 
   const handlePayFullReport = async () => {
     if (!latestResult) return;
+    if (import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true') {
+      localStorage.setItem(reportPaidStorageKey(latestResult.id), '1');
+      setStage('full-report');
+      return;
+    }
     setPayNotice(null);
     setPayBusy(true);
     try {

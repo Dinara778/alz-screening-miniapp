@@ -15,6 +15,8 @@ interface TelegramWebApp {
   openInvoice(url: string, callback?: (status: string) => void): void;
   /** Открывает t.me-ссылку (в т.ч. шаринг через t.me/share/url). */
   openTelegramLink(url: string): void;
+  onEvent?(eventType: string, eventHandler: () => void): void;
+  offEvent?(eventType: string, eventHandler: () => void): void;
   MainButton?: {
     text: string;
     isVisible: boolean;

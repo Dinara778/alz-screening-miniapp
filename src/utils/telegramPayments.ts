@@ -59,3 +59,12 @@ export const openTelegramInvoiceForProduct = async (
 };
 
 export const reportPaidStorageKey = (sessionId: string) => `report_paid_${sessionId}`;
+
+/**
+ * Доступ к полному отчёту: оплачено в localStorage или временный обход для разработки.
+ * Перед продом уберите `VITE_DEV_BYPASS_REPORT_PAYMENT` из окружения.
+ */
+export const isReportPaidUnlocked = (sessionId: string): boolean => {
+  if (import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true') return true;
+  return localStorage.getItem(reportPaidStorageKey(sessionId)) === '1';
+};

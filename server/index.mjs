@@ -5,7 +5,9 @@
  * 2) npm install && npm start
  * 3) Выставьте вебхук бота на POST /webhook этого сервера (HTTPS):
  *    https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://your-domain/webhook
- * 4) Во фронте укажите VITE_TELEGRAM_PAYMENTS_URL=https://your-domain (без /webhook)
+ *    Без вебхука команда /start не доходит до сервера — ответа с кнопкой не будет.
+ * 4) Задайте TELEGRAM_MINI_APP_URL — тот же HTTPS URL мини-приложения, что в @BotFather (Mini App).
+ * 5) Во фронте укажите VITE_TELEGRAM_PAYMENTS_URL=https://your-domain (без /webhook)
  *
  * Заявка на разбор: POST /consultation-lead (initData + consultationEmail) → письмо на CONSULTATION_LEAD_TO
  * при настроенном SMTP, и/или сообщение в TELEGRAM_ADMIN_CHAT_ID. См. server/.env.example
@@ -61,6 +63,12 @@ async function tgApi(method, body) {
     body: JSON.stringify(body),
   });
   return res.json();
+}
+
+/** /start или /start@YourBot с необязательным payload */
+function isStartCommand(text) {
+  if (typeof text !== 'string') return false;
+  return /^\/start(@[A-Za-z0-9_]+)?(\s|$)/.test(text.trim());
 }
 
 const LEAD_TO_DEFAULT = 'hello@bookvolon.ru';
@@ -276,6 +284,35 @@ app.post('/webhook', async (req, res) => {
     if (update?.message?.successful_payment) {
       console.info('[paid]', update.message.successful_payment.invoice_payload);
     }
+
+    const msg = update?.message;
+    if (msg?.text && BOT_TOKEN && isStartCommand(msg.text)) {
+      const miniAppUrl = process.env.TELEGRAM_MINI_APP_URL?.trim();
+      const welcomeText =
+        process.env.TELEGRAM_START_MESSAGE?.trim() ||
+        'Здравствуйте! Нажмите кнопку ниже, чтобы открыть мини-приложение и пройти скрининг.';
+      const buttonLabel =
+        process.env.TELEGRAM_START_BUTTON_TEXT?.trim() || 'Открыть приложение';
+
+      const payload = {
+        chat_id: msg.chat.id,
+        text: welcomeText,
+        disable_web_page_preview: true,
+      };
+      if (miniAppUrl) {
+        payload.reply_markup = {
+          inline_keyboard: [[{ text: buttonLabel, web_app: { url: miniAppUrl } }]],
+        };
+      } else {
+        payload.text +=
+          '\n\n(Администратору: задайте на сервере переменную TELEGRAM_MINI_APP_URL — HTTPS-адрес веб-приложения из настроек бота в @BotFather, иначе кнопка не появится.)';
+      }
+
+      const sent = await tgApi('sendMessage', payload);
+      if (!sent.ok) {
+        console.error('[webhook /start] sendMessage', sent.description || sent);
+      }
+    }
   } catch (e) {
     console.error(e);
   }
@@ -284,6 +321,6 @@ app.post('/webhook', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(
-    `Payments API: http://127.0.0.1:${PORT}  (POST /invoice, POST /consultation-lead, POST /webhook)`,
+    `Payments API: http://127.0.0.1:${PORT}  (POST /invoice, POST /consultation-lead, POST /webhook — /start + оплата)`,
   );
 });

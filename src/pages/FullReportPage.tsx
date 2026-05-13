@@ -6,7 +6,7 @@ import { useApp } from '../context/AppContext';
 import { formatDomainInterpretationPlain } from '../copy/cognitiveDomainInterpretationsMid52';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { downloadCognitiveReportPdf } from '../utils/pdfReport';
-import { openTelegramInvoiceForProduct, reportPaidStorageKey } from '../utils/telegramPayments';
+import { openTelegramInvoiceForProduct, isReportPaidUnlocked } from '../utils/telegramPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
 const REPORT_EMAIL_PREFIX = 'corta_report_email_';
@@ -34,7 +34,8 @@ export const FullReportPage = () => {
 
   useEffect(() => {
     if (!latestResult) return;
-    if (localStorage.getItem(reportPaidStorageKey(latestResult.id)) !== '1') return;
+    if (import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true') return;
+    if (!isReportPaidUnlocked(latestResult.id)) return;
     void sendAnalyticsEventToSheets({
       eventType: 'full_report_opened',
       sessionId: latestResult.id,
@@ -56,7 +57,7 @@ export const FullReportPage = () => {
     );
   }
 
-  if (localStorage.getItem(reportPaidStorageKey(latestResult.id)) !== '1') {
+  if (!isReportPaidUnlocked(latestResult.id)) {
     return (
       <div className="space-y-4 rounded-xl border border-amber-200 bg-amber-50 p-5 text-slate-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-50">
         <p className="font-medium">Полный отчёт доступен только после успешной оплаты.</p>

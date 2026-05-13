@@ -18,7 +18,7 @@ const INTERFERENCE_MS = 180000;
 
 function wrapWithTestProgress(stage: AppStage, node: ReactNode) {
   return (
-    <div className="flex min-h-[min(78dvh,640px)] w-full flex-col">
+    <div className="flex min-h-[min(78dvh,640px)] w-full flex-col text-slate-950 dark:text-slate-100">
       <div className="shrink-0">
         <TestProgressBanner stage={stage} />
       </div>

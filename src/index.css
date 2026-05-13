@@ -32,6 +32,7 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--app-bg);
+  color: var(--app-text);
 }
 
 button:focus-visible,
