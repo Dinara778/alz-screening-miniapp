@@ -44,7 +44,13 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         return;
       }
       if (r.status === 'skipped') {
-        setStage('full-report');
+        const byReason: Record<(typeof r)['reason'], string> = {
+          not_telegram: 'Оплата доступна только в Telegram. Откройте мини-приложение из бота.',
+          no_api_url: 'Не задан адрес сервера оплаты (VITE_TELEGRAM_PAYMENTS_URL). Подключите бэкенд счетов — без него полный отчёт недоступен.',
+          no_init_data: 'Откройте мини-приложение из Telegram (из бота), затем повторите оплату.',
+          no_open_invoice: 'Обновите Telegram или откройте мини-приложение в актуальной версии клиента.',
+        };
+        setPayNotice(byReason[r.reason]);
         return;
       }
       if (r.status === 'cancelled') {

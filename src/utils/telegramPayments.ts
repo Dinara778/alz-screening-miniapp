@@ -17,7 +17,7 @@ export const isTelegramMiniApp = (): boolean => {
 
 /**
  * Запрашивает у бэкенда ссылку на счёт и открывает нативную оплату Telegram.
- * Без VITE_TELEGRAM_PAYMENTS_URL или вне Telegram — вернёт skipped (вызывающий может открыть бесплатный превью).
+ * Без VITE_TELEGRAM_PAYMENTS_URL или вне Telegram — вернёт skipped (полный отчёт без оплаты не открывается).
  */
 export const openTelegramInvoiceForProduct = async (
   product: TelegramInvoiceProduct,

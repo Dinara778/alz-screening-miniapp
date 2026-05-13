@@ -6,7 +6,7 @@ import { useApp } from '../context/AppContext';
 import { formatDomainInterpretationPlain } from '../copy/cognitiveDomainInterpretationsMid52';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { downloadCognitiveReportPdf } from '../utils/pdfReport';
-import { openTelegramInvoiceForProduct } from '../utils/telegramPayments';
+import { openTelegramInvoiceForProduct, reportPaidStorageKey } from '../utils/telegramPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
 const REPORT_EMAIL_PREFIX = 'corta_report_email_';
@@ -34,6 +34,7 @@ export const FullReportPage = () => {
 
   useEffect(() => {
     if (!latestResult) return;
+    if (localStorage.getItem(reportPaidStorageKey(latestResult.id)) !== '1') return;
     void sendAnalyticsEventToSheets({
       eventType: 'full_report_opened',
       sessionId: latestResult.id,
@@ -51,6 +52,21 @@ export const FullReportPage = () => {
             На главную
           </Button>
         </div>
+      </div>
+    );
+  }
+
+  if (localStorage.getItem(reportPaidStorageKey(latestResult.id)) !== '1') {
+    return (
+      <div className="space-y-4 rounded-xl border border-amber-200 bg-amber-50 p-5 text-slate-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-50">
+        <p className="font-medium">Полный отчёт доступен только после успешной оплаты.</p>
+        <p className="text-sm text-amber-900/90 dark:text-amber-100/90">
+          Если оплата ещё не подключена, настройте сервер счетов и переменную{' '}
+          <span className="font-mono text-xs">VITE_TELEGRAM_PAYMENTS_URL</span> в мини-приложении.
+        </p>
+        <Button variant="secondary" type="button" onClick={() => setStage('result')}>
+          К результатам
+        </Button>
       </div>
     );
   }
