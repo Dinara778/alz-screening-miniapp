@@ -1,4 +1,4 @@
-/** Подстраивает фон и CSS-переменные под тему Telegram Mini App. */
+/** Подстраивает CSS-переменные под тему Telegram Mini App. Не красим body в tg bg_color — на Android в тёмной теме это даёт «чёрный экран» вокруг светлого контента. */
 export const applyTelegramTheme = (): void => {
   const tg = window.Telegram?.WebApp;
   if (!tg) return;
@@ -6,10 +6,7 @@ export const applyTelegramTheme = (): void => {
   const tp = tg.themeParams;
   if (tp) {
     const { bg_color, text_color, hint_color, link_color, secondary_bg_color } = tp;
-    if (bg_color) {
-      r.style.setProperty('--tg-theme-bg-color', bg_color);
-      document.body.style.backgroundColor = bg_color;
-    }
+    if (bg_color) r.style.setProperty('--tg-theme-bg-color', bg_color);
     if (text_color) r.style.setProperty('--tg-theme-text-color', text_color);
     if (hint_color) r.style.setProperty('--tg-theme-hint-color', hint_color);
     if (link_color) r.style.setProperty('--tg-theme-link-color', link_color);
