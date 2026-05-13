@@ -10,7 +10,7 @@ type Props = {
 export const ExpertIntroPage = ({ onContinue }: Props) => {
   return (
     <section
-      className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2 overflow-hidden rounded-[1.75rem] border border-slate-200/90 bg-white text-slate-900 shadow-[0_24px_60px_-28px_rgba(15,23,42,0.2)] sm:rounded-3xl dark:border-slate-700/80 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_20px_50px_-30px_rgba(0,0,0,0.45)]"
+      className="relative w-full overflow-hidden rounded-[1.75rem] border border-slate-200/90 bg-white text-slate-900 shadow-[0_24px_60px_-28px_rgba(15,23,42,0.2)] sm:rounded-3xl dark:border-slate-700/80 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_20px_50px_-30px_rgba(0,0,0,0.45)]"
       aria-label="О проекте Corta и эксперте"
     >
       <div
@@ -27,8 +27,8 @@ export const ExpertIntroPage = ({ onContinue }: Props) => {
         aria-hidden
       />
 
-      <div className="relative z-10 flex min-h-[min(92dvh,680px)] flex-col justify-between px-5 py-10 sm:px-10 sm:py-12">
-        <div className="flex flex-1 flex-col items-center justify-center gap-8 text-center sm:gap-10">
+      <div className="relative z-10 flex min-h-[min(92dvh,720px)] flex-col px-6 py-8 sm:py-10">
+        <div className="flex flex-1 flex-col items-center justify-center gap-8 py-4 text-center sm:gap-10">
           <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-5">
             <p className="font-sans text-xl font-semibold leading-snug tracking-tight text-slate-900 dark:text-white sm:text-2xl sm:leading-snug">
               «Corta — это научный подход к вашему когнитивному здоровью»
@@ -65,11 +65,11 @@ export const ExpertIntroPage = ({ onContinue }: Props) => {
           </div>
         </div>
 
-        <div className="mt-10 -mx-5 pb-1 sm:-mx-10">
+        <div className="mt-auto w-full shrink-0 pt-6 pb-2">
           <Button
             type="button"
             variant="primary"
-            className="w-full rounded-2xl px-5 py-4 text-base font-bold shadow-md sm:rounded-3xl sm:py-[1.125rem] sm:text-lg"
+            className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug shadow-md sm:rounded-2xl sm:py-[1.125rem] sm:text-xl"
             onClick={onContinue}
           >
             Далее

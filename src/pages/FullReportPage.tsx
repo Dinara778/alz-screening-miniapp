@@ -409,7 +409,7 @@ export const FullReportPage = () => {
       <div className="rounded-xl border border-emerald-200 bg-white p-5 space-y-3">
         <h2 className="text-xl font-bold text-emerald-950">Личный разбор когнитивного профиля</h2>
         <p className="text-slate-700">
-          Если вы хотите глубже понять закономерности в своих ответах и получить персональное толкование
+          Если вы хотите глубже понять закономерности в своих ответах и получить персональный разбор
           результатов, можно пройти индивидуальный разбор с экспертом.
         </p>
         <p className="text-sm text-slate-600">Формат: удалённо, 30–40 минут, персональный разбор результатов.</p>
@@ -421,7 +421,7 @@ export const FullReportPage = () => {
             disabled={consultationBusy}
             onClick={() => void handlePayConsultation()}
           >
-            {consultationBusy ? 'Открываем оплату…' : 'Записаться на разбор — 5 490 ₽'}
+            {consultationBusy ? 'Открываем оплату…' : 'Записаться на личный разбор — 5 490 ₽'}
           </Button>
         </div>
         {consultationNotice ? <p className="text-sm text-emerald-900">{consultationNotice}</p> : null}

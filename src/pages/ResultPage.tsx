@@ -153,15 +153,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-2 dark:border-slate-600 dark:bg-slate-800/90">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">💡 Краткие рекомендации</h2>
-        <ul className="list-disc pl-5 text-sm text-slate-800 space-y-1">
-          {a.stabilizationTips.slice(0, 5).map((t) => (
-            <li key={t.text}>{t.text}</li>
-          ))}
-        </ul>
-      </section>
-
       <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-3 dark:border-slate-600 dark:bg-slate-800/90">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">🔗 Поделиться</h2>
         <p className="text-sm text-slate-600">
@@ -174,21 +165,31 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       </section>
 
       <div className="rounded-xl bg-gradient-to-br from-slate-900 to-emerald-950 p-5 space-y-4 text-white shadow-brand-lg">
-        <div className="text-xs uppercase tracking-widest text-emerald-300/90">📄 Полный анализ</div>
+        <div className="text-xs uppercase tracking-widest text-emerald-300/90">📄 Полный анализ + рекомендации</div>
         <p className="text-slate-200 text-sm leading-relaxed">
-          Расширенный отчёт: персональная карта перегрузки (только в полной версии), главные факторы влияния на
-          концентрацию и структурированный разбор по областям — в формате, удобном для самостоятельной работы с
-          данными.
+          Расширенный отчёт:{' '}
+          <strong className="font-bold text-white">персональная карта перегрузки</strong> (только в полной версии),{' '}
+          <strong className="font-bold text-white">главные факторы влияния на концентрацию</strong> и{' '}
+          <strong className="font-bold text-white">структурированный разбор по областям + рекомендации</strong> — в
+          формате, удобном для самостоятельной работы с данными.
         </p>
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-200/90">Краткие рекомендации (в полной версии)</p>
+          <ul className="mt-2 list-disc pl-5 text-sm text-emerald-50/95 space-y-1">
+            {a.stabilizationTips.slice(0, 5).map((t) => (
+              <li key={t.text}>{t.text}</li>
+            ))}
+          </ul>
+        </div>
+        <div className="flex flex-col gap-3">
           <Button
             variant="sell"
             type="button"
-            className="w-full sm:w-auto sm:min-w-[280px]"
+            className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug sm:py-[1.125rem] sm:text-xl"
             disabled={payBusy}
             onClick={() => void handlePayFullReport()}
           >
-            {payBusy ? 'Открываем оплату…' : 'Получить полный анализ когнитивной устойчивости — 399 ₽'}
+            {payBusy ? 'Открываем оплату…' : 'Получить полный анализ — 399 ₽'}
           </Button>
         </div>
         {payNotice ? <p className="text-sm text-amber-200">{payNotice}</p> : null}
@@ -197,19 +198,19 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       <div className="rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-5 shadow-sm dark:border-emerald-800 dark:from-emerald-950/40 dark:to-slate-900">
         <h2 className="text-xl font-bold text-emerald-950 dark:text-emerald-100">🎓 Личный разбор когнитивного профиля</h2>
         <p className="text-slate-700 text-sm leading-relaxed">
-          Если вы хотите глубже понять закономерности в своих ответах и получить персональное толкование
-          результатов, можно пройти индивидуальный разбор с экспертом.
+          Если вы хотите глубже понять закономерности в своих ответах и получить персональный разбор результатов,
+          можно пройти индивидуальный разбор с экспертом.
         </p>
-        <p className="text-sm text-slate-600">Удалённо · 30–40 минут · персональный разбор</p>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <span className="text-lg font-bold text-slate-900">5 490 ₽</span>
+        <p className="text-sm text-slate-600">Удалённо · 30–40 минут</p>
+        <div className="mt-2 flex flex-col gap-3">
           <Button
             variant="sell"
             type="button"
+            className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug sm:py-[1.125rem] sm:text-xl"
             disabled={consultationBusy}
             onClick={() => void handlePayConsultation()}
           >
-            {consultationBusy ? 'Открываем оплату…' : 'Записаться на разбор — 5 490 ₽'}
+            {consultationBusy ? 'Открываем оплату…' : 'Записаться на личный разбор — 5 490 ₽'}
           </Button>
         </div>
         {consultationNotice ? <p className="text-sm text-emerald-900">{consultationNotice}</p> : null}

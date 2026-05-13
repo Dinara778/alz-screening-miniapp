@@ -141,7 +141,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
             <div className="w-full">
               <Button
                 type="button"
-                className="w-full rounded-2xl py-4 text-base font-bold sm:py-[1.125rem] sm:text-lg"
+                className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug sm:py-[1.125rem] sm:text-xl"
                 onClick={goNext}
               >
                 Далее

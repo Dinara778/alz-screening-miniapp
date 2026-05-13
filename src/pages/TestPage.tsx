@@ -18,9 +18,9 @@ const INTERFERENCE_MS = 180000;
 
 function wrapWithTestProgress(stage: AppStage, node: ReactNode) {
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-[min(78dvh,640px)] w-full flex-col justify-center gap-4">
       <TestProgressBanner stage={stage} />
-      {node}
+      <div className="w-full">{node}</div>
     </div>
   );
 }
@@ -240,7 +240,7 @@ export const TestPage = () => {
         </div>
         <Button
           type="button"
-          className="w-full rounded-2xl py-4 text-base font-bold sm:py-[1.125rem] sm:text-lg"
+          className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug sm:rounded-3xl sm:py-[1.125rem] sm:text-xl"
           onClick={() => app.setStage('word-immediate')}
         >
           Я запомнил(а)
@@ -257,13 +257,13 @@ export const TestPage = () => {
         <h2 className="text-2xl font-bold">{delayed ? 'Отсроченное воспроизведение' : 'Немедленное воспроизведение'}</h2>
         <p className="text-slate-700">
           {delayed
-            ? 'По истчении времени вам нужно написать 5 слов, которые вы запомнили в начале тестирования.'
+            ? 'По истечении времени вам нужно написать 5 слов, которые вы запомнили в начале тестирования.'
             : 'Введите все слова, которые помните. Можно писать через пробел или запятую. Учитываются только точные совпадения слов.'}
         </p>
         <textarea className="w-full rounded-xl border p-3" rows={4} value={textInput} onChange={(e) => setTextInput(e.target.value)} placeholder="Введите слова" />
         <Button
           type="submit"
-          className="w-full rounded-2xl py-4 text-base font-bold sm:py-[1.125rem] sm:text-lg"
+          className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug sm:rounded-3xl sm:py-[1.125rem] sm:text-xl"
         >
           Продолжить
         </Button>
@@ -350,8 +350,8 @@ export const TestPage = () => {
         <ProgressBar value={app.reactionSuccessful.length} max={30} />
         <button
           type="button"
-          className={`w-full rounded-2xl py-10 text-lg font-bold text-white shadow-inner transition active:scale-[0.99] sm:py-12 sm:text-xl ${
-            isStimulusVisible ? 'bg-green-500 shadow-green-900/20' : 'bg-slate-400 shadow-slate-900/10'
+          className={`mx-auto flex h-40 w-40 items-center justify-center rounded-full px-3 text-center text-lg font-bold leading-tight text-white shadow-md transition active:scale-[0.98] sm:h-44 sm:w-44 sm:text-xl ${
+            isStimulusVisible ? 'bg-green-500 shadow-green-900/25' : 'bg-slate-400 shadow-slate-900/15'
           }`}
           onClick={handleReactionPress}
         >
@@ -389,7 +389,7 @@ export const TestPage = () => {
           <Button
             type="button"
             variant="secondary"
-            className="w-full rounded-2xl py-4 text-base font-bold sm:text-lg"
+            className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug sm:rounded-3xl sm:py-[1.125rem] sm:text-xl"
             disabled={faceStudyIndex === 0}
             onClick={() => setFaceStudyIndex((v) => v - 1)}
           >
@@ -398,7 +398,7 @@ export const TestPage = () => {
           {faceStudyIndex < 2 ? (
             <Button
               type="button"
-              className="w-full rounded-2xl py-4 text-base font-bold sm:py-[1.125rem] sm:text-lg"
+              className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug sm:rounded-3xl sm:py-[1.125rem] sm:text-xl"
               onClick={() => setFaceStudyIndex((v) => v + 1)}
             >
               Далее
@@ -406,7 +406,7 @@ export const TestPage = () => {
           ) : (
             <Button
               type="button"
-              className="w-full rounded-2xl py-4 text-base font-bold sm:py-[1.125rem] sm:text-lg"
+              className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug sm:rounded-3xl sm:py-[1.125rem] sm:text-xl"
               onClick={() => app.setStage('stroop-instruction')}
             >
               Перейти к заданию Струп
@@ -452,21 +452,21 @@ export const TestPage = () => {
         <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-3">
           <button
             type="button"
-            className="w-full rounded-2xl bg-red-600 px-4 py-4 text-base font-bold text-white shadow-md transition hover:bg-red-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:py-[1.125rem] sm:text-lg"
+            className="w-full rounded-2xl bg-red-600 px-4 py-4 text-[1.0625rem] font-bold leading-snug text-white shadow-md transition hover:bg-red-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:py-[1.125rem] sm:text-xl"
             onClick={() => stroop.answer('red')}
           >
             Красный
           </button>
           <button
             type="button"
-            className="w-full rounded-2xl bg-blue-600 px-4 py-4 text-base font-bold text-white shadow-md transition hover:bg-blue-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:py-[1.125rem] sm:text-lg"
+            className="w-full rounded-2xl bg-blue-600 px-4 py-4 text-[1.0625rem] font-bold leading-snug text-white shadow-md transition hover:bg-blue-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:py-[1.125rem] sm:text-xl"
             onClick={() => stroop.answer('blue')}
           >
             Синий
           </button>
           <button
             type="button"
-            className="w-full rounded-2xl bg-green-600 px-4 py-4 text-base font-bold text-white shadow-md transition hover:bg-green-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:py-[1.125rem] sm:text-lg"
+            className="w-full rounded-2xl bg-green-600 px-4 py-4 text-[1.0625rem] font-bold leading-snug text-white shadow-md transition hover:bg-green-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:py-[1.125rem] sm:text-xl"
             onClick={() => stroop.answer('green')}
           >
             Зеленый
@@ -498,7 +498,7 @@ export const TestPage = () => {
         <Button
           type="button"
           disabled={!face.isComplete}
-          className="w-full rounded-2xl py-4 text-base font-bold sm:py-[1.125rem] sm:text-lg"
+          className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug sm:rounded-3xl sm:py-[1.125rem] sm:text-xl"
           onClick={finish}
         >
           Завершить анализ
