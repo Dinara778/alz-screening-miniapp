@@ -5,10 +5,10 @@ import { Footer } from '../components/Footer';
 import { useApp } from '../context/AppContext';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { buildResultShareText, getShareTestLink, shareOrCopyResultText } from '../utils/shareResult';
-import { openTelegramInvoiceForProduct, reportPaidStorageKey } from '../utils/telegramPayments';
+import { openTelegramInvoiceForProduct, reportPaidStorageKey, isPaymentsBackendConfigured } from '../utils/telegramPayments';
 
 export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
-  const { latestResult, setStage } = useApp();
+  const { latestResult, setStage, setConsultationReturnTo } = useApp();
   const [shareNotice, setShareNotice] = useState<string | null>(null);
   const [payBusy, setPayBusy] = useState(false);
   const [payNotice, setPayNotice] = useState<string | null>(null);
@@ -16,6 +16,9 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const [consultationNotice, setConsultationNotice] = useState<string | null>(null);
   if (!latestResult) return null;
   const a = buildCognitiveAnalytics(latestResult);
+
+  const skipNativePayment =
+    import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true' || !isPaymentsBackendConfigured();
 
   const handleShare = async () => {
     setShareNotice(null);
@@ -34,7 +37,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
 
   const handlePayFullReport = async () => {
     if (!latestResult) return;
-    if (import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true') {
+    if (skipNativePayment) {
       localStorage.setItem(reportPaidStorageKey(latestResult.id), '1');
       setStage('full-report');
       return;
@@ -74,6 +77,12 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
 
   const handlePayConsultation = async () => {
     if (!latestResult) return;
+    if (skipNativePayment) {
+      setConsultationNotice(null);
+      setConsultationReturnTo('result');
+      setStage('consultation-request');
+      return;
+    }
     setConsultationNotice(null);
     setConsultationBusy(true);
     try {
@@ -186,7 +195,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
             disabled={payBusy}
             onClick={() => void handlePayFullReport()}
           >
-            {payBusy ? 'Открываем оплату…' : 'Получить полный анализ — 399 ₽'}
+            {payBusy ? 'Открываем оплату…' : 'Получить расширенный отчёт — 399 ₽'}
           </Button>
         </div>
         {payNotice ? <p className="text-sm text-amber-200">{payNotice}</p> : null}

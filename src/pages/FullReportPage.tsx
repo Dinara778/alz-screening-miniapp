@@ -6,13 +6,13 @@ import { useApp } from '../context/AppContext';
 import { formatDomainInterpretationPlain } from '../copy/cognitiveDomainInterpretationsMid52';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { downloadCognitiveReportPdf } from '../utils/pdfReport';
-import { openTelegramInvoiceForProduct, isReportPaidUnlocked } from '../utils/telegramPayments';
+import { openTelegramInvoiceForProduct, isReportPaidUnlocked, isPaymentsBackendConfigured } from '../utils/telegramPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
 const REPORT_EMAIL_PREFIX = 'corta_report_email_';
 
 export const FullReportPage = () => {
-  const { latestResult, participant, setStage } = useApp();
+  const { latestResult, participant, setStage, setConsultationReturnTo } = useApp();
   const [step, setStep] = useState(0);
   const [reportEmail, setReportEmail] = useState('');
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -35,6 +35,7 @@ export const FullReportPage = () => {
   useEffect(() => {
     if (!latestResult) return;
     if (import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true') return;
+    if (!isPaymentsBackendConfigured()) return;
     if (!isReportPaidUnlocked(latestResult.id)) return;
     void sendAnalyticsEventToSheets({
       eventType: 'full_report_opened',
@@ -111,6 +112,11 @@ export const FullReportPage = () => {
 
   const handlePayConsultation = async () => {
     if (!latestResult) return;
+    if (import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true' || !isPaymentsBackendConfigured()) {
+      setConsultationReturnTo('full-report');
+      setStage('consultation-request');
+      return;
+    }
     setConsultationNotice(null);
     setConsultationBusy(true);
     try {

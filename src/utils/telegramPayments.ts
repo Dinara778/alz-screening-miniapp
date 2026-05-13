@@ -9,6 +9,11 @@ export type OpenInvoiceResult =
 
 const trimApi = (url: string) => url.replace(/\/$/, '');
 
+/** Задан URL бэкенда счетов (POST /invoice). Если нет — нативная оплата Telegram недоступна. */
+export const isPaymentsBackendConfigured = (): boolean => {
+  return Boolean((import.meta.env.VITE_TELEGRAM_PAYMENTS_URL as string | undefined)?.trim());
+};
+
 /** Mini App открыт в Telegram и есть initData (не просто браузер). */
 export const isTelegramMiniApp = (): boolean => {
   const tg = window.Telegram?.WebApp;
@@ -61,10 +66,11 @@ export const openTelegramInvoiceForProduct = async (
 export const reportPaidStorageKey = (sessionId: string) => `report_paid_${sessionId}`;
 
 /**
- * Доступ к полному отчёту: оплачено в localStorage или временный обход для разработки.
- * Перед продом уберите `VITE_DEV_BYPASS_REPORT_PAYMENT` из окружения.
+ * Доступ к полному отчёту: оплачено в localStorage, временный обход (VITE_DEV_BYPASS_REPORT_PAYMENT),
+ * либо бэкенд оплаты не настроен — тогда отчёт открыт для проверки (на проде задайте VITE_TELEGRAM_PAYMENTS_URL).
  */
 export const isReportPaidUnlocked = (sessionId: string): boolean => {
   if (import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true') return true;
+  if (!isPaymentsBackendConfigured()) return true;
   return localStorage.getItem(reportPaidStorageKey(sessionId)) === '1';
 };
