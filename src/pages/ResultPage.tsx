@@ -74,7 +74,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     try {
       const r = await openTelegramInvoiceForProduct('consultation', latestResult.id);
       if (r.status === 'paid') {
-        setConsultationNotice('Оплата прошла. Менеджер свяжется с вами для согласования времени разбора.');
+        setConsultationNotice('Оплата прошла. Менеджер свяжется с вами для согласования времени сессии.');
         return;
       }
       if (r.status === 'skipped') {
@@ -173,14 +173,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           <strong className="font-bold text-white">структурированный разбор по областям + рекомендации</strong> — в
           формате, удобном для самостоятельной работы с данными.
         </p>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-200/90">Краткие рекомендации (в полной версии)</p>
-          <ul className="mt-2 list-disc pl-5 text-sm text-emerald-50/95 space-y-1">
-            {a.stabilizationTips.slice(0, 5).map((t) => (
-              <li key={t.text}>{t.text}</li>
-            ))}
-          </ul>
-        </div>
         <div className="flex flex-col gap-3">
           <Button
             variant="sell"
@@ -196,12 +188,12 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       </div>
 
       <div className="rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-5 shadow-sm dark:border-emerald-800 dark:from-emerald-950/40 dark:to-slate-900">
-        <h2 className="text-xl font-bold text-emerald-950 dark:text-emerald-100">🎓 Личный разбор когнитивного профиля</h2>
+        <h2 className="text-xl font-bold text-emerald-950 dark:text-emerald-100">🎓 Персональная сессия с экспертом</h2>
         <p className="text-slate-700 text-sm leading-relaxed">
-          Если вы хотите глубже понять закономерности в своих ответах и получить персональный разбор результатов,
-          можно пройти индивидуальный разбор с экспертом.
+          Если вы хотите глубже понять закономерности в своих ответах и получить персональную интерпретацию результатов,
+          можно пройти персональную сессию с экспертом.
         </p>
-        <p className="text-sm text-slate-600">Удалённо · 30–40 минут</p>
+        <p className="text-sm text-slate-600">Удалённо · 30–40 минут · разбор метрик в формате живой встречи</p>
         <div className="mt-2 flex flex-col gap-3">
           <Button
             variant="sell"
@@ -210,7 +202,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
             disabled={consultationBusy}
             onClick={() => void handlePayConsultation()}
           >
-            {consultationBusy ? 'Открываем оплату…' : 'Записаться на личный разбор — 5 490 ₽'}
+            {consultationBusy ? 'Открываем оплату…' : 'Записаться на персональную сессию — 5 490 ₽'}
           </Button>
         </div>
         {consultationNotice ? <p className="text-sm text-emerald-900">{consultationNotice}</p> : null}

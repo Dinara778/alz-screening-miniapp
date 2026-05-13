@@ -115,7 +115,7 @@ export const FullReportPage = () => {
     try {
       const r = await openTelegramInvoiceForProduct('consultation', latestResult.id);
       if (r.status === 'paid') {
-        setConsultationNotice('Оплата прошла. Менеджер свяжется с вами для согласования времени разбора.');
+        setConsultationNotice('Оплата прошла. Менеджер свяжется с вами для согласования времени сессии.');
         return;
       }
       if (r.status === 'skipped') {
@@ -221,9 +221,9 @@ export const FullReportPage = () => {
       </ul>
 
       <div className="border border-slate-300 rounded-lg p-4 mt-6 bg-slate-50">
-        <div className="font-bold text-slate-900">Личный разбор когнитивного профиля</div>
+        <div className="font-bold text-slate-900">Персональная сессия с экспертом</div>
         <p className="mt-2 text-slate-800">
-          Индивидуальный разбор удалённо, 30–40 минут. Стоимость: 5 490 ₽. На сайте: «Записаться на разбор».
+          Персональная сессия удалённо, 30–40 минут. Стоимость: 5 490 ₽. На сайте: «Записаться на персональную сессию».
         </p>
       </div>
 
@@ -297,12 +297,12 @@ export const FullReportPage = () => {
       ),
     },
     {
-      title: 'Что поможет стабилизировать когнитивную устойчивость',
+      title: 'Краткие рекомендации',
       body: (
-        <div className="space-y-2">
-          <p className="text-slate-700 text-sm">
-            Короткие персональные микро-действия без программ и тренировок — только то, что следует из ваших
-            метрик.
+        <div className="space-y-3">
+          <p className="text-slate-700 text-sm leading-relaxed">
+            Интерпретация по вашим метрикам: персональные шаги без «программ тренировок» — только то, что следует из
+            профиля этого прохождения.
           </p>
           <ul className="list-disc pl-5 space-y-2 text-slate-800">
             {analytics.stabilizationTips.map((t) => (
@@ -407,12 +407,14 @@ export const FullReportPage = () => {
       </div>
 
       <div className="rounded-xl border border-emerald-200 bg-white p-5 space-y-3">
-        <h2 className="text-xl font-bold text-emerald-950">Личный разбор когнитивного профиля</h2>
+        <h2 className="text-xl font-bold text-emerald-950">Персональная сессия с экспертом</h2>
         <p className="text-slate-700">
-          Если вы хотите глубже понять закономерности в своих ответах и получить персональный разбор
-          результатов, можно пройти индивидуальный разбор с экспертом.
+          Если вы хотите глубже понять закономерности в своих ответах и получить персональную интерпретацию
+          результатов, можно пройти персональную сессию с экспертом.
         </p>
-        <p className="text-sm text-slate-600">Формат: удалённо, 30–40 минут, персональный разбор результатов.</p>
+        <p className="text-sm text-slate-600">
+          Формат: удалённо, 30–40 минут, разбор метрик в формате живой встречи.
+        </p>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <span className="text-lg font-bold text-slate-900">5 490 ₽</span>
           <Button
@@ -421,7 +423,7 @@ export const FullReportPage = () => {
             disabled={consultationBusy}
             onClick={() => void handlePayConsultation()}
           >
-            {consultationBusy ? 'Открываем оплату…' : 'Записаться на личный разбор — 5 490 ₽'}
+            {consultationBusy ? 'Открываем оплату…' : 'Записаться на персональную сессию — 5 490 ₽'}
           </Button>
         </div>
         {consultationNotice ? <p className="text-sm text-emerald-900">{consultationNotice}</p> : null}

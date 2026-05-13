@@ -5,7 +5,7 @@ type Props = {
 };
 
 /**
- * Экран после Corta intro: тот же визуальный «корпус», эксперт и фото в круге.
+ * Экран после Corta intro: цитата, фото в круге слева, имя рукописным шрифтом, должность; кнопка внизу.
  */
 export const ExpertIntroPage = ({ onContinue }: Props) => {
   return (
@@ -28,40 +28,32 @@ export const ExpertIntroPage = ({ onContinue }: Props) => {
       />
 
       <div className="relative z-10 flex min-h-[min(92dvh,720px)] flex-col px-6 py-8 sm:py-10">
-        <div className="flex flex-1 flex-col items-center justify-center gap-8 py-4 text-center sm:gap-10">
-          <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-5">
-            <p className="font-sans text-xl font-semibold leading-snug tracking-tight text-slate-900 dark:text-white sm:text-2xl sm:leading-snug">
+        <div className="flex flex-1 flex-col items-center justify-center px-1 sm:px-2">
+          <div className="flex w-full max-w-md flex-col items-center">
+            <p className="mt-8 text-center font-sans text-xl font-semibold leading-snug tracking-tight text-slate-900 dark:text-white sm:mt-10 sm:text-2xl sm:leading-snug">
               «Corta — это научный подход к вашему когнитивному здоровью»
             </p>
-            <div className="w-full max-w-md border-t border-slate-200/80 pt-5 dark:border-slate-600/60">
-              <p className="font-display text-lg font-bold tracking-tight text-slate-900 dark:text-white sm:text-xl">
-                Динара Исаева
-              </p>
-              <p className="mt-1 font-sans text-sm font-medium leading-relaxed text-slate-600 dark:text-slate-300 sm:text-base">
-                Эксперт по когнитивной эффективности
-              </p>
-            </div>
-          </div>
 
-          <div className="mx-auto flex w-full max-w-md flex-col items-center rounded-2xl border border-slate-200/90 bg-slate-50/90 px-6 py-8 shadow-sm ring-1 ring-slate-100/80 backdrop-blur-md dark:border-slate-600/60 dark:bg-slate-800/80 dark:ring-slate-700/40 sm:rounded-3xl sm:px-8 sm:py-10">
-            <div className="relative aspect-square h-36 w-36 shrink-0 overflow-hidden rounded-full ring-4 ring-white shadow-lg ring-offset-2 ring-offset-slate-100 dark:ring-slate-600 dark:ring-offset-slate-800 sm:h-40 sm:w-40">
-              <img
-                src="/dinara-isaeva.png"
-                alt="Динара Исаева"
-                width={320}
-                height={320}
-                className="h-full w-full scale-[1.08] object-cover object-[center_32%]"
-                decoding="async"
-              />
+            <div className="mt-10 flex w-full flex-row items-center justify-center gap-4 sm:mt-12 sm:gap-6">
+              <div className="relative h-[7.25rem] w-[7.25rem] shrink-0 overflow-hidden rounded-full shadow-md ring-2 ring-slate-200/90 dark:ring-slate-600/80 sm:h-36 sm:w-36">
+                <img
+                  src="/dinara-isaeva.png"
+                  alt="Динара Исаева"
+                  width={320}
+                  height={320}
+                  className="h-full w-full scale-[1.05] object-cover object-[center_40%]"
+                  decoding="async"
+                />
+              </div>
+              <div className="flex min-w-0 max-w-[11rem] flex-col items-start text-left sm:max-w-[13rem]">
+                <p className="font-signature text-[1.85rem] font-semibold leading-[1.1] text-slate-900 dark:text-white sm:text-[2.15rem]">
+                  Динара Исаева
+                </p>
+                <p className="mt-1.5 font-sans text-[0.6875rem] font-medium leading-snug tracking-tight text-slate-600 dark:text-slate-300 sm:text-xs">
+                  Эксперт по когнитивной эффективности
+                </p>
+              </div>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2" aria-hidden>
-            <span className="h-px w-10 bg-gradient-to-r from-transparent to-slate-300 dark:to-slate-600" />
-            <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-600" />
-            <span className="h-1 w-1 rounded-full bg-slate-200 dark:bg-slate-500" />
-            <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-600" />
-            <span className="h-px w-10 bg-gradient-to-l from-transparent to-slate-300 dark:to-slate-600" />
           </div>
         </div>
 

@@ -8,6 +8,8 @@ export default {
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
         display: ['Nunito', 'system-ui', 'sans-serif'],
+        /** Подпись / «рукописное» имя на экране эксперта */
+        signature: ['Caveat', 'cursive'],
       },
       boxShadow: {
         brand: '0 8px 30px -8px rgba(6, 78, 59, 0.25)',

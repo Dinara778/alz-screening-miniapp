@@ -85,7 +85,7 @@ export const ConsultationRequestPage = () => {
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-emerald-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-bold text-slate-900">Запись на разбор</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Запись на персональную сессию</h1>
         {sent ? (
           <>
             <p className="text-slate-700 leading-relaxed mt-2">
