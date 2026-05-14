@@ -56,7 +56,8 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
               </span>
             </h1>
             <p className="mt-4 font-sans text-base font-medium leading-relaxed tracking-[-0.01em] text-slate-800 dark:text-slate-200 sm:text-lg">
-              Тест на память, внимание, скорость реакции. Объективно и сразу.
+              Тест на память, внимание, скорость реакции.
+              <span className="mt-2 block indent-6 sm:indent-8">Результаты объективно и сразу.</span>
             </p>
             <p className="mt-3 font-sans text-[0.9375rem] font-normal leading-relaxed text-slate-500 dark:text-slate-400 sm:text-base">
               + адресные рекомендации по вашему когнитивному профилю

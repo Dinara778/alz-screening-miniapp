@@ -1,7 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '../components/Button';
 import { useApp } from '../context/AppContext';
-import { isPaymentsBackendConfigured, openTelegramInvoiceForProduct } from '../utils/telegramPayments';
+import {
+  consultationPaidStorageKey,
+  isPaymentsBackendConfigured,
+  openTelegramInvoiceForProduct,
+} from '../utils/telegramPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
 export const ConsultationRequestPage = () => {
@@ -9,6 +13,18 @@ export const ConsultationRequestPage = () => {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [paidOk, setPaidOk] = useState(false);
+
+  useEffect(() => {
+    if (!latestResult?.id) return;
+    const sync = () => {
+      if (localStorage.getItem(consultationPaidStorageKey(latestResult.id)) === '1') {
+        setPaidOk(true);
+      }
+    };
+    sync();
+    window.addEventListener('consultation-paid', sync);
+    return () => window.removeEventListener('consultation-paid', sync);
+  }, [latestResult?.id]);
 
   const goBack = () => {
     const target = consultationReturnTo ?? 'welcome';
@@ -32,6 +48,9 @@ export const ConsultationRequestPage = () => {
     try {
       const r = await openTelegramInvoiceForProduct('consultation', latestResult.id);
       if (r.status === 'paid') {
+        if (latestResult?.id) {
+          localStorage.setItem(consultationPaidStorageKey(latestResult.id), '1');
+        }
         setPaidOk(true);
         void sendAnalyticsEventToSheets({
           eventType: 'consultation_paid',
@@ -57,6 +76,7 @@ export const ConsultationRequestPage = () => {
           no_api_url: 'Сервер оплаты не настроен.',
           no_init_data: 'Откройте мини-приложение из Telegram (из бота), затем повторите.',
           no_open_invoice: 'Обновите Telegram или откройте мини-приложение в актуальной версии клиента.',
+          no_open_link: 'Обновите Telegram: для оплаты картой нужна актуальная версия с открытием ссылки.',
         };
         setNotice(byReason[r.reason]);
         return;
@@ -66,6 +86,12 @@ export const ConsultationRequestPage = () => {
         return;
       }
       if (r.status === 'failed') {
+        if (r.detail === 'prodamus_timeout') {
+          setNotice(
+            'Не удалось дождаться подтверждения оплаты. Если платёж прошёл, закройте мини-приложение и откройте его снова из бота.',
+          );
+          return;
+        }
         setNotice(`Оплата не завершена (${r.detail}).`);
         return;
       }
@@ -90,13 +116,14 @@ export const ConsultationRequestPage = () => {
           </>
         ) : paidOk ? (
           <>
-            <p className="mt-3 text-slate-700 leading-relaxed dark:text-slate-200">
-              Оплата прошла. Наш менеджер свяжется с вами по почте, указанной при оплате, в течение 15 минут для
-              согласования удобного времени сессии.
+            <p className="mt-3 text-lg font-semibold text-emerald-900 dark:text-emerald-200">Оплата прошла успешно</p>
+            <p className="mt-2 text-slate-700 leading-relaxed dark:text-slate-200">
+              Наш менеджер свяжется с вами по почте, указанной при оплате, в течение 15 минут для согласования удобного
+              времени сессии.
             </p>
-            <div className="mt-4">
-              <Button variant="secondary" type="button" onClick={goBack}>
-                Назад
+            <div className="mt-5">
+              <Button type="button" className="w-full rounded-2xl py-4 font-bold sm:max-w-sm" onClick={goBack}>
+                Вернуться в приложение
               </Button>
             </div>
           </>
@@ -111,18 +138,18 @@ export const ConsultationRequestPage = () => {
                 {notice}
               </p>
             ) : null}
-            <div className="mt-4 flex flex-wrap gap-3">
-              <Button variant="secondary" type="button" onClick={goBack}>
-                Назад
-              </Button>
+            <div className="mt-4 flex flex-col gap-3">
               <Button
                 variant="sell"
                 type="button"
-                className="rounded-2xl px-5 py-3 font-bold"
+                className="w-full rounded-2xl px-5 py-3 font-bold sm:py-4"
                 disabled={busy}
                 onClick={() => void handlePay()}
               >
                 {busy ? 'Открываем оплату…' : 'Записаться на персональную сессию — 5 490 ₽'}
+              </Button>
+              <Button variant="secondary" type="button" onClick={goBack} className="self-start">
+                Назад
               </Button>
             </div>
           </>

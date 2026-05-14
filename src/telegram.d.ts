@@ -13,6 +13,8 @@ interface TelegramWebApp {
   isExpanded?: boolean;
   /** Нативная оплата Telegram (счёт из createInvoiceLink). */
   openInvoice(url: string, callback?: (status: string) => void): void;
+  /** Внешняя оплата (например Prodamus в браузере). */
+  openLink?(url: string, options?: { try_instant_view?: boolean }): void;
   /** Открывает t.me-ссылку (в т.ч. шаринг через t.me/share/url). */
   openTelegramLink(url: string): void;
   onEvent?(eventType: string, eventHandler: () => void): void;

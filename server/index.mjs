@@ -9,6 +9,10 @@
  * 4) Задайте TELEGRAM_MINI_APP_URL — тот же HTTPS URL мини-приложения, что в @BotFather (Mini App).
  * 5) Во фронте укажите VITE_TELEGRAM_PAYMENTS_URL=https://your-domain (без /webhook)
  *
+ * Оплата Prodamus: PAYMENT_PROVIDER=prodamus, PRODAMUS_FORM_URL, PRODAMUS_SECRET_KEY,
+ * PAYMENTS_PUBLIC_BASE_URL (HTTPS этого сервера, как у VITE_TELEGRAM_PAYMENTS_URL), вебхук POST /prodamus/notify.
+ * Документация: https://help.prodamus.ru/payform/integracii/rest-api/instrukcii-dlya-samostoyatelnaya-integracii-servisov
+ *
  * Заявка на разбор: POST /consultation-lead (initData + consultationEmail) → письмо на CONSULTATION_LEAD_TO
  * при настроенном SMTP, и/или сообщение в TELEGRAM_ADMIN_CHAT_ID. См. server/.env.example
  *
@@ -20,23 +24,43 @@ import crypto from 'crypto';
 import cors from 'cors';
 import express from 'express';
 import nodemailer from 'nodemailer';
+import {
+  prodamusRegisterPendingOrder,
+  prodamusCreatePaymentLink,
+  prodamusMarkOrderPaid,
+  prodamusOrderPaidForUser,
+} from './prodamus.mjs';
+import { prodamusVerifySignature } from './prodamusHmac.mjs';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const PROVIDER_TOKEN = process.env.TELEGRAM_PAYMENT_PROVIDER_TOKEN;
 const PORT = Number(process.env.PORT) || 8787;
+const PAYMENT_PROVIDER = (process.env.PAYMENT_PROVIDER || 'telegram').toLowerCase();
 
+/** Названия для чека (Telegram title ≤ 32 символа). amount — копейки для Telegram; priceRub — для Prodamus. */
 const PRODUCTS = {
   full_report: {
-    title: 'Полный анализ когнитивной устойчивости',
-    description: 'Расширенный отчёт по прохождению теста',
+    title: 'Расширенный отчёт Corta',
+    description:
+      'Аналитический отчёт, интерпретация метрик и персональные рекомендации по результатам когнитивного скрининга',
     amount: 39900,
+    priceRub: 399,
   },
   consultation: {
-    title: 'Разбор когнитивного профиля с экспертом',
-    description: 'Сессия 30–40 минут, удалённо',
+    title: 'Сессия с экспертом Corta',
+    description: 'Персональная сессия 30–40 минут, разбор метрик, удалённо',
     amount: 549000,
+    priceRub: 5490,
   },
 };
+
+function miniAppUrlWithQuery(miniAppUrl, params) {
+  const u = new URL(miniAppUrl);
+  for (const [k, v] of Object.entries(params)) {
+    u.searchParams.set(k, String(v));
+  }
+  return u.toString();
+}
 
 function validateInitData(initData, botToken) {
   if (!initData || !botToken) return false;
@@ -179,10 +203,8 @@ app.get('/health', (_req, res) => {
 
 app.post('/invoice', async (req, res) => {
   try {
-    if (!BOT_TOKEN || !PROVIDER_TOKEN) {
-      return res.status(500).json({
-        error: 'Задайте TELEGRAM_BOT_TOKEN и TELEGRAM_PAYMENT_PROVIDER_TOKEN в .env',
-      });
+    if (!BOT_TOKEN) {
+      return res.status(500).json({ error: 'Задайте TELEGRAM_BOT_TOKEN в .env' });
     }
     const { initData, product = 'full_report', sessionId = '' } = req.body ?? {};
     if (!initData || typeof initData !== 'string') {
@@ -193,6 +215,71 @@ app.post('/invoice', async (req, res) => {
     }
     const spec = PRODUCTS[product];
     if (!spec) return res.status(400).json({ error: 'Неизвестный product' });
+
+    if (PAYMENT_PROVIDER === 'prodamus') {
+      const formUrl = process.env.PRODAMUS_FORM_URL?.trim();
+      const secretKey = process.env.PRODAMUS_SECRET_KEY?.trim();
+      const miniAppUrl = process.env.TELEGRAM_MINI_APP_URL?.trim();
+      const publicBase = process.env.PAYMENTS_PUBLIC_BASE_URL?.trim();
+      const sys = process.env.PRODAMUS_SYS?.trim();
+      if (!formUrl || !secretKey || !miniAppUrl || !publicBase) {
+        return res.status(500).json({
+          error:
+            'Prodamus: задайте PRODAMUS_FORM_URL, PRODAMUS_SECRET_KEY, TELEGRAM_MINI_APP_URL, PAYMENTS_PUBLIC_BASE_URL',
+        });
+      }
+      const tgUser = parseTgUser(initData);
+      const tgUserId = tgUser?.id;
+      if (tgUserId == null) {
+        return res.status(400).json({ error: 'Не удалось определить пользователя Telegram' });
+      }
+      const orderId = `c_${product}_${String(sessionId).slice(0, 24)}_${crypto.randomBytes(6).toString('hex')}`;
+      const notifyUrl = `${publicBase.replace(/\/$/, '')}/prodamus/notify`;
+      const urlSuccess = miniAppUrlWithQuery(miniAppUrl, {
+        prodamus_order: orderId,
+        prodamus_status: 'ok',
+      });
+      const urlReturn = miniAppUrlWithQuery(miniAppUrl, {
+        prodamus_order: orderId,
+        prodamus_status: 'cancel',
+      });
+
+      prodamusRegisterPendingOrder(orderId, { product, sessionId, tgUserId });
+
+      const products = [
+        {
+          name: spec.title,
+          price: spec.priceRub,
+          quantity: 1,
+          type: 'service',
+        },
+      ];
+
+      let paymentUrl;
+      try {
+        paymentUrl = await prodamusCreatePaymentLink({
+          formUrl,
+          secretKey,
+          sys: sys || undefined,
+          orderId,
+          products,
+          urlSuccess,
+          urlReturn,
+          urlNotification: notifyUrl,
+        });
+      } catch (e) {
+        console.error('[prodamus] create link', e);
+        return res.status(502).json({ error: e instanceof Error ? e.message : String(e) });
+      }
+      return res.json({ provider: 'prodamus', paymentUrl, orderId });
+    }
+
+    if (!PROVIDER_TOKEN) {
+      return res.status(500).json({
+        error:
+          'Задайте TELEGRAM_PAYMENT_PROVIDER_TOKEN в .env для нативной оплаты Telegram (или PAYMENT_PROVIDER=prodamus)',
+      });
+    }
 
     const payload = `${product}:${String(sessionId).slice(0, 40)}:${Date.now()}`.slice(0, 128);
     const result = await tgApi('createInvoiceLink', {
@@ -207,12 +294,64 @@ app.post('/invoice', async (req, res) => {
     if (!result.ok) {
       return res.status(502).json({ error: result.description || 'createInvoiceLink failed' });
     }
-    return res.json({ invoiceUrl: result.result });
+    return res.json({ provider: 'telegram', invoiceUrl: result.result });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: e instanceof Error ? e.message : String(e) });
   }
 });
+
+app.post('/payment-order-status', async (req, res) => {
+  try {
+    if (PAYMENT_PROVIDER !== 'prodamus') {
+      return res.json({ paid: false });
+    }
+    if (!BOT_TOKEN) return res.status(500).json({ paid: false });
+    const { initData, orderId } = req.body ?? {};
+    if (!initData || typeof initData !== 'string' || !orderId || typeof orderId !== 'string') {
+      return res.status(400).json({ paid: false });
+    }
+    if (!validateInitData(initData, BOT_TOKEN)) {
+      return res.status(401).json({ paid: false });
+    }
+    const user = parseTgUser(initData);
+    const st = prodamusOrderPaidForUser(String(orderId), user?.id);
+    return res.json(st);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ paid: false });
+  }
+});
+
+app.post(
+  '/prodamus/notify',
+  express.urlencoded({ extended: true, limit: '512kb' }),
+  (req, res) => {
+    try {
+      if (PAYMENT_PROVIDER !== 'prodamus') {
+        return res.status(404).send('disabled');
+      }
+      const secretKey = process.env.PRODAMUS_SECRET_KEY?.trim();
+      if (!secretKey) {
+        return res.status(500).send('no secret');
+      }
+      const sign = req.get('Sign') || req.get('sign') || '';
+      if (!prodamusVerifySignature(req.body, secretKey, sign)) {
+        console.warn('[prodamus/notify] bad signature');
+        return res.status(400).send('bad sign');
+      }
+      const oid = req.body.order_id;
+      if (oid) {
+        const marked = prodamusMarkOrderPaid(String(oid));
+        console.info('[prodamus/notify] paid', String(oid), marked ? 'ok' : 'unknown_order');
+      }
+      return res.status(200).type('text/plain').send('success');
+    } catch (e) {
+      console.error('[prodamus/notify]', e);
+      return res.status(500).send('error');
+    }
+  },
+);
 
 app.post('/consultation-lead', async (req, res) => {
   try {
@@ -321,6 +460,6 @@ app.post('/webhook', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(
-    `Payments API: http://127.0.0.1:${PORT}  (POST /invoice, POST /consultation-lead, POST /webhook — /start + оплата)`,
+    `Payments API: http://127.0.0.1:${PORT}  provider=${PAYMENT_PROVIDER}  (POST /invoice, /payment-order-status, /prodamus/notify, /consultation-lead, /webhook)`,
   );
 });

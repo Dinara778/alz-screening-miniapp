@@ -5,7 +5,7 @@ import { Footer } from '../components/Footer';
 import { useApp } from '../context/AppContext';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { buildResultShareText, getShareTestLink, shareOrCopyResultText } from '../utils/shareResult';
-import { openTelegramInvoiceForProduct, reportPaidStorageKey, isPaymentsBackendConfigured } from '../utils/telegramPayments';
+import { openTelegramInvoiceForProduct, reportPaidStorageKey } from '../utils/telegramPayments';
 
 export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const { latestResult, setStage, setConsultationReturnTo } = useApp();
@@ -15,8 +15,8 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   if (!latestResult) return null;
   const a = buildCognitiveAnalytics(latestResult);
 
-  const skipNativePayment =
-    import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true' || !isPaymentsBackendConfigured();
+  /** Только явный dev-флаг: полный отчёт без счёта. Без оплаты отчёт открывается только после успешной оплаты. */
+  const skipNativePayment = import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true';
 
   const handleShare = async () => {
     setShareNotice(null);
@@ -55,6 +55,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           no_api_url: 'Не задан адрес сервера оплаты (VITE_TELEGRAM_PAYMENTS_URL). Подключите бэкенд счетов — без него полный отчёт недоступен.',
           no_init_data: 'Откройте мини-приложение из Telegram (из бота), затем повторите оплату.',
           no_open_invoice: 'Обновите Telegram или откройте мини-приложение в актуальной версии клиента.',
+          no_open_link: 'Обновите Telegram: для оплаты картой нужна актуальная версия с открытием ссылки.',
         };
         setPayNotice(byReason[r.reason]);
         return;
@@ -64,6 +65,12 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         return;
       }
       if (r.status === 'failed') {
+        if (r.detail === 'prodamus_timeout') {
+          setPayNotice(
+            'Не удалось дождаться подтверждения оплаты. Если платёж прошёл, закройте мини-приложение и откройте его снова из бота — отчёт разблокируется.',
+          );
+          return;
+        }
         setPayNotice(`Оплата не завершена (${r.detail}).`);
         return;
       }
