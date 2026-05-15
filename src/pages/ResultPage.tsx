@@ -5,6 +5,7 @@ import { Footer } from '../components/Footer';
 import { useApp } from '../context/AppContext';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { buildResultShareText, getShareTestLink, shareOrCopyResultText } from '../utils/shareResult';
+import { isPaymentsStubbed, PAYMENT_STUB_MESSAGE } from '../utils/paymentStub';
 import { openTelegramInvoiceForProduct, reportPaidStorageKey } from '../utils/telegramPayments';
 
 export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
@@ -35,6 +36,10 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
 
   const handlePayFullReport = async () => {
     if (!latestResult) return;
+    if (isPaymentsStubbed()) {
+      setPayNotice(PAYMENT_STUB_MESSAGE);
+      return;
+    }
     if (skipNativePayment) {
       localStorage.setItem(reportPaidStorageKey(latestResult.id), '1');
       setStage('full-report');
@@ -82,6 +87,10 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
 
   const handlePayConsultation = () => {
     if (!latestResult) return;
+    if (isPaymentsStubbed()) {
+      setPayNotice(PAYMENT_STUB_MESSAGE);
+      return;
+    }
     setConsultationReturnTo('result');
     setStage('consultation-request');
   };
@@ -169,7 +178,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
             {payBusy ? 'Открываем оплату…' : 'Получить расширенный отчёт — 399 ₽'}
           </Button>
         </div>
-        {payNotice ? <p className="text-sm text-amber-200">{payNotice}</p> : null}
       </div>
 
       <div className="rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-5 shadow-sm dark:border-emerald-800 dark:from-emerald-950/40 dark:to-slate-900">
@@ -194,6 +202,12 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           </p>
         </div>
       </div>
+
+      {payNotice ? (
+        <p className="text-sm text-amber-900 dark:text-amber-100 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+          {payNotice}
+        </p>
+      ) : null}
 
       <div className="flex flex-wrap gap-3">
         <Button variant="secondary" onClick={onRestart}>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../components/Button';
 import { useApp } from '../context/AppContext';
+import { isPaymentsStubbed, PAYMENT_STUB_MESSAGE } from '../utils/paymentStub';
 import {
   consultationPaidStorageKey,
   isPaymentsBackendConfigured,
@@ -35,6 +36,10 @@ export const ConsultationRequestPage = () => {
   const handlePay = async () => {
     if (!latestResult) {
       setNotice('Нет данных сессии. Вернитесь к результатам и откройте запись снова.');
+      return;
+    }
+    if (isPaymentsStubbed()) {
+      setNotice(PAYMENT_STUB_MESSAGE);
       return;
     }
     setNotice(null);

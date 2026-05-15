@@ -6,6 +6,7 @@ import { useApp } from '../context/AppContext';
 import { formatDomainInterpretationPlain } from '../copy/cognitiveDomainInterpretationsMid52';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { downloadCognitiveReportPdf } from '../utils/pdfReport';
+import { isPaymentsStubbed, PAYMENT_STUB_MESSAGE } from '../utils/paymentStub';
 import { isReportPaidUnlocked, isPaymentsBackendConfigured } from '../utils/telegramPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
@@ -17,6 +18,7 @@ export const FullReportPage = () => {
   const [reportEmail, setReportEmail] = useState('');
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  const [consultationPayNotice, setConsultationPayNotice] = useState<string | null>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
 
   const analytics = useMemo(() => {
@@ -110,6 +112,11 @@ export const FullReportPage = () => {
 
   const handlePayConsultation = () => {
     if (!latestResult) return;
+    if (isPaymentsStubbed()) {
+      setConsultationPayNotice(PAYMENT_STUB_MESSAGE);
+      return;
+    }
+    setConsultationPayNotice(null);
     setConsultationReturnTo('full-report');
     setStage('consultation-request');
   };
@@ -405,6 +412,11 @@ export const FullReportPage = () => {
             Наш менеджер свяжется с вами по почте, указанной при оплате, в течение 15 минут для согласования удобного
             времени сессии.
           </p>
+          {consultationPayNotice ? (
+            <p className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg p-3">
+              {consultationPayNotice}
+            </p>
+          ) : null}
         </div>
       </div>
 
