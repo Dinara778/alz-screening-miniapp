@@ -5,6 +5,15 @@ const PROGRESS_KEY = 'alz_progress_v1';
 
 const PROGRESS_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
+/** Полная перезагрузка вкладки (F5, pull-to-refresh) — не восстанавливаем незавершённый тест. */
+export function isPageReload(): boolean {
+  if (typeof window === 'undefined' || typeof performance === 'undefined') return false;
+  const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+  if (nav?.type === 'reload') return true;
+  const legacy = (performance as Performance & { navigation?: { type?: number } }).navigation;
+  return legacy?.type === 1;
+}
+
 /** Этапы, с которых имеет смысл восстанавливать сессию после закрытия мини-приложения */
 const RESTORABLE_STAGES = new Set<AppStage>([
   'word-study',

@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { AppStage, ParticipantProfile, SessionResult, TrialResult } from '../types';
 import {
   clearProgress,
+  isPageReload,
   loadHistory,
   saveProgress,
   saveSession,
@@ -30,7 +31,9 @@ type BootState = {
 };
 
 function buildBootState(): BootState {
-  const raw = loadProgress();
+  const reloaded = isPageReload();
+  if (reloaded) clearProgress();
+  const raw = reloaded ? null : loadProgress();
   const r = shouldRestoreProgress(raw) ? raw : null;
   return {
     stage: r?.stage ?? 'corta-intro',
