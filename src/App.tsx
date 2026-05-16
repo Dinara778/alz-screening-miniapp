@@ -62,13 +62,7 @@ function App() {
   }, []);
 
   return (
-    <main
-      className={
-        app.stage === 'corta-intro' || app.stage === 'expert-intro' || app.stage === 'intro-test-offer'
-          ? 'mx-auto flex min-h-screen min-h-[100dvh] max-w-2xl flex-col bg-[#050807] px-4 py-6 text-white shadow-none'
-          : 'mx-auto flex min-h-screen min-h-[100dvh] max-w-2xl flex-col bg-gradient-to-b from-emerald-50 via-white to-teal-50 px-4 py-6 text-slate-950 shadow-brand dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100 dark:shadow-none'
-      }
-    >
+    <main className="mx-auto flex min-h-screen min-h-[100dvh] max-w-2xl flex-col bg-gradient-to-b from-emerald-50 via-white to-teal-50 px-4 py-6 text-slate-950 shadow-brand dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100 dark:shadow-none">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {app.stage === 'corta-intro' && <CortaIntroPage onContinue={() => app.setStage('expert-intro')} />}
         {app.stage === 'expert-intro' && <ExpertIntroPage onContinue={() => app.setStage('intro-test-offer')} />}
