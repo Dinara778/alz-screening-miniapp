@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildCognitiveAnalytics, reactionSpeedDomainScoreFromMedian } from '../utils/cognitiveAnalytics';
+import { reactionStabilityDomainScore } from '../utils/reactionMetrics';
 import { getGranularIndexInterpretation } from '../utils/indexInterpretationBands';
 import { scoreReaction } from '../utils/scoring';
 import { formatCognitiveSelfValidationText, runCognitiveSelfValidation } from './cognitiveSelfTest';
@@ -8,6 +9,17 @@ import {
   buildSlowStableSession,
   buildStableUserSession,
 } from './syntheticSessions';
+
+describe('reactionStabilityDomainScore', () => {
+  it('does not return 0 for high but valid variability', () => {
+    expect(reactionStabilityDomainScore(58, 1)).toBeGreaterThanOrEqual(12);
+    expect(reactionStabilityDomainScore(58, 1)).toBeLessThan(50);
+  });
+
+  it('floors at 12 for extreme CV and many anticipations', () => {
+    expect(reactionStabilityDomainScore(95, 15)).toBe(12);
+  });
+});
 
 describe('reactionSpeedDomainScoreFromMedian', () => {
   it('never returns 0 for typical slow valid medians', () => {
@@ -81,6 +93,9 @@ describe('cognitive self-validation cases', () => {
     expect(Math.abs(a1.index.value - a3.index.value)).toBeGreaterThanOrEqual(5);
     expect(a3.patterns.find((p) => p.id === 'attention_instability')?.active).toBe(true);
     expect(a3.metrics.reactionCv).toBeGreaterThan(35);
+    const stab = a3.domains.find((d) => d.key === 'reactionStability')?.score ?? 0;
+    expect(stab).toBeGreaterThanOrEqual(12);
+    expect(stab).toBeLessThan(55);
   });
 
   it('empty valid reaction RT: warnings and degraded interpretation', () => {

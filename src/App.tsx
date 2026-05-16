@@ -11,6 +11,7 @@ import { TestPage } from './pages/TestPage';
 import { ConsultationRequestPage } from './pages/ConsultationRequestPage';
 import { CortaIntroPage } from './pages/CortaIntroPage';
 import { ExpertIntroPage } from './pages/ExpertIntroPage';
+import { IntroTestOfferPage } from './pages/IntroTestOfferPage';
 import { WelcomePage } from './pages/WelcomePage';
 
 const STAGES_HIDE_SUPPORT_FOOTER: AppStage[] = ['flanker', 'reaction', 'stroop'];
@@ -19,6 +20,7 @@ const STAGES_HIDE_SUPPORT_FOOTER: AppStage[] = ['flanker', 'reaction', 'stroop']
 const STAGES_HIDE_DEVELOPER_CREDIT: AppStage[] = [
   'corta-intro',
   'expert-intro',
+  'intro-test-offer',
   'word-study',
   'word-immediate',
   'flanker-instruction',
@@ -29,6 +31,7 @@ const STAGES_HIDE_DEVELOPER_CREDIT: AppStage[] = [
   'word-delayed',
   'face-study',
   'stroop-instruction',
+  'stroop-confirm',
   'stroop',
   'face-test',
 ];
@@ -61,14 +64,17 @@ function App() {
   return (
     <main
       className={
-        app.stage === 'corta-intro' || app.stage === 'expert-intro'
-          ? 'mx-auto flex min-h-screen min-h-[100dvh] max-w-2xl flex-col bg-slate-100 px-4 py-6 text-slate-950 shadow-none dark:bg-slate-950 dark:text-slate-100'
+        app.stage === 'corta-intro' || app.stage === 'expert-intro' || app.stage === 'intro-test-offer'
+          ? 'mx-auto flex min-h-screen min-h-[100dvh] max-w-2xl flex-col bg-[#050807] px-4 py-6 text-white shadow-none'
           : 'mx-auto flex min-h-screen min-h-[100dvh] max-w-2xl flex-col bg-gradient-to-b from-emerald-50 via-white to-teal-50 px-4 py-6 text-slate-950 shadow-brand dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100 dark:shadow-none'
       }
     >
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {app.stage === 'corta-intro' && <CortaIntroPage onContinue={() => app.setStage('expert-intro')} />}
-        {app.stage === 'expert-intro' && <ExpertIntroPage onContinue={() => app.setStage('welcome')} />}
+        {app.stage === 'expert-intro' && <ExpertIntroPage onContinue={() => app.setStage('intro-test-offer')} />}
+        {app.stage === 'intro-test-offer' && (
+          <IntroTestOfferPage onContinue={() => app.setStage('welcome')} />
+        )}
         {app.stage === 'welcome' && (
           <WelcomePage
             onStart={(profile) => app.beginNewAssessment(profile)}
@@ -87,6 +93,7 @@ function App() {
           'word-delayed',
           'face-study',
           'stroop-instruction',
+          'stroop-confirm',
           'stroop',
           'face-test',
         ].includes(app.stage) && <TestPage key={app.sessionSeed} />}
@@ -97,6 +104,7 @@ function App() {
       {app.stage !== 'welcome' &&
         app.stage !== 'corta-intro' &&
         app.stage !== 'expert-intro' &&
+        app.stage !== 'intro-test-offer' &&
         app.stage !== 'result' && (
         <SupportFooter
           showSupport={!STAGES_HIDE_SUPPORT_FOOTER.includes(app.stage)}

@@ -23,7 +23,15 @@ import 'dotenv/config';
 import crypto from 'crypto';
 import cors from 'cors';
 import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import nodemailer from 'nodemailer';
+import {
+  ensureTelegramWebhook,
+  isStartCommand,
+  sendStartMessage,
+} from './botStart.mjs';
 import {
   prodamusRegisterPendingOrder,
   prodamusCreatePaymentLink,
@@ -89,11 +97,7 @@ async function tgApi(method, body) {
   return res.json();
 }
 
-/** /start или /start@YourBot с необязательным payload */
-function isStartCommand(text) {
-  if (typeof text !== 'string') return false;
-  return /^\/start(@[A-Za-z0-9_]+)?(\s|$)/.test(text.trim());
-}
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const LEAD_TO_DEFAULT = 'hello@bookvolon.ru';
 
@@ -425,41 +429,38 @@ app.post('/webhook', async (req, res) => {
     }
 
     const msg = update?.message;
-    if (msg?.text && BOT_TOKEN && isStartCommand(msg.text)) {
-      const miniAppUrl = process.env.TELEGRAM_MINI_APP_URL?.trim();
-      const welcomeText =
-        process.env.TELEGRAM_START_MESSAGE?.trim() ||
-        'Здравствуйте! Нажмите кнопку ниже, чтобы открыть мини-приложение и пройти скрининг.';
-      const buttonLabel =
-        process.env.TELEGRAM_START_BUTTON_TEXT?.trim() || 'Открыть приложение';
-
-      const payload = {
-        chat_id: msg.chat.id,
-        text: welcomeText,
-        disable_web_page_preview: true,
-      };
-      if (miniAppUrl) {
-        payload.reply_markup = {
-          inline_keyboard: [[{ text: buttonLabel, web_app: { url: miniAppUrl } }]],
-        };
-      } else {
-        payload.text +=
-          '\n\n(Администратору: задайте на сервере переменную TELEGRAM_MINI_APP_URL — HTTPS-адрес веб-приложения из настроек бота в @BotFather, иначе кнопка не появится.)';
-      }
-
-      const sent = await tgApi('sendMessage', payload);
+    const text = msg?.text ?? msg?.caption;
+    if (msg?.chat?.id != null && BOT_TOKEN && text && isStartCommand(text)) {
+      const sent = await sendStartMessage(tgApi, msg.chat.id);
       if (!sent.ok) {
         console.error('[webhook /start] sendMessage', sent.description || sent);
       }
     }
   } catch (e) {
-    console.error(e);
+    console.error('[webhook]', e);
   }
   res.sendStatus(200);
 });
 
+/** SERVE_STATIC=true — раздача dist/ (мини-приложение + API на одном домене, вебхук /webhook). */
+if (process.env.SERVE_STATIC === 'true') {
+  const distDir = path.join(__dirname, '../dist');
+  if (fs.existsSync(distDir)) {
+    app.use(express.static(distDir));
+    app.get(/^(?!\/(webhook|invoice|health|prodamus|consultation-lead|payment-order-status)).*$/, (_req, res) => {
+      res.sendFile(path.join(distDir, 'index.html'));
+    });
+    console.info('[static] dist:', distDir);
+  } else {
+    console.warn('[static] dist/ не найден — соберите фронт: npm run build');
+  }
+}
+
 app.listen(PORT, () => {
   console.log(
-    `Payments API: http://127.0.0.1:${PORT}  provider=${PAYMENT_PROVIDER}  (POST /invoice, /payment-order-status, /prodamus/notify, /consultation-lead, /webhook)`,
+    `Payments API: http://127.0.0.1:${PORT}  provider=${PAYMENT_PROVIDER}  (POST /invoice, /webhook, …)`,
   );
+  if (BOT_TOKEN) {
+    void ensureTelegramWebhook(tgApi).catch((e) => console.error('[bot] ensureWebhook', e));
+  }
 });

@@ -125,19 +125,12 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
 
         {step === 0 && (
           <div className="relative z-10 space-y-5 text-center sm:text-left">
-            <h1 className="inline-block rounded-xl bg-gradient-to-br from-emerald-900 to-teal-950 px-4 py-3 text-2xl font-bold leading-tight text-white shadow-md sm:text-3xl">
-              🧠 Тест: индекс когнитивной эффективности
-            </h1>
-            <div className="rounded-xl border-2 border-emerald-200/90 bg-gradient-to-br from-emerald-50 to-teal-50/80 p-4 text-left dark:border-emerald-700/50 dark:from-emerald-950/50 dark:to-slate-800/80">
-              <div className="font-semibold text-emerald-950 dark:text-emerald-100">📋 Что измеряет тест</div>
-              <div className="mt-2 space-y-2 text-sm text-slate-900 dark:text-slate-200 sm:text-base">
-                <div>⚡ Скорость обработки информации (как быстро мозг реагирует и переключается).</div>
-                <div>🎯 Стабильность внимания (насколько внимание устойчиво к отвлечениям).</div>
-                <div>〰️ Вариативность реакций (насколько мозг работает &quot;ровно&quot;, без &quot;рывков&quot;).</div>
-                <div>🧩 Рабочая память (удержание информации в моменте).</div>
-                <div>💪 Когнитивная выносливость (как быстро мозг начинает уставать).</div>
-              </div>
-            </div>
+            <h2 className="text-xl font-bold text-emerald-950 dark:text-emerald-50 sm:text-2xl">
+              Короткая анкета перед тестом
+            </h2>
+            <p className="text-sm font-medium text-emerald-800/90 dark:text-emerald-200/90 sm:text-base">
+              Несколько вопросов — имя, контакты, возраст. Займёт около минуты, данные остаются на вашем устройстве.
+            </p>
             <div className="w-full">
               <Button
                 type="button"

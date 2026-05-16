@@ -1,0 +1,24 @@
+# Мини-приложение + API бота (/webhook) на одном домене Amvera.
+# В Amvera: тип сборки Docker, Dockerfile = Dockerfile.unified
+# Env: TELEGRAM_BOT_TOKEN, TELEGRAM_MINI_APP_URL=https://ваш-домен.amvera.io, SERVE_STATIC=true
+# PAYMENTS_PUBLIC_BASE_URL=https://ваш-домен.amvera.io (для авто-вебхука и оплат)
+
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM node:20-alpine
+WORKDIR /app/server
+COPY server/package*.json ./
+RUN npm ci --omit=dev
+WORKDIR /app
+COPY server ./server
+COPY --from=builder /app/dist ./dist
+WORKDIR /app/server
+ENV PORT=8080
+ENV SERVE_STATIC=true
+EXPOSE 8080
+CMD ["node", "index.mjs"]

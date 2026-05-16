@@ -1,6 +1,7 @@
-import { FormEvent, useEffect, useRef, useState, type ReactNode } from 'react';
+import { FormEvent, useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import { Button } from '../components/Button';
 import { ProgressBar } from '../components/ProgressBar';
+import { StroopConfirmStep } from '../components/StroopConfirmStep';
 import { TestInstruction } from '../components/TestInstruction';
 import { TestProgressBanner } from '../components/TestProgressBanner';
 import { useApp } from '../context/AppContext';
@@ -64,10 +65,17 @@ export const TestPage = () => {
     };
   }, [app.stage, flanker.index, flanker.done, app.sessionSeed]);
 
+  const stroopAdvanceRef = useRef(false);
   useEffect(() => {
-    if (app.stage !== 'stroop' || stroop.done) return;
-    stroop.startTrial();
-  }, [app.stage, stroop.index, stroop.done]);
+    if (app.stage !== 'stroop') {
+      stroopAdvanceRef.current = false;
+      return;
+    }
+    if (!stroop.done || stroopAdvanceRef.current) return;
+    stroopAdvanceRef.current = true;
+    app.setStroopTrials(stroop.results);
+    app.setStage('face-test');
+  }, [app.stage, stroop.done, stroop.results, app]);
 
   useEffect(() => {
     if (app.stage === 'interference-wait' && timer.isFinished) {
@@ -425,50 +433,67 @@ export const TestPage = () => {
       <TestInstruction
         title="Задание 4: струп"
         text={
-          'На экране будет отображаться название цвета (например, КРАСНЫЙ, СИНИЙ, ЗЕЛЕНЫЙ), окрашенное в один из этих цветов.\n' +
-          'Ваша задача: нажать на кнопку ТОГО ЖЕ ЦВЕТА, что и слово, написанное выше.\n' +
-          'Всего 30 проб: 10 с совпадением названия и цвета букв, 10 конфликтных и 10 нейтральных.\n' +
-          'Работайте максимально быстро и точно.'
+          'На экране появится слово «КРАСНЫЙ», «СИНИЙ» или «ЗЕЛЕНЫЙ», написанное цветными буквами.\n' +
+          'Нажимайте кнопку с цветом букв (как окрашено слово), а не по смыслу слова.\n' +
+          'Пример: слово «СИНИЙ» красными буквами — правильный ответ «Красный».\n' +
+          'Всего 30 проб: 10 совпадающих, 10 конфликтных и 10 нейтральных.\n' +
+          'Работайте быстро и точно.'
         }
-        onStart={() => app.setStage('stroop')}
+        onStart={() => app.setStage('stroop-confirm')}
+      />,
+    );
+  }
+
+  if (app.stage === 'stroop-confirm') {
+    return wrapWithTestProgress(
+      app.stage,
+      <StroopConfirmStep
+        onConfirm={() => app.setStage('stroop')}
+        onBack={() => app.setStage('stroop-instruction')}
       />,
     );
   }
 
   if (app.stage === 'stroop') {
     if (stroop.done) {
-      app.setStroopTrials(stroop.results);
-      app.setStage('face-test');
-      return null;
+      return wrapWithTestProgress(
+        app.stage,
+        <p className="text-center text-slate-600">Загрузка следующего задания…</p>,
+      );
     }
     const s = stroop.current;
     const colorClass = s?.color === 'red' ? 'text-red-600' : s?.color === 'blue' ? 'text-blue-600' : 'text-green-600';
+    const pickColor = (c: 'red' | 'blue' | 'green') => (e: PointerEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      stroop.answer(c);
+    };
 
     return wrapWithTestProgress(
       app.stage,
       <div className="space-y-4 text-center">
         <h2 className="text-xl font-bold">Струп {stroop.index + 1}/30</h2>
         <ProgressBar value={stroop.index} max={30} />
+        <p className="text-sm text-slate-600">Нажимайте цвет букв, не значение слова</p>
         <div className={`text-4xl font-bold ${colorClass}`}>{s?.word}</div>
         <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-3">
           <button
             type="button"
-            className="w-full rounded-2xl bg-red-600 px-4 py-4 text-[1.0625rem] font-bold leading-snug text-white shadow-md transition hover:bg-red-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:py-[1.125rem] sm:text-xl"
-            onClick={() => stroop.answer('red')}
+            className="w-full touch-manipulation rounded-2xl bg-red-600 px-4 py-4 text-[1.0625rem] font-bold leading-snug text-white shadow-md transition hover:bg-red-500 active:scale-[0.98] sm:py-[1.125rem] sm:text-xl"
+            onPointerDown={pickColor('red')}
           >
             Красный
           </button>
           <button
             type="button"
-            className="w-full rounded-2xl bg-blue-600 px-4 py-4 text-[1.0625rem] font-bold leading-snug text-white shadow-md transition hover:bg-blue-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:py-[1.125rem] sm:text-xl"
-            onClick={() => stroop.answer('blue')}
+            className="w-full touch-manipulation rounded-2xl bg-blue-600 px-4 py-4 text-[1.0625rem] font-bold leading-snug text-white shadow-md transition hover:bg-blue-500 active:scale-[0.98] sm:py-[1.125rem] sm:text-xl"
+            onPointerDown={pickColor('blue')}
           >
             Синий
           </button>
           <button
             type="button"
-            className="w-full rounded-2xl bg-green-600 px-4 py-4 text-[1.0625rem] font-bold leading-snug text-white shadow-md transition hover:bg-green-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:py-[1.125rem] sm:text-xl"
-            onClick={() => stroop.answer('green')}
+            className="w-full touch-manipulation rounded-2xl bg-green-600 px-4 py-4 text-[1.0625rem] font-bold leading-snug text-white shadow-md transition hover:bg-green-500 active:scale-[0.98] sm:py-[1.125rem] sm:text-xl"
+            onPointerDown={pickColor('green')}
           >
             Зеленый
           </button>

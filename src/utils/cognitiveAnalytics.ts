@@ -5,7 +5,12 @@ import {
   getGranularIndexInterpretation,
   type IndexInterpretation,
 } from './indexInterpretationBands';
-import { MIN_VALID_REACTION_RT_MS, sanitizeReactionRts } from './reactionMetrics';
+import {
+  MIN_VALID_REACTION_RT_MS,
+  reactionStabilityDomainScore,
+  robustReactionCvPercent,
+  sanitizeReactionRts,
+} from './reactionMetrics';
 
 export type { IndexBandKey, IndexInterpretation, OverloadVisualTier } from './indexInterpretationBands';
 
@@ -297,7 +302,7 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
     ? reactionSpeedDomainScoreFromMedian(m.reactionMedianRt)
     : 50;
   const reactionStabilityScore = reactionTrusted
-    ? clampScore(100 - m.reactionCv * 1.1 - m.reactionAnticipations * 6)
+    ? reactionStabilityDomainScore(robustReactionCvPercent(reactionRtsClean), m.reactionAnticipations)
     : 50;
 
   const flexibilityScore = clampScore(

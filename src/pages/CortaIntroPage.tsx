@@ -1,88 +1,97 @@
 import { Button } from '../components/Button';
+import {
+  IconArrowRight,
+  IconChart,
+  IconLock,
+  IconShield,
+  IconTarget,
+} from '../components/landing/LandingIcons';
+import { IntroShell } from '../components/landing/IntroShell';
 
 type Props = {
   onContinue: () => void;
 };
 
-/**
- * Первый экран: нейтральная «редакторская» палитра, акцент бренда только в логотипе и слове Corta.
- * Фон не зависит от зелёного градиента приложения — отдельно от Welcome.
- */
+const VALUE_PROPS = [
+  {
+    Icon: IconTarget,
+    title: 'Научно обосновано',
+    text: 'Методики на основе когнитивной нейронауки',
+  },
+  {
+    Icon: IconChart,
+    title: 'Персонализировано',
+    text: 'Анализ именно вашего когнитивного состояния',
+  },
+  {
+    Icon: IconLock,
+    title: 'Конфиденциально',
+    text: 'Ваши данные надёжно защищены и никуда не передаются',
+  },
+] as const;
+
 export const CortaIntroPage = ({ onContinue }: Props) => {
+  const footer = (
+    <div className="space-y-4">
+      <Button
+        type="button"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border-0 bg-emerald-400 py-4 text-[1.0625rem] font-bold leading-snug text-slate-950 shadow-lg shadow-emerald-500/30 hover:bg-emerald-300 sm:py-[1.125rem] sm:text-xl"
+        onClick={onContinue}
+      >
+        <span>Начать тест бесплатно</span>
+        <IconArrowRight className="h-5 w-5 shrink-0" />
+      </Button>
+      <p className="flex items-center justify-center gap-2 text-center text-sm text-emerald-200/90">
+        <IconShield className="h-5 w-5 shrink-0 text-emerald-400" />
+        <span>Это бесплатно и займёт всего 10 минут</span>
+      </p>
+    </div>
+  );
+
   return (
-    <section
-      className="relative w-full overflow-hidden rounded-[1.75rem] border border-slate-200/90 bg-white text-slate-900 shadow-[0_24px_60px_-28px_rgba(15,23,42,0.2)] sm:rounded-3xl dark:border-slate-700/80 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_20px_50px_-30px_rgba(0,0,0,0.45)]"
-      aria-label="Приветствие Corta Lab"
-    >
-      {/* Мягкий «воздух» — без зелёного заливки */}
-      <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_120%_80%_at_0%_-20%,rgb(99_102_241/0.07),transparent_50%),radial-gradient(ellipse_100%_60%_at_100%_100%,rgb(14_165_233/0.06),transparent_45%)] dark:bg-[radial-gradient(ellipse_120%_80%_at_0%_-20%,rgb(99_102_241/0.12),transparent_50%),radial-gradient(ellipse_100%_60%_at_100%_100%,rgb(45_212_191/0.08),transparent_45%)]"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.4] dark:opacity-[0.25]"
-        style={{
-          backgroundImage:
-            'radial-gradient(circle at center, rgb(148 163 184 / 0.12) 1px, transparent 1px)',
-          backgroundSize: '22px 22px',
-        }}
-        aria-hidden
-      />
+    <IntroShell aria-label="Главный экран Corta" footer={footer}>
+      <div className="space-y-6 pb-4">
+        <header className="flex items-start justify-between gap-3">
+          <span className="rounded-full border border-emerald-500/40 bg-emerald-950/80 px-3 py-1 text-[0.6875rem] font-semibold uppercase tracking-wide text-emerald-300">
+            наука о вашем мозге
+          </span>
+          <img
+            src="/corta-lab-logo.svg"
+            alt="Corta"
+            width={48}
+            height={48}
+            className="h-11 w-11 shrink-0 select-none opacity-95"
+          />
+        </header>
 
-      <div className="relative z-10 flex min-h-[min(92dvh,720px)] flex-col px-6 py-8 sm:py-10">
-        <div className="flex flex-1 flex-col items-center justify-center gap-8 py-4 text-center sm:gap-10">
-          <div className="flex flex-col items-center gap-5 sm:gap-6">
-            <img
-              src="/corta-lab-logo.svg"
-              alt="Corta Lab"
-              width={144}
-              height={144}
-              className="h-[6.25rem] w-[6.25rem] select-none drop-shadow-sm sm:h-32 sm:w-32"
-            />
-            <p
-              className="font-display text-[clamp(2.85rem,12vw,5.35rem)] font-black leading-[0.92] tracking-[-0.04em] text-slate-900 antialiased dark:text-white"
-              style={{ fontFeatureSettings: '"ss01"' }}
+        <div className="space-y-4 pr-2">
+          <h1 className="font-display text-[clamp(1.65rem,7vw,2.25rem)] font-black leading-[1.1] tracking-tight text-white">
+            Узнайте свой когнитивный профиль{' '}
+            <span className="text-emerald-400">за 10 минут</span>
+          </h1>
+          <p className="text-[0.9375rem] leading-relaxed text-slate-300 sm:text-base">
+            Научный тест оценивает память, внимание и скорость реакции. Вы получите персональные рекомендации
+            для улучшения когнитивных функций.
+          </p>
+        </div>
+
+        <ul className="grid gap-4 sm:grid-cols-3 sm:gap-3">
+          {VALUE_PROPS.map(({ Icon, title, text }) => (
+            <li
+              key={title}
+              className="flex gap-3 rounded-xl border border-emerald-500/15 bg-emerald-950/40 p-4 sm:flex-col sm:items-center sm:text-center"
             >
-              corta<span className="text-emerald-600 dark:text-emerald-400">.</span>
-            </p>
-          </div>
-
-          <div className="mx-auto w-full max-w-md rounded-2xl border border-slate-200/90 bg-slate-50/90 px-6 py-6 text-left shadow-sm ring-1 ring-slate-100/80 backdrop-blur-md dark:border-slate-600/60 dark:bg-slate-800/80 dark:ring-slate-700/40 sm:rounded-3xl sm:px-8 sm:py-7">
-            <div className="mb-4 h-1 w-12 rounded-full bg-gradient-to-r from-indigo-500 to-teal-500 opacity-90" aria-hidden />
-            <h1 className="font-sans text-[1.375rem] font-semibold leading-snug tracking-tight text-slate-900 dark:text-white sm:text-3xl sm:leading-tight">
-              Добро пожаловать в{' '}
-              <span className="font-display font-extrabold tracking-tight text-emerald-800 dark:text-emerald-300">
-                Corta
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400">
+                <Icon className="h-5 w-5" />
               </span>
-            </h1>
-            <p className="mt-4 font-sans text-base font-medium leading-relaxed tracking-[-0.01em] text-slate-800 dark:text-slate-200 sm:text-lg">
-              Тест на память, внимание, скорость реакции. Результаты объективно и сразу.
-            </p>
-            <p className="mt-3 font-sans text-[0.9375rem] font-normal leading-relaxed text-slate-500 dark:text-slate-400 sm:text-base">
-              + адресные рекомендации по вашему когнитивному профилю
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2" aria-hidden>
-            <span className="h-px w-10 bg-gradient-to-r from-transparent to-slate-300 dark:to-slate-600" />
-            <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-600" />
-            <span className="h-1 w-1 rounded-full bg-slate-200 dark:bg-slate-500" />
-            <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-600" />
-            <span className="h-px w-10 bg-gradient-to-l from-transparent to-slate-300 dark:to-slate-600" />
-          </div>
-        </div>
-
-        <div className="mt-auto w-full shrink-0 pt-6 pb-2">
-          <Button
-            type="button"
-            variant="sell"
-            className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug shadow-xl shadow-red-600/25 ring-2 ring-red-500/20 hover:ring-red-400/35 sm:rounded-2xl sm:py-[1.125rem] sm:text-xl"
-            onClick={onContinue}
-          >
-            Начать
-          </Button>
-        </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-white">{title}</p>
+                <p className="mt-1 text-sm leading-snug text-slate-400">{text}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
       </div>
-    </section>
+    </IntroShell>
   );
 };
