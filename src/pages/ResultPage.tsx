@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Button } from '../components/Button';
 import { DomainProfileCard } from '../components/DomainProfileCard';
-import { Footer } from '../components/Footer';
 import { useApp } from '../context/AppContext';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { buildResultShareText, getShareTestLink, shareOrCopyResultText } from '../utils/shareResult';
@@ -214,7 +213,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           Пройти снова
         </Button>
       </div>
-      <Footer />
     </div>
   );
 };

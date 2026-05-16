@@ -1,7 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Button } from '../components/Button';
 import { ProgressBar } from '../components/ProgressBar';
-import { Footer } from '../components/Footer';
 import { ParticipantProfile } from '../types';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
@@ -317,7 +316,6 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         </Button>
       ) : null}
 
-      <Footer />
     </div>
   );
 };
