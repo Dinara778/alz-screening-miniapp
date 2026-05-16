@@ -32,16 +32,16 @@ const VALUE_PROPS = [
 
 export const CortaIntroPage = ({ onContinue }: Props) => {
   const footer = (
-    <div className="space-y-4">
+    <div className="flex w-full flex-col items-center space-y-4 text-center">
       <Button
         type="button"
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border-0 bg-emerald-400 py-4 text-[1.0625rem] font-bold leading-snug text-slate-950 shadow-lg shadow-emerald-500/30 hover:bg-emerald-300 sm:py-[1.125rem] sm:text-xl"
+        className="flex w-full max-w-md items-center justify-center gap-2 rounded-2xl border-0 bg-emerald-400 py-4 text-center text-[1.0625rem] font-bold leading-snug text-slate-950 shadow-lg shadow-emerald-500/30 hover:bg-emerald-300 sm:py-[1.125rem] sm:text-xl"
         onClick={onContinue}
       >
         <span>Начать тест бесплатно</span>
         <IconArrowRight className="h-5 w-5 shrink-0" />
       </Button>
-      <p className="flex items-center justify-start gap-2 text-left text-sm text-emerald-200/90">
+      <p className="flex max-w-md items-center justify-center gap-2 text-center text-sm text-emerald-200/90">
         <IconShield className="h-5 w-5 shrink-0 text-emerald-400" />
         <span>Это бесплатно и займёт всего 10 минут</span>
       </p>
@@ -62,7 +62,7 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
         </header>
 
         <div className="space-y-3">
-          <h1 className="text-lg font-bold leading-snug text-white sm:text-xl">
+          <h1 className="text-[clamp(1.625rem,6.5vw,2.25rem)] font-bold leading-[1.15] tracking-tight text-white sm:text-[2.125rem]">
             Узнайте свой когнитивный профиль{' '}
             <span className="text-emerald-400">за 10 минут</span>
           </h1>
