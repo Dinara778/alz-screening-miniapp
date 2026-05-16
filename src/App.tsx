@@ -46,7 +46,7 @@ function App() {
     <main
       className={
         app.stage === 'corta-intro'
-          ? 'mx-auto flex min-h-screen min-h-[100dvh] max-w-2xl flex-col bg-gradient-to-b from-emerald-100 via-emerald-50 to-teal-100 px-4 py-6 text-slate-950 shadow-none dark:from-emerald-950 dark:via-slate-900 dark:to-teal-950 dark:text-slate-100'
+          ? 'mx-auto flex min-h-screen min-h-[100dvh] max-w-2xl flex-col bg-[#050807] px-4 py-6 text-white shadow-none'
           : 'mx-auto flex min-h-screen min-h-[100dvh] max-w-2xl flex-col bg-gradient-to-b from-emerald-50 via-white to-teal-50 px-4 py-6 text-slate-950 shadow-brand dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100 dark:shadow-none'
       }
     >

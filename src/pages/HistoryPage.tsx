@@ -7,7 +7,7 @@ export const HistoryPage = ({ onBack }: { onBack: () => void }) => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">История</h1>
+      <h1 className="app-heading">История</h1>
       {!history.length && <div className="rounded-xl bg-white p-4">Пока нет завершенных сессий.</div>}
       {history.map((h) => {
         const analytics = buildCognitiveAnalytics(h);

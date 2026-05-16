@@ -3,7 +3,7 @@
  */
 export const PrivacyPolicy = () => (
   <div className="rounded-2xl bg-white p-6 shadow-sm space-y-4 text-slate-800 text-sm leading-relaxed">
-    <h1 className="text-xl font-bold text-slate-900">Конфиденциальность</h1>
+    <h1 className="app-heading">Конфиденциальность</h1>
     <p>
       Результаты теста и введённые вами данные сохраняются локально в браузере на вашем устройстве. Мы не собираем и
       не передаём эти сведения третьим лицам с этого экрана без вашего отдельного согласия (например, если вы сами

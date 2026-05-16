@@ -41,3 +41,10 @@ input:focus-visible {
   outline: 3px solid var(--brand-main);
   outline-offset: 2px;
 }
+
+/** Заголовки экранов — Plus Jakarta Sans, как на 3-м intro-экране */
+@layer components {
+  .app-heading {
+    @apply text-lg font-bold leading-snug text-emerald-950 dark:text-emerald-50 sm:text-xl;
+  }
+}

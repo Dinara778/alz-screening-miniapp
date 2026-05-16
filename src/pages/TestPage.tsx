@@ -239,7 +239,7 @@ export const TestPage = () => {
     return wrapWithTestProgress(
       'word-study',
       <>
-        <h2 className="text-2xl font-bold">Задание 1: Эпизодическая память</h2>
+        <h2 className="app-heading">Задание 1: Эпизодическая память</h2>
         <div className="rounded-xl bg-white p-4 space-y-2">
           <p>Сейчас вы увидите 5 слов. Ваша задача - внимательно их запомнить.</p>
           <p className="font-semibold">Слова: {words.join(', ')}</p>
@@ -264,7 +264,7 @@ export const TestPage = () => {
     return wrapWithTestProgress(
       app.stage,
       <form className="space-y-4" onSubmit={(e) => submitWords(e, delayed)}>
-        <h2 className="text-2xl font-bold">{delayed ? 'Отсроченное воспроизведение' : 'Немедленное воспроизведение'}</h2>
+        <h2 className="app-heading">{delayed ? 'Отсроченное воспроизведение' : 'Немедленное воспроизведение'}</h2>
         <p className="text-slate-700">
           {delayed
             ? 'Впишите в поле ниже 5 слов, которые вы запомнили в начале тестирования'
@@ -311,7 +311,7 @@ export const TestPage = () => {
     return wrapWithTestProgress(
       app.stage,
       <div className="space-y-4 text-center">
-        <h2 className="text-xl font-bold">Фланкер {flanker.index + 1}/20</h2>
+        <h2 className="app-heading">Фланкер {flanker.index + 1}/20</h2>
         <ProgressBar value={flanker.index} max={20} />
         <div className="text-5xl font-mono tracking-widest">{flanker.current?.arrows}</div>
         <div className="grid w-full grid-cols-2 gap-3">
@@ -356,7 +356,7 @@ export const TestPage = () => {
     return wrapWithTestProgress(
       app.stage,
       <div className="space-y-4 text-center">
-        <h2 className="text-xl font-bold">Реакция {app.reactionSuccessful.length}/30</h2>
+        <h2 className="app-heading">Реакция {app.reactionSuccessful.length}/30</h2>
         <ProgressBar value={app.reactionSuccessful.length} max={30} />
         <button
           type="button"
@@ -376,7 +376,7 @@ export const TestPage = () => {
     return wrapWithTestProgress(
       app.stage,
       <div className="rounded-xl bg-white p-6 text-center">
-        <h2 className="text-2xl font-bold">Ожидание до отсроченного воспроизведения</h2>
+        <h2 className="app-heading">Ожидание до отсроченного воспроизведения</h2>
         <p className="text-5xl mt-4">{timer.remainingSec}</p>
       </div>,
     );
@@ -387,7 +387,7 @@ export const TestPage = () => {
     return wrapWithTestProgress(
       app.stage,
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold">Задание 4: Лица-имена (изучение)</h2>
+        <h2 className="app-heading">Задание 4: Лица-имена (изучение)</h2>
         <p className="text-slate-700">
           Изучите лица и соответствующие имена. Постарайтесь запомнить пары «лицо-имя», после отвлекающего задания будет проверка.
         </p>
@@ -471,7 +471,7 @@ export const TestPage = () => {
     return wrapWithTestProgress(
       app.stage,
       <div className="space-y-4 text-center">
-        <h2 className="text-xl font-bold">Струп {stroop.index + 1}/30</h2>
+        <h2 className="app-heading">Струп {stroop.index + 1}/30</h2>
         <ProgressBar value={stroop.index} max={30} />
         <p className="text-sm text-slate-600">Нажимайте цвет букв, не значение слова</p>
         <div className={`text-4xl font-bold ${colorClass}`}>{s?.word}</div>
@@ -506,7 +506,7 @@ export const TestPage = () => {
     return wrapWithTestProgress(
       app.stage,
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold">Задание 5: Проверка лиц-имен</h2>
+        <h2 className="app-heading">Задание 5: Проверка лиц-имен</h2>
         <p className="text-slate-700">
           Для каждого лица выберите правильное имя из 3 вариантов. Лица показываются в случайном порядке.
         </p>

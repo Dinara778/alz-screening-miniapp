@@ -11,7 +11,7 @@ export const Footer = () => (
       </div>
       <div className="mb-2 w-full">
         <div className="font-medium text-gray-600 mb-0.5">🔒 Конфиденциальность</div>
-        <p>Все данные хранятся только на вашем устройстве</p>
+        <p>Данные обрабатываются в соответствии с политикой конфиденциальности</p>
       </div>
       <div className="mb-2 w-full">
         <div className="font-medium text-gray-600 mb-0.5">📧 По вопросам</div>

@@ -124,11 +124,11 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
 
         {step === 0 && (
           <div className="relative z-10 space-y-5 text-center sm:text-left">
-            <h2 className="text-xl font-bold text-emerald-950 dark:text-emerald-50 sm:text-2xl">
+            <h2 className="app-heading text-center">
               Короткая анкета перед тестом
             </h2>
             <p className="text-sm font-medium text-emerald-800/90 dark:text-emerald-200/90 sm:text-base">
-              Несколько вопросов — имя, контакты, возраст. Займёт около минуты, данные остаются на вашем устройстве.
+              Несколько вопросов — имя, контакты, возраст. Займёт около минуты.
             </p>
             <div className="w-full">
               <Button
@@ -145,9 +145,9 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         {step === 1 && (
           <div className="relative z-10 space-y-4">
             <div className="text-center text-5xl">✨</div>
-            <h2 className="text-center text-xl font-bold text-emerald-950 dark:text-emerald-50">Как вас зовут?</h2>
+            <h2 className="app-heading text-center">Как вас зовут?</h2>
             <p className="text-center text-sm font-medium text-emerald-800/90 dark:text-emerald-200/90">
-              Имя сохранится только на этом устройстве
+              Укажите, как к вам обращаться
             </p>
             <input
               className={inputClass}
@@ -173,7 +173,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         {step === 2 && (
           <div className="relative z-10 space-y-4">
             <div className="text-center text-5xl">📱</div>
-            <h2 className="text-center text-xl font-bold text-emerald-950 dark:text-emerald-50">Телефон для связи</h2>
+            <h2 className="app-heading text-center">Телефон для связи</h2>
             <p className="text-center text-sm font-medium text-emerald-800/90 dark:text-emerald-200/90">
               Можно с пробелами и скобками — как вам удобно
             </p>
@@ -202,7 +202,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         {step === 3 && (
           <div className="relative z-10 space-y-4">
             <div className="text-center text-5xl">👥</div>
-            <h2 className="text-center text-xl font-bold text-emerald-950 dark:text-emerald-50">Выберите пол</h2>
+            <h2 className="app-heading text-center">Выберите пол</h2>
             <p className="text-center text-sm font-medium text-emerald-800/90 dark:text-emerald-200/90">
               Нужен для корректной нормы в аналитике
             </p>
@@ -239,7 +239,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         {step === 4 && (
           <div className="relative z-10 space-y-4">
             <div className="text-center text-5xl">🎂</div>
-            <h2 className="text-center text-xl font-bold text-emerald-950 dark:text-emerald-50">Ваш возраст</h2>
+            <h2 className="app-heading text-center">Ваш возраст</h2>
             <p className="text-center text-sm font-medium text-emerald-800/90 dark:text-emerald-200/90">
               Полных лет, от 18 до 100
             </p>
@@ -270,7 +270,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         {step === 5 && (
           <form className="relative z-10 space-y-4" onSubmit={submit}>
             <div className="text-center text-5xl">🎓</div>
-            <h2 className="text-center text-xl font-bold text-emerald-950 dark:text-emerald-50">Образование и почта</h2>
+            <h2 className="app-heading text-center">Образование и почта</h2>
             <p className="text-center text-sm font-medium text-emerald-800/90 dark:text-emerald-200/90">
               Последний шаг — и можно начинать замер
             </p>
@@ -295,7 +295,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
               }}
             />
             <p className="rounded-xl border border-orange-200/80 bg-orange-50/90 px-3 py-2 text-center text-xs text-orange-950 dark:border-orange-800/60 dark:bg-orange-950/40 dark:text-orange-100">
-              📧 Почта — для сервисных сообщений и отчёта; храним данные только на вашем устройстве.
+              📧 Почта — для сервисных сообщений и отчёта о результатах.
             </p>
             <div className="flex flex-wrap gap-3">
               <Button type="button" variant="secondary" onClick={goBack}>

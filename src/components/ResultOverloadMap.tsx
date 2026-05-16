@@ -70,7 +70,7 @@ export const ResultOverloadMap = ({ overloadMap, overloadMapIntro, overloadVisua
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-3">
-      <h2 className="text-lg font-semibold text-slate-900">Персональная карта перегрузки</h2>
+      <h2 className="app-heading">Персональная карта перегрузки</h2>
       {overloadMapIntro ? (
         <p className="text-sm text-slate-600 leading-relaxed border-l-4 border-slate-300 pl-3 py-0.5">
           {overloadMapIntro}

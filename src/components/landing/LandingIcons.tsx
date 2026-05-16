@@ -1,27 +1,33 @@
 type IconProps = { className?: string };
 
-export const IconTarget = ({ className = 'h-6 w-6' }: IconProps) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-    <circle cx="12" cy="12" r="9" />
-    <circle cx="12" cy="12" r="4" />
-    <circle cx="12" cy="12" r="1" fill="currentColor" />
+const stroke = { strokeWidth: 1.75, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+
+/** Научная основа — микроскоп / исследование */
+export const IconScience = ({ className = 'h-6 w-6' }: IconProps) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+    <path
+      d="M9 3h6M10 3v4l-3.5 9a3 3 0 0 0 2.7 4.3h5.6a3 3 0 0 0 2.7-4.3L14 7V3"
+      {...stroke}
+    />
+    <path d="M9.5 14h5" {...stroke} />
   </svg>
 );
 
-export const IconChart = ({ className = 'h-6 w-6' }: IconProps) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-    <path d="M4 19V5" strokeLinecap="round" />
-    <path d="M4 19h16" strokeLinecap="round" />
-    <path d="M8 17V11" strokeLinecap="round" />
-    <path d="M12 17V7" strokeLinecap="round" />
-    <path d="M16 17V13" strokeLinecap="round" />
+/** Персонализация — профиль + сигнал */
+export const IconPersonal = ({ className = 'h-6 w-6' }: IconProps) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+    <circle cx="12" cy="8" r="3.5" {...stroke} />
+    <path d="M5 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5" {...stroke} />
+    <path d="M18 6l2 2-3 3" {...stroke} />
   </svg>
 );
 
-export const IconLock = ({ className = 'h-6 w-6' }: IconProps) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-    <rect x="5" y="11" width="14" height="10" rx="2" />
-    <path d="M8 11V8a4 4 0 0 1 8 0v3" strokeLinecap="round" />
+/** Конфиденциальность — щит с замком */
+export const IconShieldLock = ({ className = 'h-6 w-6' }: IconProps) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+    <path d="M12 3l8 3.5V11c0 4.2-3.2 7.4-8 9-4.8-1.6-8-4.8-8-9V6.5L12 3z" {...stroke} />
+    <rect x="9.5" y="10" width="5" height="4" rx="1" {...stroke} />
+    <path d="M10.5 10V9a1.5 1.5 0 0 1 3 0v1" {...stroke} />
   </svg>
 );
 

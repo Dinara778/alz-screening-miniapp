@@ -11,7 +11,7 @@ export const StroopConfirmStep = ({ onConfirm, onBack }: Props) => {
 
   return (
     <div className="space-y-4 rounded-2xl bg-white p-6 text-slate-950 shadow-sm dark:bg-slate-800 dark:text-slate-100">
-      <h2 className="text-2xl font-bold text-slate-950 dark:text-slate-50">Всё ли понятно?</h2>
+      <h2 className="app-heading">Всё ли понятно?</h2>
       <p className="text-slate-800 dark:text-slate-200">
         Перед тестом проверьте правило: нажимаете <strong>цвет букв</strong>, а не то, что написано.
       </p>

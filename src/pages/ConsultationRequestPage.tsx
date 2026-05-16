@@ -109,7 +109,7 @@ export const ConsultationRequestPage = () => {
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-emerald-200 bg-white p-6 shadow-sm dark:border-emerald-800 dark:bg-slate-800/90">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Запись на персональную сессию</h1>
+        <h1 className="app-heading">Запись на персональную сессию</h1>
         {!latestResult ? (
           <>
             <p className="mt-3 text-slate-700 dark:text-slate-200">Нет данных прохождения. Вернитесь назад.</p>

@@ -98,7 +98,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     <div className="space-y-6">
       <div className="rounded-xl border border-slate-700 bg-slate-900 p-4 text-slate-100 shadow-brand dark:border-slate-600 dark:bg-slate-950">
         <div className="text-xs uppercase tracking-widest text-emerald-300/90">📊 Аналитика по метрикам</div>
-        <h1 className="text-2xl font-bold mt-1">✨ Базовый когнитивный профиль</h1>
+        <h1 className="app-heading mt-1">✨ Базовый когнитивный профиль</h1>
         <p className="text-sm text-slate-400 mt-2">
           Отчёт по одному прохождению замера. Не медицинская оценка и не диагноз.
         </p>
@@ -138,7 +138,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 dark:border-slate-600 dark:bg-slate-800/90">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">🧩 Профиль доменов</h2>
+        <h2 className="app-heading">🧩 Профиль доменов</h2>
         <div className="space-y-4">
           {a.domains.map((d) => (
             <DomainProfileCard key={d.key} domain={d} />
@@ -147,7 +147,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-3 dark:border-slate-600 dark:bg-slate-800/90">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">🔗 Поделиться</h2>
+        <h2 className="app-heading">🔗 Поделиться</h2>
         <p className="text-sm text-slate-600">
           Отправьте короткое описание профиля друзьям или сохраните ссылку на тест.
         </p>
@@ -180,7 +180,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       </div>
 
       <div className="rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-5 shadow-sm dark:border-emerald-800 dark:from-emerald-950/40 dark:to-slate-900">
-        <h2 className="text-xl font-bold text-emerald-950 dark:text-emerald-100">🎓 Персональная сессия с экспертом</h2>
+        <h2 className="app-heading">🎓 Персональная сессия с экспертом</h2>
         <p className="text-slate-700 text-sm leading-relaxed">
           Если вы хотите глубже понять закономерности в своих ответах и получить персональную интерпретацию результатов,
           можно пройти персональную сессию с экспертом.

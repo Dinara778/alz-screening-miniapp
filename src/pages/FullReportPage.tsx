@@ -130,7 +130,7 @@ export const FullReportPage = () => {
       style={{ width: '190mm', fontFamily: 'system-ui, -apple-system, sans-serif' }}
     >
       <div className="border-b-2 border-slate-900 pb-4 mb-6">
-        <div className="text-2xl font-bold tracking-tight">Полный анализ когнитивной устойчивости</div>
+        <h1 className="app-heading">Полный анализ когнитивной устойчивости</h1>
         <div className="text-sm text-slate-600 mt-1">Персональный аналитический отчёт</div>
         <div className="mt-4 flex flex-wrap gap-4 text-sm">
           <span>Дата: {fmt(latestResult.date)}</span>
@@ -140,13 +140,13 @@ export const FullReportPage = () => {
         <p className="mt-3 text-slate-700">{analytics.index.description}</p>
       </div>
 
-      <h2 className="text-lg font-bold mb-2">1. Общий когнитивный профиль</h2>
+      <h2 className="app-heading mb-2">1. Общий когнитивный профиль</h2>
       <p className="mb-4 text-slate-800">
         Индекс когнитивной устойчивости отражает согласованность внимания, темпа реакции и удержания
         информации в рамках одного прохождения замера.
       </p>
 
-      <h2 className="text-lg font-bold mb-2">2. Расшифровка доменов</h2>
+      <h2 className="app-heading mb-2">2. Расшифровка доменов</h2>
       <ul className="mb-4 space-y-4 list-none pl-0">
         {analytics.domains.map((d) => (
           <li key={d.key}>
@@ -160,7 +160,7 @@ export const FullReportPage = () => {
         ))}
       </ul>
 
-      <h2 className="text-lg font-bold mb-2">3. Персональная карта перегрузки</h2>
+      <h2 className="app-heading mb-2">3. Персональная карта перегрузки</h2>
       <ul className="mb-4 space-y-2">
         {analytics.overloadMap.map((o) => (
           <li key={o.id}>
@@ -170,7 +170,7 @@ export const FullReportPage = () => {
         ))}
       </ul>
 
-      <h2 className="text-lg font-bold mb-2">4. Что влияет на устойчивость внимания</h2>
+      <h2 className="app-heading mb-2">4. Что влияет на устойчивость внимания</h2>
       <ul className="mb-4 list-disc pl-5">
         {analytics.concentrationDrivers.length ? (
           analytics.concentrationDrivers.map((c) => <li key={c.text}>{c.text}</li>)
@@ -179,7 +179,7 @@ export const FullReportPage = () => {
         )}
       </ul>
 
-      <h2 className="text-lg font-bold mb-2">5. Краткие рекомендации</h2>
+      <h2 className="app-heading mb-2">5. Краткие рекомендации</h2>
       <p className="mb-3 text-slate-800 text-sm leading-relaxed">
         Интерпретация по вашим метрикам: на что нужно обратить внимание именно вам с учётом вашего когнитивного профиля:
       </p>
@@ -189,7 +189,7 @@ export const FullReportPage = () => {
         ))}
       </ul>
 
-      <h2 className="text-lg font-bold mb-2">6. Что можно исследовать глубже</h2>
+      <h2 className="app-heading mb-2">6. Что можно исследовать глубже</h2>
       <p className="mb-4 text-slate-800">
         Текущий отчёт показывает общий профиль устойчивости внимания и обработки информации.
       </p>
@@ -315,7 +315,7 @@ export const FullReportPage = () => {
             Назад к профилю
           </Button>
         </div>
-        <h1 className="text-2xl font-bold text-slate-900">{s.title}</h1>
+        <h1 className="app-heading">{s.title}</h1>
         {s.body}
         <div className="flex flex-wrap gap-3">
           {step > 0 ? (
@@ -343,7 +343,7 @@ export const FullReportPage = () => {
     return (
       <>
       <div className="space-y-5">
-        <h1 className="text-2xl font-bold">Получение расширенного отчёта</h1>
+        <h1 className="app-heading">Получение расширенного отчёта</h1>
         <p className="text-slate-700">
           Мы подготовим для вас персональный расширенный отчёт с подробной расшифровкой результатов и отправим его
           на вашу почту.
@@ -373,7 +373,7 @@ export const FullReportPage = () => {
   return (
     <>
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Отчёт готов</h1>
+      <h1 className="app-heading">Отчёт готов</h1>
       <p className="text-slate-700">
         Файл отчёта формируется в браузере из тех же данных, что и экранный отчёт. Отправка письма будет подключена
         на сервере позже; адрес уже сохранён для интеграции.
@@ -389,7 +389,7 @@ export const FullReportPage = () => {
       </div>
 
       <div className="rounded-xl border border-emerald-200 bg-white p-5 space-y-3">
-        <h2 className="text-xl font-bold text-emerald-950">Персональная сессия с экспертом</h2>
+        <h2 className="app-heading">Персональная сессия с экспертом</h2>
         <p className="text-slate-700">
           Если вы хотите глубже понять закономерности в своих ответах и получить персональную интерпретацию
           результатов, можно пройти персональную сессию с экспертом.

@@ -30,9 +30,9 @@ export const ExpertIntroPage = ({ onContinue }: Props) => {
       <div className="relative z-10 flex min-h-[min(92dvh,720px)] flex-col px-6 py-8 sm:py-10">
         <div className="flex flex-1 flex-col items-center justify-center px-1 sm:px-2">
           <div className="flex w-full max-w-md flex-col items-center">
-            <p className="mt-8 text-center font-sans text-xl font-semibold leading-snug tracking-tight text-slate-900 dark:text-white sm:mt-10 sm:text-2xl sm:leading-snug">
+            <h2 className="app-heading mt-8 text-center sm:mt-10">
               «Corta — это научный подход к вашему когнитивному здоровью»
-            </p>
+            </h2>
 
             <div className="mt-10 flex w-full flex-row items-center justify-center gap-4 sm:mt-12 sm:gap-6">
               <div className="relative h-[7.25rem] w-[7.25rem] shrink-0 overflow-hidden rounded-full shadow-md ring-2 ring-slate-200/90 dark:ring-slate-600/80 sm:h-36 sm:w-36">
