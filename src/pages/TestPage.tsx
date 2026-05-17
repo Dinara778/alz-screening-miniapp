@@ -16,6 +16,8 @@ import { buildStatus, normalizeWords, scoreFaceName, scoreFlanker, scoreReaction
 import type { AppStage } from '../types';
 
 const INTERFERENCE_MS = 180000;
+const WORD_STUDY_MS = 30_000;
+const WORD_STUDY_SEC = WORD_STUDY_MS / 1000;
 
 function wrapWithTestProgress(stage: AppStage, node: ReactNode) {
   return (
@@ -44,6 +46,9 @@ export const TestPage = () => {
 
   const deadline = app.interferenceStart ? app.interferenceStart + INTERFERENCE_MS : null;
   const timer = useTimer(deadline);
+
+  const [wordStudyDeadline, setWordStudyDeadline] = useState<number | null>(null);
+  const wordStudyTimer = useTimer(wordStudyDeadline);
 
   useEffect(() => {
     if (app.stage === 'reaction-instruction') {
@@ -228,6 +233,20 @@ export const TestPage = () => {
     app.setStudyWordList(pickStudyWordList(app.sessionSeed));
   }, [app.stage, app.sessionSeed, app.studyWordList.length]);
 
+  useEffect(() => {
+    if (app.stage !== 'word-study') {
+      setWordStudyDeadline(null);
+      return;
+    }
+    if (app.studyWordList.length < 5) return;
+    setWordStudyDeadline(performance.now() + WORD_STUDY_MS);
+  }, [app.stage, app.studyWordList.length]);
+
+  useEffect(() => {
+    if (app.stage !== 'word-study' || wordStudyDeadline === null || !wordStudyTimer.isFinished) return;
+    app.setStage('word-immediate');
+  }, [app.stage, wordStudyDeadline, wordStudyTimer.isFinished, app]);
+
   if (app.stage === 'word-study') {
     const words = app.studyWordList;
     if (words.length < 5) {
@@ -240,20 +259,29 @@ export const TestPage = () => {
       'word-study',
       <>
         <h2 className="app-heading">Задание 1: Эпизодическая память</h2>
-        <div className="rounded-xl bg-white p-4 space-y-2">
-          <p>Сейчас вы увидите 5 слов. Ваша задача - внимательно их запомнить.</p>
-          <p className="font-semibold">Слова: {words.join(', ')}</p>
-          <p className="text-sm text-slate-700">
-            Через несколько секунд нужно будет воспроизвести слова сразу, а затем повторить их после серии других заданий
-            (примерно через 3 минуты).
+        <div className="rounded-xl bg-white p-4 space-y-3">
+          <p>
+            Запомните <strong>5 слов</strong> за <strong>{WORD_STUDY_SEC} секунд</strong>. Когда время закончится, откроется ввод
+            слов.
           </p>
+          <p className="text-lg font-semibold leading-relaxed text-slate-900 sm:text-xl">{words.join(', ')}</p>
+          <p className="text-sm text-slate-700">
+            Сначала введёте слова сразу, затем снова — после других заданий (примерно через 3 минуты).
+          </p>
+          <div className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50/80 px-3 py-3">
+            <div className="flex items-center justify-between text-sm font-semibold text-emerald-900">
+              <span>Осталось времени</span>
+              <span className="tabular-nums text-2xl">{wordStudyTimer.remainingSec} с</span>
+            </div>
+            <ProgressBar value={wordStudyTimer.remainingSec} max={WORD_STUDY_SEC} />
+          </div>
         </div>
         <Button
           type="button"
           className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug sm:rounded-3xl sm:py-[1.125rem] sm:text-xl"
           onClick={() => app.setStage('word-immediate')}
         >
-          Я запомнил(а)
+          Я запомнил(а) — далее
         </Button>
       </>,
     );
