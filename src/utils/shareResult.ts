@@ -1,3 +1,5 @@
+import { TEST_DURATION_LABEL } from '../constants/testDuration';
+
 const DEFAULT_SHARE_URL = 'https://t.me/YourBot';
 
 export function getShareTestLink(): string {
@@ -15,7 +17,7 @@ export function shareBandFromFlags(flags: number): 'нет признаков' |
 export function buildResultShareText(flags: number, indexValue: number): string {
   const band = shareBandFromFlags(flags);
   const link = getShareTestLink();
-  return `Мой когнитивный профиль: индекс ${indexValue}/100 (${band}). Пройди тест за 5 минут: ${link}`;
+  return `Мой когнитивный профиль: индекс ${indexValue}/100 (${band}). Пройди тест за ${TEST_DURATION_LABEL}: ${link}`;
 }
 
 export async function shareOrCopyResultText(text: string, link: string): Promise<'telegram' | 'webshare' | 'clipboard'> {

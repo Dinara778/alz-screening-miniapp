@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Button } from '../components/Button';
 import { ProgressBar } from '../components/ProgressBar';
 import { ParticipantProfile } from '../types';
+import { TEST_DURATION_LABEL_SHORT } from '../constants/testDuration';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
 type Props = { onStart: (profile: ParticipantProfile) => void; onHistory: () => void };
@@ -336,7 +337,8 @@ function TimerHint() {
   return (
     <div className="space-y-1 text-center">
       <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">
-        ⏱️ Ориентир по времени: <span className="text-orange-700 dark:text-orange-300">~5 минут</span> на весь тест
+        ⏱️ Ориентир по времени:{' '}
+        <span className="text-orange-700 dark:text-orange-300">{TEST_DURATION_LABEL_SHORT}</span> на весь тест
       </p>
       <p className="text-xs text-slate-600 dark:text-slate-400">
         Мини-таймер: {n > 0 ? `${n}…` : 'готово к старту ✓'}

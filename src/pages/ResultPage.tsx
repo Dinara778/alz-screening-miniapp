@@ -98,7 +98,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     <div className="space-y-6">
       <div className="rounded-xl border border-slate-700 bg-slate-900 p-4 text-slate-100 shadow-brand dark:border-slate-600 dark:bg-slate-950">
         <div className="text-xs uppercase tracking-widest text-emerald-300/90">📊 Аналитика по метрикам</div>
-        <h1 className="app-heading mt-1">✨ Базовый когнитивный профиль</h1>
+        <h1 className="mt-1 text-xl font-bold leading-snug text-white sm:text-2xl">✨ Базовый когнитивный профиль</h1>
         <p className="text-sm text-slate-400 mt-2">
           Отчёт по одному прохождению замера. Не медицинская оценка и не диагноз.
         </p>

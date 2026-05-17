@@ -6,6 +6,7 @@ import {
   IconShield,
   IconShieldLock,
 } from '../components/landing/LandingIcons';
+import { TEST_DURATION_LABEL } from '../constants/testDuration';
 import { IntroShell } from '../components/landing/IntroShell';
 
 type Props = {
@@ -43,7 +44,7 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
       </Button>
       <p className="flex max-w-md items-center justify-center gap-2 text-center text-sm text-emerald-200/90">
         <IconShield className="h-5 w-5 shrink-0 text-emerald-400" />
-        <span>Это бесплатно и займёт всего 10 минут</span>
+        <span>Это бесплатно и займёт всего {TEST_DURATION_LABEL}</span>
       </p>
     </div>
   );
@@ -64,7 +65,7 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
         <div className="space-y-3">
           <h1 className="text-[clamp(1.625rem,6.5vw,2.25rem)] font-bold leading-[1.15] tracking-tight text-white sm:text-[2.125rem]">
             Узнайте свой когнитивный профиль{' '}
-            <span className="text-emerald-400">за 10 минут</span>
+            <span className="text-emerald-400">за {TEST_DURATION_LABEL}</span>
           </h1>
           <p className="text-sm leading-relaxed text-slate-300 sm:text-[0.9375rem]">
             Научный тест оценивает память, внимание и скорость реакции. Вы получите персональные рекомендации
