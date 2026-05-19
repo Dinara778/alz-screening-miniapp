@@ -15,7 +15,7 @@ import { ExpertIntroPage } from './pages/ExpertIntroPage';
 import { IntroTestOfferPage } from './pages/IntroTestOfferPage';
 import { WelcomePage } from './pages/WelcomePage';
 
-const STAGES_HIDE_SUPPORT_FOOTER: AppStage[] = ['flanker', 'reaction', 'stroop'];
+const STAGES_HIDE_SUPPORT_FOOTER: AppStage[] = ['flanker', 'reaction', 'stroop', 'result'];
 
 function App() {
   const app = useApp();
@@ -42,14 +42,10 @@ function App() {
     void recoverProdamusPaymentFromUrl(api);
   }, []);
 
+  const showFooter = app.stage !== 'result' && app.stage !== 'corta-intro';
+
   return (
-    <main
-      className={
-        app.stage === 'corta-intro'
-          ? 'mx-auto flex min-h-screen min-h-[100dvh] max-w-2xl flex-col bg-[#050807] px-4 py-6 text-white shadow-none'
-          : 'mx-auto flex min-h-screen min-h-[100dvh] max-w-2xl flex-col bg-gradient-to-b from-emerald-50 via-white to-teal-50 px-4 py-6 text-slate-950 shadow-brand dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100 dark:shadow-none'
-      }
-    >
+    <main className="app-calm-shell mx-auto flex min-h-screen min-h-[100dvh] max-w-2xl flex-col px-4 py-6 text-white shadow-none">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {app.stage === 'corta-intro' && <CortaIntroPage onContinue={() => app.setStage('expert-intro')} />}
         {app.stage === 'expert-intro' && <ExpertIntroPage onContinue={() => app.setStage('intro-test-offer')} />}
@@ -82,7 +78,7 @@ function App() {
         {app.stage === 'full-report' && <FullReportPage />}
         {app.stage === 'consultation-request' && <ConsultationRequestPage />}
       </div>
-      {app.stage !== 'corta-intro' &&
+      {showFooter &&
         (app.stage === 'intro-test-offer' ? (
           <Footer />
         ) : (

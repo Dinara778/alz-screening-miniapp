@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { BackArrowButton } from '../components/BackArrowButton';
 import { Button } from '../components/Button';
 import { useApp } from '../context/AppContext';
 import { isPaymentsStubbed, PAYMENT_STUB_MESSAGE } from '../utils/paymentStub';
@@ -107,22 +108,18 @@ export const ConsultationRequestPage = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl border border-emerald-200 bg-white p-6 shadow-sm dark:border-emerald-800 dark:bg-slate-800/90">
+    <div className="relative space-y-6 pt-12">
+      {!paidOk ? <BackArrowButton onClick={goBack} /> : null}
+      <div className="calm-card">
         <h1 className="app-heading">Запись на персональную сессию</h1>
         {!latestResult ? (
           <>
-            <p className="mt-3 text-slate-700 dark:text-slate-200">Нет данных прохождения. Вернитесь назад.</p>
-            <div className="mt-4">
-              <Button variant="secondary" type="button" onClick={goBack}>
-                Назад
-              </Button>
-            </div>
+            <p className="mt-3 calm-body dark:text-slate-200">Нет данных прохождения. Вернитесь назад.</p>
           </>
         ) : paidOk ? (
           <>
             <p className="mt-3 text-lg font-semibold text-emerald-900 dark:text-emerald-200">Оплата прошла успешно</p>
-            <p className="mt-2 text-slate-700 leading-relaxed dark:text-slate-200">
+            <p className="mt-2 calm-body leading-relaxed dark:text-slate-200">
               Наш менеджер свяжется с вами по почте, указанной при оплате, в течение 15 минут для согласования удобного
               времени сессии.
             </p>
@@ -134,7 +131,7 @@ export const ConsultationRequestPage = () => {
           </>
         ) : (
           <>
-            <p className="mt-3 text-slate-700 leading-relaxed dark:text-slate-200">
+            <p className="mt-3 calm-body leading-relaxed dark:text-slate-200">
               Нажмите кнопку ниже — откроется оплата в Telegram. После успешной оплаты менеджер свяжется с вами по адресу
               почты из платёжных данных.
             </p>
@@ -152,9 +149,6 @@ export const ConsultationRequestPage = () => {
                 onClick={() => void handlePay()}
               >
                 {busy ? 'Открываем оплату…' : 'Записаться на персональную сессию — 5 490 ₽'}
-              </Button>
-              <Button variant="secondary" type="button" onClick={goBack} className="self-start">
-                Назад
               </Button>
             </div>
           </>

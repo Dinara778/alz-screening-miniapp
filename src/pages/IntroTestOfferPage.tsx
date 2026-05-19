@@ -31,10 +31,10 @@ export const IntroTestOfferPage = ({ onContinue }: Props) => {
     <IntroShell aria-label="Что мы анализируем" footer={footer}>
       <div className="space-y-4 pb-4">
         <h1 className="app-heading text-left">Оценка когнитивного профиля</h1>
-        <p className="text-sm text-emerald-800 dark:text-emerald-300">Оценка займёт около {TEST_DURATION_LABEL}.</p>
-        <div className="rounded-xl border-2 border-emerald-200/90 bg-gradient-to-br from-emerald-50 to-teal-50/80 p-4 text-left dark:border-emerald-700/50 dark:from-emerald-950/50 dark:to-slate-800/80">
+        <p className="calm-caption">Оценка займёт около {TEST_DURATION_LABEL}.</p>
+        <div className="calm-inset">
           <div className="app-heading">Что мы анализируем:</div>
-          <ul className="mt-2 space-y-2 text-sm text-slate-900 dark:text-slate-200 sm:text-base">
+          <ul className="mt-2 space-y-2 text-sm text-white dark:text-slate-200 sm:text-base">
             {MEASURES.map((line, i) => (
               <li key={line}>
                 {MEASURE_ICONS[i]} {line}

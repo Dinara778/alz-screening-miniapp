@@ -2,23 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --app-bg: #e8f5ec;
-  --app-text: #0f172a;
-  --brand-main: #064e3b;
-  --brand-main-soft: #d1fae5;
-  --brand-accent: #0d9488;
-  --brand-warm: #fff7ed;
-}
-
+:root,
 html.dark,
 html.telegram-dark {
-  --app-bg: #0f172a;
-  --app-text: #e2e8f0;
-  --brand-main: #34d399;
-  --brand-main-soft: #064e3b;
-  --brand-accent: #2dd4bf;
-  --brand-warm: #1e293b;
+  --app-bg: #050807;
+  --app-text: #f1f5f9;
+  --brand-main: #2dd4bf;
+  --brand-main-soft: rgba(45, 212, 191, 0.12);
+  --brand-accent: #5eead4;
+  --brand-warm: #0c1010;
+  --calm-surface: #0a0e0d;
+  --calm-border: rgba(255, 255, 255, 0.1);
 }
 
 body {
@@ -38,13 +32,94 @@ body {
 button:focus-visible,
 textarea:focus-visible,
 input:focus-visible {
-  outline: 3px solid var(--brand-main);
+  outline: 2px solid rgba(45, 212, 191, 0.65);
   outline-offset: 2px;
 }
 
-/** Заголовки экранов — Plus Jakarta Sans, как на 3-м intro-экране */
+/** Оболочка всего приложения — calm tech фон */
+.app-calm-shell {
+  background: radial-gradient(ellipse 85% 55% at 50% -5%, rgba(45, 212, 191, 0.09), transparent 52%),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(16, 185, 129, 0.06), transparent 45%), #050807;
+}
+
+.calm-results {
+  background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(45, 212, 191, 0.08), transparent 55%),
+    #050807;
+}
+
 @layer components {
   .app-heading {
-    @apply text-lg font-bold leading-snug text-emerald-950 dark:text-emerald-50 sm:text-xl;
+    @apply text-lg font-bold leading-snug text-white/95 sm:text-xl;
   }
+
+  .calm-card {
+    @apply relative overflow-hidden rounded-3xl border border-white/10 bg-[#0a0e0d]/95 p-6 shadow-[0_24px_60px_-28px_rgba(0,0,0,0.55)];
+  }
+
+  .calm-inset {
+    @apply rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white/80;
+  }
+
+  .calm-input {
+    @apply w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3.5 text-base text-white shadow-none placeholder:text-white/35 transition focus:border-teal-400/50 focus:outline-none focus:ring-2 focus:ring-teal-400/20;
+  }
+
+  .calm-body {
+    @apply text-white/75 leading-relaxed;
+  }
+
+  .calm-caption {
+    @apply text-sm text-white/50 leading-relaxed;
+  }
+
+  .calm-accent {
+    @apply text-teal-300/90;
+  }
+
+  .calm-glow {
+    @apply pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_50%_at_100%_0%,rgb(52_211_153/0.18),transparent_55%),radial-gradient(ellipse_70%_40%_at_0%_100%,rgb(16_185_129/0.08),transparent_50%)];
+  }
+
+  .calm-footer {
+    @apply mt-auto w-full shrink-0 border-t border-white/10 pt-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-center text-sm text-white/45;
+  }
+
+  .calm-footer a {
+    @apply font-medium text-teal-300/90 underline decoration-teal-400/40 underline-offset-2 hover:text-teal-200;
+  }
+}
+
+@keyframes metric-halo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes metric-halo-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+.metric-halo-spin {
+  animation: metric-halo-spin 28s linear infinite;
+  transform-origin: center;
+}
+
+.metric-halo-pulse {
+  transform-origin: 100px 100px;
+  animation: metric-halo-pulse 5s ease-in-out infinite;
+}
+
+.metric-halo-pulse-delay {
+  animation-delay: 1.4s;
 }

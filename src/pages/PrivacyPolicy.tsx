@@ -2,7 +2,7 @@
  * Простой экран политики конфиденциальности (при необходимости можно подключить в навигацию).
  */
 export const PrivacyPolicy = () => (
-  <div className="rounded-2xl bg-white p-6 shadow-sm space-y-4 text-slate-800 text-sm leading-relaxed">
+  <div className="calm-inset p-6 shadow-sm space-y-4 calm-body text-sm leading-relaxed">
     <h1 className="app-heading">Конфиденциальность</h1>
     <p>
       Результаты теста и введённые вами данные сохраняются локально в браузере на вашем устройстве. Мы не собираем и

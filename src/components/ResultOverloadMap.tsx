@@ -49,13 +49,13 @@ const OVERLOAD_MAP_STATIC: StaticItem[] = [
 ];
 
 const activeRowClassByTier: Record<OverloadVisualTier, string> = {
-  0: 'border-emerald-200 bg-emerald-50 text-slate-900',
-  1: 'border-lime-300 bg-lime-50 text-slate-900',
-  2: 'border-amber-300 bg-amber-50 text-slate-900',
-  3: 'border-orange-400 bg-orange-50 text-slate-900',
+  0: 'border-teal-400/40 bg-teal-400/10 text-white',
+  1: 'border-lime-400/40 bg-lime-400/10 text-white',
+  2: 'border-amber-400/40 bg-amber-400/10 text-white',
+  3: 'border-orange-400/50 bg-orange-400/15 text-white',
 };
 
-const inactiveRowClass = 'border-slate-100 bg-slate-50/80 text-slate-800';
+const inactiveRowClass = 'border-white/8 bg-white/[0.02] calm-body';
 
 type Props = {
   overloadMap: OverloadMapItem[];
@@ -69,10 +69,10 @@ export const ResultOverloadMap = ({ overloadMap, overloadMapIntro, overloadVisua
   const activeTone = activeRowClassByTier[overloadVisualTier];
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-3">
+    <section className="rounded-xl calm-inset space-y-3">
       <h2 className="app-heading">Персональная карта перегрузки</h2>
       {overloadMapIntro ? (
-        <p className="text-sm text-slate-600 leading-relaxed border-l-4 border-slate-300 pl-3 py-0.5">
+        <p className="text-sm calm-caption leading-relaxed border-l-4 border-slate-300 pl-3 py-0.5">
           {overloadMapIntro}
         </p>
       ) : null}
@@ -86,13 +86,13 @@ export const ResultOverloadMap = ({ overloadMap, overloadMapIntro, overloadVisua
                 active ? activeTone : inactiveRowClass
               }`}
             >
-              <div className="font-semibold text-slate-900">{row.title}</div>
-              <p className="mt-2 text-slate-700">
-                <span className="font-medium text-slate-800">Что значит: </span>
+              <div className="font-semibold text-white">{row.title}</div>
+              <p className="mt-2 calm-body">
+                <span className="font-medium calm-body">Что значит: </span>
                 {row.whatMeans}
               </p>
-              <p className="mt-2 text-slate-700">
-                <span className="font-medium text-slate-800">Как вы это можете замечать: </span>
+              <p className="mt-2 calm-body">
+                <span className="font-medium calm-body">Как вы это можете замечать: </span>
                 {row.howNotice}
               </p>
             </div>

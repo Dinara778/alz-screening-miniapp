@@ -50,7 +50,7 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
   );
 
   return (
-    <IntroShell aria-label="Главный экран Corta" footer={footer} tone="dark">
+    <IntroShell aria-label="Главный экран Corta" footer={footer}>
       <div className="space-y-5 pb-2 text-left">
         <header className="flex justify-end">
           <img

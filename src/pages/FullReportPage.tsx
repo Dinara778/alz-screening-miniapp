@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { BackArrowButton } from '../components/BackArrowButton';
 import { Button } from '../components/Button';
 import { DomainProfileCard } from '../components/DomainProfileCard';
 import { ResultOverloadMap } from '../components/ResultOverloadMap';
@@ -47,7 +48,7 @@ export const FullReportPage = () => {
 
   if (!latestResult || !analytics) {
     return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-slate-900">
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-white">
         Нет данных о прохождении. Вернитесь на главный экран.
         <div className="mt-3">
           <Button variant="secondary" onClick={() => setStage('welcome')}>
@@ -60,7 +61,7 @@ export const FullReportPage = () => {
 
   if (!isReportPaidUnlocked(latestResult.id)) {
     return (
-      <div className="space-y-4 rounded-xl border border-amber-200 bg-amber-50 p-5 text-slate-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-50">
+      <div className="space-y-4 rounded-xl border border-amber-200 bg-amber-50 p-5 text-white dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-50">
         <p className="font-medium">Полный отчёт доступен только после успешной оплаты.</p>
         <p className="text-sm text-amber-900/90 dark:text-amber-100/90">
           Если оплата ещё не подключена, настройте сервер счетов и переменную{' '}
@@ -126,22 +127,22 @@ export const FullReportPage = () => {
   const pdfMarkup = (
     <div
       ref={pdfRef}
-      className="bg-white text-slate-900 p-8 text-[13px] leading-relaxed"
+      className="bg-white text-white p-8 text-[13px] leading-relaxed"
       style={{ width: '190mm', fontFamily: 'system-ui, -apple-system, sans-serif' }}
     >
       <div className="border-b-2 border-slate-900 pb-4 mb-6">
         <h1 className="app-heading">Полный анализ когнитивной устойчивости</h1>
-        <div className="text-sm text-slate-600 mt-1">Персональный аналитический отчёт</div>
+        <div className="text-sm calm-caption mt-1">Персональный аналитический отчёт</div>
         <div className="mt-4 flex flex-wrap gap-4 text-sm">
           <span>Дата: {fmt(latestResult.date)}</span>
           <span>Индекс: {analytics.index.value}/100</span>
           <span>{analytics.index.label}</span>
         </div>
-        <p className="mt-3 text-slate-700">{analytics.index.description}</p>
+        <p className="mt-3 calm-body">{analytics.index.description}</p>
       </div>
 
       <h2 className="app-heading mb-2">1. Общий когнитивный профиль</h2>
-      <p className="mb-4 text-slate-800">
+      <p className="mb-4 calm-body">
         Индекс когнитивной устойчивости отражает согласованность внимания, темпа реакции и удержания
         информации в рамках одного прохождения замера.
       </p>
@@ -180,7 +181,7 @@ export const FullReportPage = () => {
       </ul>
 
       <h2 className="app-heading mb-2">5. Краткие рекомендации</h2>
-      <p className="mb-3 text-slate-800 text-sm leading-relaxed">
+      <p className="mb-3 calm-body text-sm leading-relaxed">
         Интерпретация по вашим метрикам: на что нужно обратить внимание именно вам с учётом вашего когнитивного профиля:
       </p>
       <ul className="mb-4 list-disc pl-5">
@@ -190,10 +191,10 @@ export const FullReportPage = () => {
       </ul>
 
       <h2 className="app-heading mb-2">6. Что можно исследовать глубже</h2>
-      <p className="mb-4 text-slate-800">
+      <p className="mb-4 calm-body">
         Текущий отчёт показывает общий профиль устойчивости внимания и обработки информации.
       </p>
-      <p className="mb-4 text-slate-800">В следующих версиях будут доступны:</p>
+      <p className="mb-4 calm-body">В следующих версиях будут доступны:</p>
       <ul className="mb-4 list-disc pl-5">
         <li>наблюдение за динамикой внимания</li>
         <li>отслеживание изменений состояния</li>
@@ -203,14 +204,14 @@ export const FullReportPage = () => {
       </ul>
 
       <div className="border border-slate-300 rounded-lg p-4 mt-6 bg-slate-50">
-        <div className="font-bold text-slate-900">Персональная сессия с экспертом</div>
-        <p className="mt-2 text-slate-800">
+        <div className="font-bold text-white">Персональная сессия с экспертом</div>
+        <p className="mt-2 calm-body">
           Персональная сессия удалённо, 30–40 минут. Стоимость: 5 490 ₽. На сайте: «Записаться на персональную сессию».
         </p>
       </div>
 
       {reportEmail.trim() ? (
-        <p className="mt-4 text-sm text-slate-600">Электронная почта для отправки расширенного отчёта: {reportEmail.trim()}</p>
+        <p className="mt-4 text-sm calm-caption">Электронная почта для отправки расширенного отчёта: {reportEmail.trim()}</p>
       ) : null}
     </div>
   );
@@ -220,13 +221,13 @@ export const FullReportPage = () => {
       title: 'Ваш когнитивный профиль',
       body: (
         <div className="space-y-4">
-          <p className="text-slate-700">
+          <p className="calm-body">
             Ниже — сводный индекс по метрикам этого прохождения. Это не диагноз, а поведенческий снимок
             устойчивости внимания и обработки информации.
           </p>
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-800/60 dark:bg-emerald-950/30">
-            <div className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">Индекс когнитивной устойчивости</div>
-            <div className="text-5xl font-bold text-slate-900 dark:text-slate-100">{analytics.index.value}</div>
+          <div className="calm-inset">
+            <div className="calm-accent text-sm font-semibold dark:text-emerald-200">Индекс когнитивной устойчивости</div>
+            <div className="text-5xl font-bold text-white dark:text-slate-100">{analytics.index.value}</div>
             <div className="mt-2 h-3 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600/80">
               <div className={`h-full ${analytics.index.barColorClass}`} style={{ width: `${analytics.index.value}%` }} />
             </div>
@@ -235,7 +236,7 @@ export const FullReportPage = () => {
             >
               {analytics.index.label}
             </div>
-            <p className="mt-2 text-slate-700">{analytics.index.description}</p>
+            <p className="mt-2 calm-body">{analytics.index.description}</p>
           </div>
         </div>
       ),
@@ -244,7 +245,7 @@ export const FullReportPage = () => {
       title: 'Как сейчас работает внимание',
       body: (
         <div className="space-y-4">
-          <p className="text-slate-700">
+          <p className="calm-body">
             Пять доменов описывают разные стороны обработки: от устойчивости к отвлечению до удержания
             контекста после нагрузки.
           </p>
@@ -269,7 +270,7 @@ export const FullReportPage = () => {
     {
       title: 'Что сильнее всего влияет на вашу концентрацию',
       body: (
-        <ul className="list-disc pl-5 space-y-2 text-slate-800">
+        <ul className="list-disc pl-5 space-y-2 calm-body">
           {analytics.concentrationDrivers.length ? (
             analytics.concentrationDrivers.map((c) => <li key={c.text}>{c.text}</li>)
           ) : (
@@ -282,11 +283,11 @@ export const FullReportPage = () => {
       title: 'Краткие рекомендации',
       body: (
         <div className="space-y-3">
-          <p className="text-slate-700 text-sm leading-relaxed">
+          <p className="calm-body text-sm leading-relaxed">
             Интерпретация по вашим метрикам: на что нужно обратить внимание именно вам с учётом вашего когнитивного
             профиля:
           </p>
-          <ul className="list-disc pl-5 space-y-2 text-slate-800">
+          <ul className="list-disc pl-5 space-y-2 calm-body">
             {analytics.stabilizationTips.map((t) => (
               <li key={t.text}>{t.text}</li>
             ))}
@@ -306,23 +307,17 @@ export const FullReportPage = () => {
     const s = screens[step];
     return (
       <>
-      <div className="space-y-5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="text-xs uppercase tracking-wide text-slate-500">
-            Полный отчёт · шаг {step + 1} из 5
-          </div>
-          <Button variant="secondary" type="button" onClick={() => setStage('result')}>
-            Назад к профилю
-          </Button>
+      <div className="relative space-y-5 pt-12">
+        <BackArrowButton
+          onClick={() => (step > 0 ? setStep((x) => x - 1) : setStage('result'))}
+          aria-label={step > 0 ? 'Назад' : 'Назад к профилю'}
+        />
+        <div className="text-xs uppercase tracking-wide text-slate-500">
+          Полный отчёт · шаг {step + 1} из 5
         </div>
         <h1 className="app-heading">{s.title}</h1>
         {s.body}
         <div className="flex flex-wrap gap-3">
-          {step > 0 ? (
-            <Button variant="secondary" type="button" onClick={() => setStep((x) => x - 1)}>
-              Назад
-            </Button>
-          ) : null}
           {step < 4 ? (
             <Button type="button" onClick={() => setStep((x) => x + 1)}>
               Далее
@@ -342,27 +337,25 @@ export const FullReportPage = () => {
   if (step === 5) {
     return (
       <>
-      <div className="space-y-5">
+      <div className="relative space-y-5 pt-12">
+        <BackArrowButton onClick={() => setStep(4)} />
         <h1 className="app-heading">Получение расширенного отчёта</h1>
-        <p className="text-slate-700">
+        <p className="calm-body">
           Мы подготовим для вас персональный расширенный отчёт с подробной расшифровкой результатов и отправим его
           на вашу почту.
         </p>
         <form className="space-y-3" onSubmit={handleEmailSubmit}>
           <input
-            className="w-full rounded-xl border border-slate-300 p-3"
+            className="calm-input"
             type="email"
             required
             placeholder="Электронная почта"
             value={reportEmail}
             onChange={(e) => setReportEmail(e.target.value)}
           />
-          <div className="flex flex-wrap gap-3">
-            <Button variant="secondary" type="button" onClick={() => setStep(4)}>
-              Назад
-            </Button>
-            <Button type="submit">Сохранить и перейти к файлу отчёта</Button>
-          </div>
+          <Button type="submit" className="w-full sm:w-auto">
+            Сохранить и перейти к файлу отчёта
+          </Button>
         </form>
       </div>
       {hiddenPdfLayer}
@@ -374,7 +367,7 @@ export const FullReportPage = () => {
     <>
     <div className="space-y-6">
       <h1 className="app-heading">Отчёт готов</h1>
-      <p className="text-slate-700">
+      <p className="calm-body">
         Файл отчёта формируется в браузере из тех же данных, что и экранный отчёт. Отправка письма будет подключена
         на сервере позже; адрес уже сохранён для интеграции.
       </p>
@@ -388,18 +381,18 @@ export const FullReportPage = () => {
         </Button>
       </div>
 
-      <div className="rounded-xl border border-emerald-200 bg-white p-5 space-y-3">
+      <div className="calm-inset space-y-3">
         <h2 className="app-heading">Персональная сессия с экспертом</h2>
-        <p className="text-slate-700">
+        <p className="calm-body">
           Если вы хотите глубже понять закономерности в своих ответах и получить персональную интерпретацию
           результатов, можно пройти персональную сессию с экспертом.
         </p>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm calm-caption">
           Формат: удалённо, 30–40 минут, разбор метрик в формате живой встречи.
         </p>
         <div className="flex flex-col gap-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <span className="text-lg font-bold text-slate-900">5 490 ₽</span>
+            <span className="text-lg font-bold text-white">5 490 ₽</span>
             <Button
               variant="sell"
               type="button"
@@ -408,7 +401,7 @@ export const FullReportPage = () => {
               Записаться на персональную сессию — 5 490 ₽
             </Button>
           </div>
-          <p className="text-sm text-slate-600 leading-relaxed">
+          <p className="text-sm calm-caption leading-relaxed">
             Наш менеджер свяжется с вами по почте, указанной при оплате, в течение 15 минут для согласования удобного
             времени сессии.
           </p>

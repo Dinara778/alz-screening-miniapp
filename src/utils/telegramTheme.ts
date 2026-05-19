@@ -61,11 +61,7 @@ export const applyTelegramTheme = (): void => {
     if (secondary_bg_color) r.style.setProperty('--tg-theme-secondary-bg-color', secondary_bg_color);
   }
 
-  if (useDarkUi) {
-    r.classList.add('telegram-dark', 'dark');
-  } else {
-    r.classList.remove('telegram-dark', 'dark');
-  }
+  r.classList.add('telegram-dark', 'dark');
 };
 
 /** Подписка на смену темы (важно для Android: параметры приходят после первого кадра). */

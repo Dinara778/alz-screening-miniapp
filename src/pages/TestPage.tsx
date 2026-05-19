@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react';
+import { BackArrowButton } from '../components/BackArrowButton';
 import { Button } from '../components/Button';
 import { ProgressBar } from '../components/ProgressBar';
 import { StroopConfirmStep } from '../components/StroopConfirmStep';
@@ -22,7 +23,7 @@ const WORD_STUDY_SEC = WORD_STUDY_MS / 1000;
 
 function wrapWithTestProgress(stage: AppStage, node: ReactNode) {
   return (
-    <div className="flex min-h-[min(78dvh,640px)] w-full flex-col text-slate-950 dark:text-slate-100">
+    <div className="flex min-h-[min(78dvh,640px)] w-full flex-col text-white">
       <div className="shrink-0">
         <TestProgressBanner stage={stage} />
       </div>
@@ -253,24 +254,24 @@ export const TestPage = () => {
     if (words.length < 5) {
       return wrapWithTestProgress(
         'word-study',
-        <div className="rounded-xl bg-white p-6 text-slate-700">Подготовка списка слов…</div>,
+        <div className="calm-inset p-6 calm-body">Подготовка списка слов…</div>,
       );
     }
     return wrapWithTestProgress(
       'word-study',
       <>
         <h2 className="app-heading">Задание 1: Эпизодическая память</h2>
-        <div className="rounded-xl bg-white p-4 space-y-3">
+        <div className="calm-inset p-4 space-y-3">
           <p>
             Запомните <strong>5 слов</strong> за <strong>{WORD_STUDY_SEC} секунд</strong>. Когда время закончится, откроется ввод
             слов.
           </p>
-          <p className="text-lg font-semibold leading-relaxed text-slate-900 sm:text-xl">{words.join(', ')}</p>
-          <p className="text-sm text-slate-700">
+          <p className="text-lg font-semibold leading-relaxed text-white sm:text-xl">{words.join(', ')}</p>
+          <p className="text-sm calm-body">
             Сначала введёте слова сразу, затем снова — после других заданий (примерно через 3 минуты).
           </p>
           <div className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50/80 px-3 py-3">
-            <div className="flex items-center justify-between text-sm font-semibold text-emerald-900">
+            <div className="flex items-center justify-between calm-accent text-sm font-semibold">
               <span>Осталось времени</span>
               <span className="tabular-nums text-2xl">{wordStudyTimer.remainingSec} с</span>
             </div>
@@ -294,7 +295,7 @@ export const TestPage = () => {
       app.stage,
       <form className="space-y-4" onSubmit={(e) => submitWords(e, delayed)}>
         <h2 className="app-heading">{delayed ? 'Отсроченное воспроизведение' : 'Немедленное воспроизведение'}</h2>
-        <p className="text-slate-700">
+        <p className="calm-body">
           {delayed
             ? 'Впишите в поле ниже 5 слов, которые вы запомнили в начале тестирования'
             : 'Введите все слова, которые помните. Можно писать через пробел или запятую. Учитываются только точные совпадения слов.'}
@@ -406,7 +407,7 @@ export const TestPage = () => {
   if (app.stage === 'interference-wait') {
     return wrapWithTestProgress(
       app.stage,
-      <div className="rounded-xl bg-white p-6 text-center">
+      <div className="calm-inset p-6 text-center">
         <h2 className="app-heading">Ожидание до отсроченного воспроизведения</h2>
         <p className="text-5xl mt-4">{timer.remainingSec}</p>
       </div>,
@@ -417,9 +418,12 @@ export const TestPage = () => {
     const f = face.trials[faceStudyIndex];
     return wrapWithTestProgress(
       app.stage,
-      <div className="space-y-4">
+      <div className="relative space-y-4 pt-12">
+        {faceStudyIndex > 0 ? (
+          <BackArrowButton onClick={() => setFaceStudyIndex((v) => v - 1)} />
+        ) : null}
         <h2 className="app-heading">Задание 4: Лица-имена (изучение)</h2>
-        <p className="text-slate-700">
+        <p className="calm-body">
           Изучите лица и соответствующие имена. Постарайтесь запомнить пары «лицо-имя», после отвлекающего задания будет проверка.
         </p>
         <div className="rounded-xl overflow-hidden border-2 border-emerald-900 bg-white">
@@ -427,15 +431,6 @@ export const TestPage = () => {
         </div>
         <div className="text-center text-2xl">{f.correctName}</div>
         <div className="flex w-full flex-col gap-3">
-          <Button
-            type="button"
-            variant="secondary"
-            className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug sm:rounded-3xl sm:py-[1.125rem] sm:text-xl"
-            disabled={faceStudyIndex === 0}
-            onClick={() => setFaceStudyIndex((v) => v - 1)}
-          >
-            Назад
-          </Button>
           {faceStudyIndex < 2 ? (
             <Button
               type="button"
@@ -489,7 +484,7 @@ export const TestPage = () => {
     if (stroop.done) {
       return wrapWithTestProgress(
         app.stage,
-        <p className="text-center text-slate-600">Загрузка следующего задания…</p>,
+        <p className="text-center calm-caption">Загрузка следующего задания…</p>,
       );
     }
     const s = stroop.current;
@@ -504,7 +499,7 @@ export const TestPage = () => {
       <div className="space-y-4 text-center">
         <h2 className="app-heading">Струп {stroop.index + 1}/30</h2>
         <ProgressBar value={stroop.index} max={30} />
-        <p className="text-sm text-slate-600">Нажимайте цвет букв, не значение слова</p>
+        <p className="text-sm calm-caption">Нажимайте цвет букв, не значение слова</p>
         <div className={`text-4xl font-bold ${colorClass}`}>{s?.word}</div>
         <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-3">
           <button
@@ -538,11 +533,11 @@ export const TestPage = () => {
       app.stage,
       <div className="space-y-4">
         <h2 className="app-heading">Задание 5: Проверка лиц-имен</h2>
-        <p className="text-slate-700">
+        <p className="calm-body">
           Для каждого лица выберите правильное имя из 3 вариантов. Лица показываются в случайном порядке.
         </p>
         {face.trials.map((f) => (
-          <div key={f.id} className="rounded-xl bg-white p-4 space-y-2">
+          <div key={f.id} className="calm-inset p-4 space-y-2">
             <img src={f.image} alt={f.label} className="h-40 w-full rounded object-cover border border-slate-300" />
             {f.options.map((name) => (
               <label key={name} className="block">

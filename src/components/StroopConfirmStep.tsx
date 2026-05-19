@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { BackArrowButton } from './BackArrowButton';
 import { Button } from './Button';
 
 type Props = {
@@ -10,16 +11,17 @@ export const StroopConfirmStep = ({ onConfirm, onBack }: Props) => {
   const [understood, setUnderstood] = useState(false);
 
   return (
-    <div className="space-y-4 rounded-2xl bg-white p-6 text-slate-950 shadow-sm dark:bg-slate-800 dark:text-slate-100">
+    <div className="relative space-y-4 calm-inset p-6 pt-14 text-slate-950 shadow-sm dark:bg-slate-800 dark:text-slate-100">
+      <BackArrowButton onClick={onBack} aria-label="Назад к инструкции" />
       <h2 className="app-heading">Всё ли понятно?</h2>
-      <p className="text-slate-800 dark:text-slate-200">
+      <p className="calm-body dark:text-slate-200">
         Перед тестом проверьте правило: нажимаете <strong>цвет букв</strong>, а не то, что написано.
       </p>
 
       <div className="space-y-3 rounded-xl border-2 border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40">
         <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">Пример на экране</p>
         <p className="text-center text-4xl font-bold text-red-600">СИНИЙ</p>
-        <p className="text-sm text-slate-700 dark:text-slate-300">
+        <p className="text-sm calm-body dark:text-slate-300">
           Слово означает «синий», но буквы <strong>красные</strong>. Правильная кнопка —{' '}
           <strong>«Красный»</strong>, не «Синий».
         </p>
@@ -39,7 +41,7 @@ export const StroopConfirmStep = ({ onConfirm, onBack }: Props) => {
           checked={understood}
           onChange={(e) => setUnderstood(e.target.checked)}
         />
-        <span className="text-left text-slate-800 dark:text-slate-200">
+        <span className="text-left calm-body dark:text-slate-200">
           Я понимаю: нажимаю кнопку с <strong>цветом букв</strong>, а не со значением слова.
         </span>
       </label>
@@ -52,14 +54,6 @@ export const StroopConfirmStep = ({ onConfirm, onBack }: Props) => {
           onClick={onConfirm}
         >
           Понятно, перехожу к тесту
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          className="w-full rounded-2xl py-3 text-base font-semibold sm:py-3.5"
-          onClick={onBack}
-        >
-          Назад к инструкции
         </Button>
       </div>
     </div>
