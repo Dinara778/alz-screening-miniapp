@@ -1,31 +1,36 @@
 import { useEffect } from 'react';
 
+let debounceId = 0;
+
 function syncAppViewport() {
   const vv = window.visualViewport;
   const height = vv?.height ?? window.innerHeight;
-  const offsetTop = vv?.offsetTop ?? 0;
   document.documentElement.style.setProperty('--app-vh', `${Math.round(height)}px`);
-  document.documentElement.style.setProperty('--app-offset-top', `${Math.round(offsetTop)}px`);
+  document.documentElement.style.setProperty('--app-offset-top', `${Math.round(vv?.offsetTop ?? 0)}px`);
 }
 
-/** Синхронизирует высоту shell с visualViewport (клавиатура iOS / Telegram). */
+function scheduleSync() {
+  window.clearTimeout(debounceId);
+  debounceId = window.setTimeout(syncAppViewport, 80);
+}
+
+/** Синхронизирует высоту shell с visualViewport (клавиатура). Без scroll-событий — они давали дёрганье. */
 export function useAppViewport() {
   useEffect(() => {
     syncAppViewport();
 
     const vv = window.visualViewport;
-    vv?.addEventListener('resize', syncAppViewport);
-    vv?.addEventListener('scroll', syncAppViewport);
-    window.addEventListener('resize', syncAppViewport);
+    vv?.addEventListener('resize', scheduleSync);
+    window.addEventListener('resize', scheduleSync);
 
     const tg = window.Telegram?.WebApp;
-    tg?.onEvent?.('viewportChanged', syncAppViewport);
+    tg?.onEvent?.('viewportChanged', scheduleSync);
 
     return () => {
-      vv?.removeEventListener('resize', syncAppViewport);
-      vv?.removeEventListener('scroll', syncAppViewport);
-      window.removeEventListener('resize', syncAppViewport);
-      tg?.offEvent?.('viewportChanged', syncAppViewport);
+      window.clearTimeout(debounceId);
+      vv?.removeEventListener('resize', scheduleSync);
+      window.removeEventListener('resize', scheduleSync);
+      tg?.offEvent?.('viewportChanged', scheduleSync);
     };
   }, []);
 }

@@ -48,7 +48,7 @@ function App() {
 
   return (
     <main className="app-calm-shell mx-auto flex h-[var(--app-vh,100dvh)] max-h-[var(--app-vh,100dvh)] min-h-0 w-full max-w-2xl flex-col overflow-hidden px-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] text-white shadow-none">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain scroll-pt-2 [-webkit-overflow-scrolling:touch]">
         {app.stage === 'corta-intro' && (
           <div className="flex min-h-0 flex-1 flex-col">
             <CortaIntroPage onContinue={() => app.setStage('expert-intro')} />
@@ -60,7 +60,7 @@ function App() {
           </div>
         )}
         {app.stage === 'intro-test-offer' && (
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex shrink-0 flex-col">
             <IntroTestOfferPage onContinue={() => app.setStage('welcome')} />
           </div>
         )}
@@ -92,7 +92,7 @@ function App() {
         {app.stage === 'consultation-request' && <ConsultationRequestPage />}
         {showFooter ? (
           <div className="mt-3 shrink-0 pb-2">
-            <Footer />
+            <Footer compact />
           </div>
         ) : null}
       </div>

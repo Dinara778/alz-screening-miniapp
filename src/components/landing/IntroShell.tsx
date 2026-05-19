@@ -7,6 +7,8 @@ type Props = {
   centerContent?: boolean;
   /** Чуть выше геом. центра (футер с CTA остаётся внизу) */
   liftCenteredContent?: boolean;
+  /** false — карточка по высоте контента, скролл снаружи (длинные списки) */
+  fillViewport?: boolean;
   'aria-label'?: string;
 };
 
@@ -16,17 +18,22 @@ export const IntroShell = ({
   footer,
   centerContent = false,
   liftCenteredContent = false,
+  fillViewport = true,
   'aria-label': ariaLabel,
 }: Props) => {
-  const contentAreaClass = centerContent
-    ? liftCenteredContent
-      ? 'flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain'
-      : 'flex min-h-0 flex-1 flex-col justify-center overflow-y-auto overscroll-contain py-2'
-    : 'flex min-h-0 flex-1 flex-col justify-start overflow-y-auto overscroll-contain py-1';
+  const contentAreaClass = !fillViewport
+    ? 'w-full shrink-0 pt-0.5'
+    : centerContent
+      ? liftCenteredContent
+        ? 'flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain'
+        : 'flex min-h-0 flex-1 flex-col justify-center overflow-y-auto overscroll-contain py-2'
+      : 'flex min-h-0 flex-1 flex-col justify-start overflow-y-auto overscroll-contain py-1';
 
   return (
     <section
-      className="calm-card relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-[1.75rem] sm:rounded-3xl"
+      className={`calm-card relative flex w-full flex-col rounded-[1.75rem] sm:rounded-3xl ${
+        fillViewport ? 'min-h-0 flex-1 overflow-hidden' : 'shrink-0 overflow-visible'
+      }`}
       aria-label={ariaLabel}
     >
       <div className="calm-glow" aria-hidden />
