@@ -1,14 +1,15 @@
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, useRef, useState } from 'react';
 import { Button } from '../components/Button';
+import { IconArrowRight } from '../components/landing/LandingIcons';
 import { ProgressBar } from '../components/ProgressBar';
 import { ParticipantProfile } from '../types';
-import { TEST_DURATION_LABEL_SHORT } from '../constants/testDuration';
+import { TEST_DURATION_LABEL } from '../constants/testDuration';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
 type Props = { onStart: (profile: ParticipantProfile) => void; onHistory: () => void };
 
-/** После интро: имя → телефон → пол → возраст → образование+почта (почта обязательна для профиля). */
-const FIELD_STEP_MAX = 6;
+/** После интро: имя → телефон → пол → возраст → образование+почта → экран перед заданиями. */
+const FIELD_STEP_MAX = 7;
 
 const inputClass =
   'w-full rounded-2xl border-2 border-emerald-300/90 bg-white/95 px-4 py-3.5 text-base text-slate-900 shadow-sm placeholder:text-slate-400 transition focus:border-emerald-600 focus:outline-none focus:ring-4 focus:ring-emerald-200/70 dark:border-emerald-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-900/40';
@@ -59,30 +60,14 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
     return false;
   };
 
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    if (!canAdvanceFrom(5)) return;
+  const buildProfile = (): ParticipantProfile | null => {
     const normalizedEmail = email.trim();
     const normalizedPhone = phone.trim();
     const parsedAge = Number(age);
-    if (!name.trim() || !normalizedEmail || !normalizedPhone || !education.trim() || !Number.isFinite(parsedAge)) return;
-
-    void sendAnalyticsEventToSheets({
-      eventType: 'form_submitted',
-      sessionId: formSessionIdRef.current,
-      stage: 'welcome',
-      participant: {
-        name: name.trim(),
-        email: normalizedEmail,
-        phone: normalizedPhone,
-        sex,
-        age: parsedAge,
-        education: education.trim(),
-        pcConfidence: 3,
-      },
-    }).catch(() => {});
-
-    onStart({
+    if (!name.trim() || !normalizedEmail || !normalizedPhone || !education.trim() || !Number.isFinite(parsedAge)) {
+      return null;
+    }
+    return {
       name: name.trim(),
       email: normalizedEmail,
       phone: normalizedPhone,
@@ -91,10 +76,68 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
       education: education.trim(),
       educationYears: 12,
       pcConfidence: 3,
-    });
+    };
+  };
+
+  const completeEducationStep = (e: FormEvent) => {
+    e.preventDefault();
+    if (!canAdvanceFrom(5) || !buildProfile()) return;
+
+    const profile = buildProfile()!;
+    void sendAnalyticsEventToSheets({
+      eventType: 'form_submitted',
+      sessionId: formSessionIdRef.current,
+      stage: 'welcome',
+      participant: {
+        name: profile.name,
+        email: profile.email,
+        phone: profile.phone,
+        sex: profile.sex,
+        age: profile.age,
+        education: profile.education,
+        pcConfidence: 3,
+      },
+    }).catch(() => {});
+
+    goNext();
+  };
+
+  const startAssessment = () => {
+    const profile = buildProfile();
+    if (!profile) return;
+    onStart(profile);
   };
 
   const progressValue = step === 0 ? 0 : step;
+
+  if (step === 6) {
+    return (
+      <div className="relative flex min-h-0 flex-1 flex-col gap-6">
+        <div className="flex min-h-0 flex-1 flex-col justify-center space-y-5 px-1 sm:px-2">
+          <p className="text-base leading-relaxed text-slate-800 dark:text-slate-200 sm:text-lg">
+            Дальше вас ждут короткие задания, которые помогут понять ваше текущее когнитивное состояние по вашим
+            поведенческим паттернам.
+          </p>
+          <p className="text-base font-semibold text-emerald-900 dark:text-emerald-200 sm:text-lg">
+            Это займёт около {TEST_DURATION_LABEL}.
+          </p>
+          <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300 sm:text-base">
+            По возможности выполняйте их в спокойной обстановке, без отвлечений.
+          </p>
+        </div>
+        <div className="mt-auto shrink-0 pb-2 pt-4">
+          <Button
+            type="button"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug sm:rounded-3xl sm:py-[1.125rem] sm:text-xl"
+            onClick={startAssessment}
+          >
+            <span>Начать оценку</span>
+            <IconArrowRight className="h-5 w-5 shrink-0" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col gap-4">
@@ -114,7 +157,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
             </span>
             <span className="rounded-full bg-orange-100 px-2 py-0.5 text-orange-900 dark:bg-orange-900/40 dark:text-orange-100">
               {step === 0
-                ? 'впереди 6 шагов'
+                ? 'впереди 7 шагов'
                 : step >= FIELD_STEP_MAX - 1
                   ? 'финиш ✨'
                   : `осталось шагов: ${FIELD_STEP_MAX - step}`}
@@ -126,7 +169,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         {step === 0 && (
           <div className="relative z-10 space-y-5 text-center sm:text-left">
             <h2 className="app-heading text-center">
-              Короткая анкета перед тестом
+              Несколько вопросов перед началом оценки
             </h2>
             <p className="text-sm font-medium text-emerald-800/90 dark:text-emerald-200/90 sm:text-base">
               Несколько вопросов — имя, контакты, возраст. Займёт около минуты.
@@ -269,7 +312,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         )}
 
         {step === 5 && (
-          <form className="relative z-10 space-y-4" onSubmit={submit}>
+          <form className="relative z-10 space-y-4" onSubmit={completeEducationStep}>
             <div className="text-center text-5xl">🎓</div>
             <h2 className="app-heading text-center">Образование и почта</h2>
             <p className="text-center text-sm font-medium text-emerald-800/90 dark:text-emerald-200/90">
@@ -303,10 +346,9 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
                 Назад
               </Button>
               <Button type="submit" className="min-w-[200px] flex-1 text-base" disabled={!canAdvanceFrom(5)}>
-                Начать тест
+                Далее
               </Button>
             </div>
-            <TimerHint />
           </form>
         )}
       </div>
@@ -320,29 +362,3 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
     </div>
   );
 };
-
-/** Ориентир по времени + мини-обратный отсчёт (формулировка «на весь тест»). */
-function TimerHint() {
-  const [n, setN] = useState(5);
-  useEffect(() => {
-    let ticks = 5;
-    const id = window.setInterval(() => {
-      ticks -= 1;
-      setN(Math.max(0, ticks));
-      if (ticks <= 0) window.clearInterval(id);
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  return (
-    <div className="space-y-1 text-center">
-      <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">
-        ⏱️ Ориентир по времени:{' '}
-        <span className="text-orange-700 dark:text-orange-300">{TEST_DURATION_LABEL_SHORT}</span> на весь тест
-      </p>
-      <p className="text-xs text-slate-600 dark:text-slate-400">
-        Мини-таймер: {n > 0 ? `${n}…` : 'готово к старту ✓'}
-      </p>
-    </div>
-  );
-}
