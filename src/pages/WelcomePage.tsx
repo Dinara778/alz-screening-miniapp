@@ -172,7 +172,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
               Несколько вопросов перед началом оценки
             </h2>
             <p className="text-sm font-medium text-emerald-800/90 dark:text-emerald-200/90 sm:text-base">
-              Несколько вопросов — имя, контакты, возраст. Займёт около минуты.
+              Имя, контакты, возраст и образование. Займёт около минуты.
             </p>
             <div className="w-full">
               <Button
