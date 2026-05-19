@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
 import { Footer } from './components/Footer';
+import { StageViewport } from './components/StageViewport';
 import { STAGES_WITH_APP_FOOTER } from './constants/layout';
 import { useApp } from './context/AppContext';
 import { useAppViewport } from './hooks/useAppViewport';
+import { useScrollToTopOnStage } from './hooks/useScrollToTopOnStage';
 import { recoverProdamusPaymentFromUrl } from './utils/telegramPayments';
 import { applyTelegramTheme, attachTelegramThemeListener } from './utils/telegramTheme';
 import { HistoryPage } from './pages/HistoryPage';
@@ -18,6 +20,7 @@ import { WelcomePage } from './pages/WelcomePage';
 function App() {
   const app = useApp();
   useAppViewport();
+  const scrollRef = useScrollToTopOnStage(app.stage);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -48,29 +51,38 @@ function App() {
 
   return (
     <main className="app-calm-shell mx-auto flex h-[var(--app-vh,100dvh)] max-h-[var(--app-vh,100dvh)] min-h-0 w-full max-w-2xl flex-col overflow-hidden px-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] text-white shadow-none">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain scroll-pt-2 [-webkit-overflow-scrolling:touch]">
+      <div
+        ref={scrollRef}
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
+      >
         {app.stage === 'corta-intro' && (
-          <div className="flex min-h-0 flex-1 flex-col">
+          <StageViewport>
             <CortaIntroPage onContinue={() => app.setStage('expert-intro')} />
-          </div>
+          </StageViewport>
         )}
         {app.stage === 'expert-intro' && (
-          <div className="flex min-h-0 flex-1 flex-col">
+          <StageViewport>
             <ExpertIntroPage onContinue={() => app.setStage('intro-test-offer')} />
-          </div>
+          </StageViewport>
         )}
         {app.stage === 'intro-test-offer' && (
-          <div className="flex shrink-0 flex-col">
+          <StageViewport>
             <IntroTestOfferPage onContinue={() => app.setStage('welcome')} />
-          </div>
+          </StageViewport>
         )}
         {app.stage === 'welcome' && (
-          <WelcomePage
-            onStart={(profile) => app.beginNewAssessment(profile)}
-            onHistory={() => app.setStage('history')}
-          />
+          <StageViewport>
+            <WelcomePage
+              onStart={(profile) => app.beginNewAssessment(profile)}
+              onHistory={() => app.setStage('history')}
+            />
+          </StageViewport>
         )}
-        {app.stage === 'history' && <HistoryPage onBack={() => app.setStage('welcome')} />}
+        {app.stage === 'history' && (
+          <StageViewport>
+            <HistoryPage onBack={() => app.setStage('welcome')} />
+          </StageViewport>
+        )}
         {[
           'word-study',
           'word-immediate',
@@ -86,16 +98,32 @@ function App() {
           'stroop',
           'face-test-instruction',
           'face-test',
-        ].includes(app.stage) && <TestPage key={app.sessionSeed} />}
-        {app.stage === 'result' && <ResultPage onRestart={app.resetSession} />}
-        {app.stage === 'full-report' && <FullReportPage />}
-        {app.stage === 'consultation-request' && <ConsultationRequestPage />}
-        {showFooter ? (
-          <div className="mt-3 shrink-0 pb-2">
-            <Footer compact />
-          </div>
-        ) : null}
+        ].includes(app.stage) && (
+          <StageViewport>
+            <TestPage key={app.sessionSeed} />
+          </StageViewport>
+        )}
+        {app.stage === 'result' && (
+          <StageViewport>
+            <ResultPage onRestart={app.resetSession} />
+          </StageViewport>
+        )}
+        {app.stage === 'full-report' && (
+          <StageViewport>
+            <FullReportPage />
+          </StageViewport>
+        )}
+        {app.stage === 'consultation-request' && (
+          <StageViewport>
+            <ConsultationRequestPage />
+          </StageViewport>
+        )}
       </div>
+      {showFooter ? (
+        <div className="shrink-0 border-t border-white/10 px-1 pb-2 pt-3">
+          <Footer compact />
+        </div>
+      ) : null}
     </main>
   );
 }

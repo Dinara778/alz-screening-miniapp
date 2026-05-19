@@ -22,6 +22,8 @@ const INTERFERENCE_MS = 180000;
 const WORD_STUDY_MS = 30_000;
 const WORD_STUDY_SEC = WORD_STUDY_MS / 1000;
 
+const TEST_STAGES_CENTERED = new Set<AppStage>(['reaction', 'flanker', 'stroop', 'interference-wait']);
+
 function wrapWithTestProgress(stage: AppStage, node: ReactNode, backButton?: ReactNode) {
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col text-white">
@@ -29,7 +31,11 @@ function wrapWithTestProgress(stage: AppStage, node: ReactNode, backButton?: Rea
       <div className="shrink-0">
         <TestProgressBanner stage={stage} />
       </div>
-      <div className="flex w-full flex-1 flex-col justify-center gap-4">{node}</div>
+      <div
+        className={`flex w-full flex-1 flex-col gap-4 ${TEST_STAGES_CENTERED.has(stage) ? 'justify-center' : 'justify-start pt-1'}`}
+      >
+        {node}
+      </div>
     </div>
   );
 }

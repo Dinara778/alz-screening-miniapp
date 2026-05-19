@@ -33,7 +33,6 @@ export const IntroTestOfferPage = ({ onContinue }: Props) => {
       aria-label="Что мы анализируем"
       footer={footer}
       centerContent={false}
-      fillViewport={false}
     >
       <div className="space-y-4 pb-1">
         <h1 className="text-left text-xl font-bold leading-snug text-white sm:text-2xl">
