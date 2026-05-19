@@ -1,5 +1,5 @@
 import { FormEvent, useRef, useState, type ReactNode } from 'react';
-import { ScreenBackHeader } from '../components/ScreenBackHeader';
+import { BackArrowButton } from '../components/BackArrowButton';
 import { Button } from '../components/Button';
 import { ScreenBottomCta } from '../components/ScreenBottomCta';
 import { IconArrowRight } from '../components/landing/LandingIcons';
@@ -16,7 +16,8 @@ const FIELD_STEP_MAX = 5;
 
 const inputClass = 'calm-input';
 
-const shellClass = 'calm-card relative flex min-h-0 flex-1 flex-col';
+const shellClassTall = 'calm-card relative flex min-h-0 w-full flex-1 flex-col';
+const shellClassCompact = 'calm-card relative flex w-full shrink-0 flex-col';
 
 export const WelcomePage = ({ onStart, onHistory }: Props) => {
   const [step, setStep] = useState(0);
@@ -160,7 +161,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
   } else if (step === 1) {
     stepBody = (
       <div className="space-y-4">
-        <div className="text-center text-5xl">✨</div>
+        <div className="text-center text-4xl">✨</div>
         <h2 className="app-heading text-center">Как вас зовут?</h2>
         <p className="text-center calm-caption">Укажите, как к вам обращаться</p>
         <input
@@ -179,7 +180,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
   } else if (step === 2) {
     stepBody = (
       <div className="space-y-4">
-        <div className="text-center text-5xl">👥</div>
+        <div className="text-center text-4xl">👥</div>
         <h2 className="app-heading text-center">Выберите пол</h2>
         <p className="text-center calm-caption">Нужен для корректной нормы в аналитике</p>
         <div className="grid gap-3 sm:grid-cols-3">
@@ -207,7 +208,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
   } else if (step === 3) {
     stepBody = (
       <div className="space-y-4">
-        <div className="text-center text-5xl">🎂</div>
+        <div className="text-center text-4xl">🎂</div>
         <h2 className="app-heading text-center">Ваш возраст</h2>
         <p className="text-center calm-caption">Полных лет, от 18 до 100</p>
         <input
@@ -229,7 +230,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
   } else if (step === 4) {
     stepBody = (
       <form id="welcome-email" className="space-y-4" onSubmit={completeEmailStep}>
-        <div className="text-center text-5xl">📧</div>
+        <div className="text-center text-4xl">📧</div>
         <h2 className="app-heading text-center">Ваша почта</h2>
         <p className="text-center calm-caption">Последний шаг — и можно начинать замер</p>
         <input
@@ -251,27 +252,42 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
     stepFooter = nextButton(4, { type: 'submit', form: 'welcome-email' });
   }
 
+  const isCompactStep = step >= 1 && step <= 4;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className={shellClass}>
-        {step >= 1 && step <= 4 ? <ScreenBackHeader onBack={goBack} className="mb-1" /> : null}
-
-        <div className="relative mb-4 shrink-0 space-y-2">
-          <div className="flex items-center justify-between gap-2 text-xs font-bold uppercase tracking-wide calm-accent">
-            <span>{step === 0 ? 'Знакомство' : `Шаг ${step} из ${FIELD_STEP_MAX}`}</span>
-            <span className="rounded-full bg-white/10 px-2 py-0.5 text-white/70">
-              {step === 0
-                ? 'впереди 5 шагов'
-                : step >= FIELD_STEP_MAX - 1
-                  ? 'финиш ✨'
-                  : `осталось шагов: ${FIELD_STEP_MAX - step}`}
-            </span>
+      <div className={isCompactStep ? shellClassCompact : shellClassTall}>
+        <div className="relative mb-4 shrink-0 space-y-3">
+          <div className="flex items-start gap-3">
+            {step >= 1 && step <= 4 ? (
+              <BackArrowButton onClick={goBack} className="mt-0.5 shrink-0" aria-label="Назад" />
+            ) : null}
+            <div className="min-w-0 flex-1 space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                {step === 0 ? (
+                  <span className="text-xs font-bold uppercase tracking-wide text-teal-300/95">Знакомство</span>
+                ) : (
+                  <span className="text-xs font-semibold tracking-wide text-teal-300/95">
+                    Шаг {step}{' '}
+                    <span className="font-medium text-white/45">из {FIELD_STEP_MAX}</span>
+                  </span>
+                )}
+                <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-0.5 text-[0.6875rem] font-medium text-white/65">
+                  {step === 0
+                    ? 'впереди 5 шагов'
+                    : step >= FIELD_STEP_MAX - 1
+                      ? 'финиш ✨'
+                      : `осталось: ${FIELD_STEP_MAX - step}`}
+                </span>
+              </div>
+              <ProgressBar value={progressValue} max={FIELD_STEP_MAX} />
+            </div>
           </div>
-          <ProgressBar value={progressValue} max={FIELD_STEP_MAX} />
         </div>
 
         <ScreenBottomCta
-          className="relative z-10 min-h-0 flex-1"
+          className="relative z-10"
+          fill={step === 0}
           contentAlign={step === 0 ? 'center' : 'start'}
           footer={stepFooter}
           footerExtra={

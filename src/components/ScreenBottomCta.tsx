@@ -8,6 +8,8 @@ type Props = {
   footerExtra?: ReactNode;
   /** start — для полей ввода (меньше скачков при клавиатуре) */
   contentAlign?: 'center' | 'start';
+  /** false — карточка по высоте контента (шаги с полями ввода) */
+  fill?: boolean;
   className?: string;
 };
 
@@ -20,11 +22,12 @@ export const ScreenBottomCta = ({
   footer,
   footerExtra,
   contentAlign = 'center',
+  fill = true,
   className = '',
 }: Props) => (
-  <div className={`flex min-h-0 flex-1 flex-col ${className}`}>
+  <div className={`flex min-h-0 flex-col ${fill ? 'flex-1' : ''} ${className}`}>
     <div
-      className={`flex min-h-0 flex-1 flex-col overflow-y-auto py-2 ${
+      className={`flex min-h-0 flex-col overflow-y-auto py-2 ${fill ? 'flex-1' : ''} ${
         contentAlign === 'start' ? 'justify-start' : 'justify-center'
       }`}
     >

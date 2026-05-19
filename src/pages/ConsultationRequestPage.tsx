@@ -108,7 +108,7 @@ export const ConsultationRequestPage = () => {
   };
 
   return (
-    <div className="relative space-y-6">
+    <div className="relative min-h-0 flex-1 space-y-6 pb-4">
       {!paidOk ? <ScreenBackHeader onBack={goBack} /> : null}
       <div className="calm-card">
         <h1 className="app-heading">Запись на персональную сессию</h1>

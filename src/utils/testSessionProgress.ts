@@ -14,6 +14,7 @@ const STAGE_PROGRESS: Partial<Record<AppStage, { block: number; label: string }>
   'stroop-instruction': { block: 4, label: 'Струп' },
   'stroop-confirm': { block: 4, label: 'Струп' },
   stroop: { block: 4, label: 'Струп' },
+  'face-test-instruction': { block: 5, label: 'Проверка лиц' },
   'face-test': { block: 5, label: 'Проверка лиц' },
 };
 

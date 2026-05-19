@@ -23,8 +23,8 @@ body {
 }
 
 #root {
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-height: var(--app-vh, 100dvh);
+  height: var(--app-vh, 100dvh);
   background: var(--app-bg);
   color: var(--app-text);
 }

@@ -84,7 +84,6 @@ export type SessionResult = {
 
 export type AppStage =
   | 'corta-intro'
-  | 'value-props-intro'
   | 'expert-intro'
   | 'intro-test-offer'
   | 'welcome'
@@ -101,6 +100,7 @@ export type AppStage =
   | 'stroop-instruction'
   | 'stroop-confirm'
   | 'stroop'
+  | 'face-test-instruction'
   | 'face-test'
   | 'result'
   | 'full-report'

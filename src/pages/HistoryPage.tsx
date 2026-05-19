@@ -6,7 +6,7 @@ export const HistoryPage = ({ onBack }: { onBack: () => void }) => {
   const { history } = useApp();
 
   return (
-    <div className="relative space-y-4">
+    <div className="relative min-h-0 flex-1 space-y-4 pb-4">
       <ScreenBackHeader onBack={onBack} />
       <h1 className="app-heading">История</h1>
       {!history.length && <div className="calm-inset p-4">Пока нет завершенных сессий.</div>}

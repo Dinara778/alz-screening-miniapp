@@ -2,6 +2,8 @@
 interface TelegramWebApp {
   ready(): void;
   expand(): void;
+  /** iOS: не сворачивать Mini App жестом вниз при скролле. */
+  disableVerticalSwipes?(): void;
   close(): void;
   version: string;
   platform: string;

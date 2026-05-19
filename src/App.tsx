@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { Footer } from './components/Footer';
-import { SupportFooter } from './components/SupportFooter';
+import { STAGES_WITH_APP_FOOTER } from './constants/layout';
 import { useApp } from './context/AppContext';
-import type { AppStage } from './types';
+import { useAppViewport } from './hooks/useAppViewport';
 import { recoverProdamusPaymentFromUrl } from './utils/telegramPayments';
 import { applyTelegramTheme, attachTelegramThemeListener } from './utils/telegramTheme';
 import { HistoryPage } from './pages/HistoryPage';
@@ -11,28 +11,22 @@ import { ResultPage } from './pages/ResultPage';
 import { TestPage } from './pages/TestPage';
 import { ConsultationRequestPage } from './pages/ConsultationRequestPage';
 import { CortaIntroPage } from './pages/CortaIntroPage';
-import { ValuePropsIntroPage } from './pages/ValuePropsIntroPage';
 import { ExpertIntroPage } from './pages/ExpertIntroPage';
 import { IntroTestOfferPage } from './pages/IntroTestOfferPage';
 import { WelcomePage } from './pages/WelcomePage';
 
-const STAGES_HIDE_SUPPORT_FOOTER: AppStage[] = [
-  'value-props-intro',
-  'expert-intro',
-  'flanker',
-  'reaction',
-  'stroop',
-  'result',
-];
-
 function App() {
   const app = useApp();
+  useAppViewport();
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
     if (!tg) return;
     tg.ready();
     tg.expand();
+    if (typeof tg.disableVerticalSwipes === 'function') {
+      tg.disableVerticalSwipes();
+    }
     tg.MainButton?.hide();
     applyTelegramTheme();
     requestAnimationFrame(() => applyTelegramTheme());
@@ -50,21 +44,25 @@ function App() {
     void recoverProdamusPaymentFromUrl(api);
   }, []);
 
-  const showFooter =
-    app.stage !== 'result' && app.stage !== 'corta-intro' && app.stage !== 'value-props-intro';
+  const showFooter = STAGES_WITH_APP_FOOTER.has(app.stage);
 
   return (
-    <main className="app-calm-shell mx-auto flex h-[100dvh] max-h-[100dvh] min-h-0 w-full max-w-2xl flex-col overflow-hidden px-4 py-4 text-white shadow-none">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+    <main className="app-calm-shell mx-auto flex h-[var(--app-vh,100dvh)] max-h-[var(--app-vh,100dvh)] min-h-0 w-full max-w-2xl flex-col overflow-hidden px-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] text-white shadow-none">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain">
         {app.stage === 'corta-intro' && (
-          <CortaIntroPage onContinue={() => app.setStage('value-props-intro')} />
+          <div className="flex min-h-0 flex-1 flex-col">
+            <CortaIntroPage onContinue={() => app.setStage('expert-intro')} />
+          </div>
         )}
-        {app.stage === 'value-props-intro' && (
-          <ValuePropsIntroPage onContinue={() => app.setStage('expert-intro')} />
+        {app.stage === 'expert-intro' && (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <ExpertIntroPage onContinue={() => app.setStage('intro-test-offer')} />
+          </div>
         )}
-        {app.stage === 'expert-intro' && <ExpertIntroPage onContinue={() => app.setStage('intro-test-offer')} />}
         {app.stage === 'intro-test-offer' && (
-          <IntroTestOfferPage onContinue={() => app.setStage('welcome')} />
+          <div className="flex min-h-0 flex-1 flex-col">
+            <IntroTestOfferPage onContinue={() => app.setStage('welcome')} />
+          </div>
         )}
         {app.stage === 'welcome' && (
           <WelcomePage
@@ -86,21 +84,18 @@ function App() {
           'stroop-instruction',
           'stroop-confirm',
           'stroop',
+          'face-test-instruction',
           'face-test',
         ].includes(app.stage) && <TestPage key={app.sessionSeed} />}
         {app.stage === 'result' && <ResultPage onRestart={app.resetSession} />}
         {app.stage === 'full-report' && <FullReportPage />}
         {app.stage === 'consultation-request' && <ConsultationRequestPage />}
+        {showFooter ? (
+          <div className="mt-3 shrink-0 pb-2">
+            <Footer />
+          </div>
+        ) : null}
       </div>
-      {showFooter &&
-        (app.stage === 'intro-test-offer' ? (
-          <Footer />
-        ) : (
-          <SupportFooter
-            showSupport={!STAGES_HIDE_SUPPORT_FOOTER.includes(app.stage)}
-            showDeveloperCredit={false}
-          />
-        ))}
     </main>
   );
 }

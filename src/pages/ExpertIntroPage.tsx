@@ -19,7 +19,7 @@ export const ExpertIntroPage = ({ onContinue }: Props) => {
   );
 
   return (
-    <IntroShell aria-label="О проекте Corta и эксперте" footer={footer} centerContent>
+    <IntroShell aria-label="О проекте Corta и эксперте" footer={footer} centerContent={true}>
       <div className="flex flex-col items-center px-2 text-center sm:px-4">
         <h2 className="app-heading max-w-md leading-snug">
           «Corta — это научный подход к вашему когнитивному здоровью»

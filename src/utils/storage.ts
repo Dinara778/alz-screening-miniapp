@@ -28,6 +28,7 @@ const RESTORABLE_STAGES = new Set<AppStage>([
   'stroop-instruction',
   'stroop-confirm',
   'stroop',
+  'face-test-instruction',
   'face-test',
 ]);
 

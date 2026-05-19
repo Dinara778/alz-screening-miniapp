@@ -29,7 +29,7 @@ export const IntroTestOfferPage = ({ onContinue }: Props) => {
   );
 
   return (
-    <IntroShell aria-label="Что мы анализируем" footer={footer}>
+    <IntroShell aria-label="Что мы анализируем" footer={footer} centerContent={false}>
       <div className="space-y-4 pb-4">
         <h1 className="text-left text-xl font-bold leading-snug text-white sm:text-2xl">
           Оценка когнитивного профиля

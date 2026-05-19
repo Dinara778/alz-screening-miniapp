@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import { BackArrowButton } from '../components/BackArrowButton';
 import { Button } from '../components/Button';
 import { ProgressBar } from '../components/ProgressBar';
@@ -24,7 +24,7 @@ const WORD_STUDY_SEC = WORD_STUDY_MS / 1000;
 
 function wrapWithTestProgress(stage: AppStage, node: ReactNode, backButton?: ReactNode) {
   return (
-    <div className="flex min-h-[min(78dvh,640px)] w-full flex-col text-white">
+    <div className="flex min-h-0 w-full flex-1 flex-col text-white">
       {backButton ? <div className="relative z-50 mb-2 h-11 w-full shrink-0">{backButton}</div> : null}
       <div className="shrink-0">
         <TestProgressBanner stage={stage} />
@@ -43,6 +43,9 @@ export const TestPage = () => {
 
   const [textInput, setTextInput] = useState('');
   const [faceStudyIndex, setFaceStudyIndex] = useState(0);
+  const [faceTestIndex, setFaceTestIndex] = useState(0);
+  const [finishBusy, setFinishBusy] = useState(false);
+  const finishBusyRef = useRef(false);
   const [reactionPrompt, setReactionPrompt] = useState('Ждите сигнал');
   const [isStimulusVisible, setIsStimulusVisible] = useState(false);
   const [attemptTick, setAttemptTick] = useState(0);
@@ -98,6 +101,7 @@ export const TestPage = () => {
   };
 
   const stroopAdvanceRef = useRef(false);
+  const { setStage, setStroopTrials } = app;
   useEffect(() => {
     if (app.stage !== 'stroop') {
       stroopAdvanceRef.current = false;
@@ -105,9 +109,9 @@ export const TestPage = () => {
     }
     if (!stroop.done || stroopAdvanceRef.current) return;
     stroopAdvanceRef.current = true;
-    app.setStroopTrials(stroop.results);
-    app.setStage('face-test');
-  }, [app.stage, stroop.done, stroop.results, app]);
+    setStroopTrials(stroop.results);
+    setStage('face-test-instruction');
+  }, [app.stage, stroop.done, stroop.results, setStage, setStroopTrials]);
 
   useEffect(() => {
     if (app.stage === 'interference-wait' && timer.isFinished) {
@@ -192,7 +196,7 @@ export const TestPage = () => {
     app.setStage('flanker-instruction');
   };
 
-  const finish = () => {
+  const finish = useCallback(() => {
     const targets =
       app.studyWordList.length >= 5 ? app.studyWordList : pickStudyWordList(app.sessionSeed);
     const wm = scoreWordMemory(app.immediateWords, app.delayedWords, targets);
@@ -202,7 +206,7 @@ export const TestPage = () => {
 
     const mappedAnswers = face.trials.map((trial) => ({
       faceId: trial.id,
-      selected: face.answers[trial.id],
+      selected: face.answers[trial.id] ?? '',
       correct: trial.correctName,
     }));
     const faceScore = mappedAnswers.filter((a) => a.selected === a.correct).length;
@@ -251,8 +255,23 @@ export const TestPage = () => {
       stroop: st,
       faceName: fn,
     });
-    app.setStage('result');
-  };
+    setStage('result');
+  }, [app, face.trials, face.answers, reaction.anticipations, setStage]);
+
+  const runFinish = useCallback(() => {
+    const allAnswered = face.trials.every((t) => Boolean(face.answers[t.id]));
+    if (finishBusyRef.current || !allAnswered) return;
+    finishBusyRef.current = true;
+    setFinishBusy(true);
+    window.setTimeout(() => {
+      try {
+        finish();
+      } finally {
+        finishBusyRef.current = false;
+        setFinishBusy(false);
+      }
+    }, 0);
+  }, [face.trials, face.answers, finish]);
 
   useEffect(() => {
     if (app.stage !== 'word-study') return;
@@ -542,34 +561,85 @@ export const TestPage = () => {
     );
   }
 
-  if (app.stage === 'face-test') {
+  if (app.stage === 'face-test-instruction') {
     return wrapWithTestProgress(
       app.stage,
-      <div className="space-y-4">
-        <h2 className="app-heading">Задание 5: Проверка лиц-имен</h2>
-        <p className="calm-body">
-          Для каждого лица выберите правильное имя из 3 вариантов. Лица показываются в случайном порядке.
-        </p>
-        {face.trials.map((f) => (
-          <div key={f.id} className="calm-inset p-4 space-y-2">
-            <img src={f.image} alt={f.label} className="h-40 w-full rounded object-cover border border-slate-300" />
-            {f.options.map((name) => (
-              <label key={name} className="block">
-                <input className="mr-2" type="radio" name={`face-${f.id}`} checked={face.answers[f.id] === name} onChange={() => face.setAnswer(f.id, name)} />
-                {name}
-              </label>
-            ))}
-          </div>
-        ))}
-        <Button
-          type="button"
-          disabled={!face.isComplete}
-          className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug sm:rounded-3xl sm:py-[1.125rem] sm:text-xl"
-          onClick={finish}
-        >
-          Завершить анализ
-        </Button>
+      <TestInstruction
+        title="Задание 5: Проверка лиц-имен"
+        text="Для каждого лица выберите правильное имя из трёх вариантов. Лица будут показываться по одному."
+        onStart={() => {
+          setFaceTestIndex(0);
+          setStage('face-test');
+        }}
+      />,
+    );
+  }
+
+  if (app.stage === 'face-test') {
+    const f = face.trials[faceTestIndex];
+    if (!f) {
+      return wrapWithTestProgress(app.stage, <p className="text-center calm-caption">Загрузка…</p>);
+    }
+
+    const selected = face.answers[f.id];
+    const isLast = faceTestIndex >= face.trials.length - 1;
+
+    const goNextFace = () => {
+      if (!selected || finishBusy) return;
+      if (isLast) {
+        runFinish();
+        return;
+      }
+      setFaceTestIndex((i) => i + 1);
+    };
+
+    return wrapWithTestProgress(
+      app.stage,
+      <div className="flex min-h-0 w-full flex-col gap-4">
+        <div className="shrink-0 space-y-2">
+          <h2 className="app-heading text-center">
+            Лицо {faceTestIndex + 1} из {face.trials.length}
+          </h2>
+          <ProgressBar value={faceTestIndex + 1} max={face.trials.length} />
+        </div>
+        <div className="overflow-hidden rounded-2xl border-2 border-white/15 bg-white">
+          <img
+            src={f.image}
+            alt={f.label}
+            className="mx-auto h-48 w-full max-w-sm object-cover sm:h-52"
+            decoding="async"
+          />
+        </div>
+        <div className="grid gap-3">
+          {f.options.map((name) => (
+            <button
+              key={name}
+              type="button"
+              onClick={() => face.setAnswer(f.id, name)}
+              className={`rounded-2xl border-2 px-3 py-4 text-center text-sm font-bold transition ${
+                selected === name
+                  ? 'border-teal-400/80 bg-teal-500/30 text-white shadow-md ring-2 ring-teal-400/40'
+                  : 'border-white/15 bg-white/5 text-white/80 hover:border-white/25 hover:bg-white/10'
+              }`}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+        <div className="mt-auto shrink-0 pt-2">
+          <Button
+            type="button"
+            disabled={!selected || finishBusy}
+            className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug sm:rounded-3xl sm:py-[1.125rem] sm:text-xl"
+            onClick={goNextFace}
+          >
+            {finishBusy ? 'Считаем результат…' : isLast ? 'Завершить анализ' : 'Далее'}
+          </Button>
+        </div>
       </div>,
+      faceTestIndex > 0 ? (
+        <BackArrowButton onClick={() => setFaceTestIndex((i) => i - 1)} aria-label="Назад" />
+      ) : undefined,
     );
   }
 
