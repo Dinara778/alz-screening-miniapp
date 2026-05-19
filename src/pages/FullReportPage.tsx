@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { BackArrowButton } from '../components/BackArrowButton';
+import { ScreenBackHeader } from '../components/ScreenBackHeader';
 import { Button } from '../components/Button';
 import { DomainProfileCard } from '../components/DomainProfileCard';
 import { ResultOverloadMap } from '../components/ResultOverloadMap';
@@ -307,9 +307,9 @@ export const FullReportPage = () => {
     const s = screens[step];
     return (
       <>
-      <div className="relative space-y-5 pt-12">
-        <BackArrowButton
-          onClick={() => (step > 0 ? setStep((x) => x - 1) : setStage('result'))}
+      <div className="relative space-y-5">
+        <ScreenBackHeader
+          onBack={() => (step > 0 ? setStep((x) => x - 1) : setStage('result'))}
           aria-label={step > 0 ? 'Назад' : 'Назад к профилю'}
         />
         <div className="text-xs uppercase tracking-wide text-slate-500">
@@ -337,8 +337,8 @@ export const FullReportPage = () => {
   if (step === 5) {
     return (
       <>
-      <div className="relative space-y-5 pt-12">
-        <BackArrowButton onClick={() => setStep(4)} />
+      <div className="relative space-y-5">
+        <ScreenBackHeader onBack={() => setStep(4)} />
         <h1 className="app-heading">Получение расширенного отчёта</h1>
         <p className="calm-body">
           Мы подготовим для вас персональный расширенный отчёт с подробной расшифровкой результатов и отправим его

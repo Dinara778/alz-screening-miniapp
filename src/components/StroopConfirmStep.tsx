@@ -1,18 +1,15 @@
 import { useState } from 'react';
-import { BackArrowButton } from './BackArrowButton';
 import { Button } from './Button';
 
 type Props = {
   onConfirm: () => void;
-  onBack: () => void;
 };
 
-export const StroopConfirmStep = ({ onConfirm, onBack }: Props) => {
+export const StroopConfirmStep = ({ onConfirm }: Props) => {
   const [understood, setUnderstood] = useState(false);
 
   return (
-    <div className="relative space-y-4 calm-inset p-6 pt-14 text-slate-950 shadow-sm dark:bg-slate-800 dark:text-slate-100">
-      <BackArrowButton onClick={onBack} aria-label="Назад к инструкции" />
+    <div className="space-y-4 calm-inset p-6 text-slate-950 shadow-sm dark:bg-slate-800 dark:text-slate-100">
       <h2 className="app-heading">Всё ли понятно?</h2>
       <p className="calm-body dark:text-slate-200">
         Перед тестом проверьте правило: нажимаете <strong>цвет букв</strong>, а не то, что написано.

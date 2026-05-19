@@ -5,27 +5,32 @@ type Props = {
   footer?: ReactNode;
   /** Верхняя подпись (опционально) */
   kicker?: string;
-  /** Крупный жирный заголовок секции (экран индекса) */
+  /** Крупный заголовок секции (экран индекса) */
   kickerProminent?: boolean;
-  /** center — метрика по центру; top — длинная расшифровка со скроллом */
-  contentAlign?: 'center' | 'top';
+  /** Заголовок профиля: «Ваш когнитивный профиль» */
+  kickerProfile?: boolean;
+  /** center — метрика; readable — расшифровка по центру со скроллом */
+  contentAlign?: 'center' | 'readable';
 };
 
-/** Полноэкранная оболочка calm tech: тёмный фон, воздух, CTA внизу. */
+/** Полноэкранная оболочка calm tech: фон как у приложения, CTA внизу. */
 export const CalmScreen = ({
   children,
   footer,
   kicker,
   kickerProminent = false,
+  kickerProfile = false,
   contentAlign = 'center',
 }: Props) => (
   <div className="calm-results flex min-h-0 flex-1 flex-col text-white">
     {kicker ? (
       <p
         className={
-          kickerProminent
-            ? 'shrink-0 px-2 pb-1 pt-5 text-center text-[0.8125rem] font-bold uppercase tracking-[0.14em] text-white/80 sm:pt-6 sm:text-sm'
-            : 'shrink-0 px-1 pt-1 text-center text-[0.65rem] font-medium uppercase tracking-[0.2em] text-white/40'
+          kickerProfile
+            ? 'shrink-0 px-3 pb-2 pt-5 text-center text-lg font-semibold text-white/95 sm:pt-6 sm:text-xl'
+            : kickerProminent
+              ? 'shrink-0 px-2 pb-1 pt-5 text-center text-sm font-bold uppercase tracking-[0.14em] text-white/85 sm:pt-6 sm:text-base'
+              : 'shrink-0 px-2 pt-2 text-center text-xs font-medium uppercase tracking-[0.18em] text-white/55 sm:text-sm'
         }
       >
         {kicker}
@@ -33,9 +38,9 @@ export const CalmScreen = ({
     ) : null}
     <div
       className={
-        contentAlign === 'top'
-          ? 'flex min-h-0 flex-1 flex-col overflow-y-auto px-2 py-4'
-          : 'flex min-h-0 flex-1 flex-col items-center justify-center px-2 py-8'
+        contentAlign === 'readable'
+          ? 'flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-6 text-center'
+          : 'flex min-h-0 flex-1 flex-col items-center justify-center px-3 py-8 text-center'
       }
     >
       {children}

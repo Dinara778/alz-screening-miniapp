@@ -42,14 +42,18 @@ input:focus-visible {
     radial-gradient(ellipse 60% 40% at 100% 100%, rgba(16, 185, 129, 0.06), transparent 45%), #050807;
 }
 
+/** Результаты — тот же фон, что у app-calm-shell (без чёрной заливки) */
 .calm-results {
-  background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(45, 212, 191, 0.08), transparent 55%),
-    #050807;
+  background: transparent;
 }
 
 @layer components {
   .app-heading {
-    @apply text-lg font-bold leading-snug text-white/95 sm:text-xl;
+    @apply text-xl font-bold leading-snug text-white/95 sm:text-2xl;
+  }
+
+  .results-body {
+    @apply text-base leading-relaxed text-white/85 sm:text-lg;
   }
 
   .calm-card {
@@ -65,7 +69,7 @@ input:focus-visible {
   }
 
   .calm-body {
-    @apply text-white/75 leading-relaxed;
+    @apply text-base leading-relaxed text-white/85 sm:text-lg;
   }
 
   .calm-caption {
@@ -122,4 +126,131 @@ input:focus-visible {
 
 .metric-halo-pulse-delay {
   animation-delay: 1.4s;
+}
+
+@keyframes metric-cloud-drift {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes metric-cloud-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.015);
+  }
+}
+
+.metric-cloud-drift {
+  animation: metric-cloud-drift 48s linear infinite;
+  transform-origin: 100px 100px;
+}
+
+.metric-cloud-pulse {
+  transform-origin: 100px 100px;
+  animation: metric-cloud-pulse 6s ease-in-out infinite;
+}
+
+.metric-cloud-pulse-delay {
+  animation-delay: 2s;
+}
+
+@keyframes value-prop-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.value-prop-pop {
+  animation: value-prop-in 0.5s ease-out both;
+}
+
+.interference-wait-shell {
+  background: radial-gradient(ellipse 75% 60% at 50% 45%, rgba(45, 212, 191, 0.14), rgba(5, 8, 7, 0.88) 68%),
+    radial-gradient(ellipse 50% 40% at 20% 80%, rgba(16, 185, 129, 0.1), transparent 55%);
+}
+
+.interference-wait-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(52px);
+  opacity: 0.55;
+}
+
+.interference-wait-orb-a {
+  top: 8%;
+  left: 12%;
+  width: min(55vw, 220px);
+  height: min(55vw, 220px);
+  background: rgba(45, 212, 191, 0.35);
+  animation: interference-orb-a 7s ease-in-out infinite;
+}
+
+.interference-wait-orb-b {
+  bottom: 10%;
+  right: 8%;
+  width: min(48vw, 190px);
+  height: min(48vw, 190px);
+  background: rgba(16, 185, 129, 0.28);
+  animation: interference-orb-b 9s ease-in-out infinite;
+}
+
+.interference-wait-orb-c {
+  top: 42%;
+  left: 50%;
+  width: min(40vw, 160px);
+  height: min(40vw, 160px);
+  transform: translateX(-50%);
+  background: rgba(52, 211, 153, 0.2);
+  animation: interference-orb-c 6s ease-in-out infinite;
+}
+
+@keyframes interference-orb-a {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translate(8%, 6%) scale(1.12);
+    opacity: 0.7;
+  }
+}
+
+@keyframes interference-orb-b {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translate(-6%, -8%) scale(1.08);
+    opacity: 0.65;
+  }
+}
+
+@keyframes interference-orb-c {
+  0%,
+  100% {
+    transform: translateX(-50%) scale(0.95);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translateX(-50%) scale(1.1);
+    opacity: 0.55;
+  }
 }

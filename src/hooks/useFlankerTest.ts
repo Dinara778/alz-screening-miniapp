@@ -26,5 +26,16 @@ export const useFlankerTest = (sessionSeed: number) => {
     setTrialStart(null);
   };
 
-  return { current, index, total: trials.length, results, startTrial, answer, timeout, done: index >= trials.length };
+  return {
+    current,
+    index,
+    total: trials.length,
+    results,
+    startTrial,
+    answer,
+    timeout,
+    done: index >= trials.length,
+    /** true, когда идёт отсчёт 2 с на ответ (после короткой паузы перед показом) */
+    trialActive: trialStart !== null,
+  };
 };

@@ -5,6 +5,7 @@ import { ProgressBar } from '../components/ProgressBar';
 import { StroopConfirmStep } from '../components/StroopConfirmStep';
 import { FlankerDirButtonPreview, TestInstruction } from '../components/TestInstruction';
 import { TestProgressBanner } from '../components/TestProgressBanner';
+import { InterferenceWaitPanel } from '../components/test/InterferenceWaitPanel';
 import { useApp } from '../context/AppContext';
 import { useFaceNameTest } from '../hooks/useFaceNameTest';
 import { useFlankerTest } from '../hooks/useFlankerTest';
@@ -21,9 +22,10 @@ const INTERFERENCE_MS = 180000;
 const WORD_STUDY_MS = 30_000;
 const WORD_STUDY_SEC = WORD_STUDY_MS / 1000;
 
-function wrapWithTestProgress(stage: AppStage, node: ReactNode) {
+function wrapWithTestProgress(stage: AppStage, node: ReactNode, backButton?: ReactNode) {
   return (
     <div className="flex min-h-[min(78dvh,640px)] w-full flex-col text-white">
+      {backButton ? <div className="relative z-50 mb-2 h-11 w-full shrink-0">{backButton}</div> : null}
       <div className="shrink-0">
         <TestProgressBanner stage={stage} />
       </div>
@@ -45,6 +47,9 @@ export const TestPage = () => {
   const [isStimulusVisible, setIsStimulusVisible] = useState(false);
   const [attemptTick, setAttemptTick] = useState(0);
   const reactionRecentDelaysRef = useRef<number[]>([]);
+  const flankerResponseTimeoutRef = useRef(0);
+  const flankerTickIntervalRef = useRef(0);
+  const [flankerSecsLeft, setFlankerSecsLeft] = useState(2);
 
   const deadline = app.interferenceStart ? app.interferenceStart + INTERFERENCE_MS : null;
   const timer = useTimer(deadline);
@@ -58,19 +63,39 @@ export const TestPage = () => {
     }
   }, [app.stage]);
 
+  const clearFlankerTimers = () => {
+    window.clearTimeout(flankerResponseTimeoutRef.current);
+    window.clearInterval(flankerTickIntervalRef.current);
+    flankerResponseTimeoutRef.current = 0;
+    flankerTickIntervalRef.current = 0;
+  };
+
   useEffect(() => {
     if (app.stage !== 'flanker' || flanker.done) return;
+    setFlankerSecsLeft(2);
     const prep = nextFlankerPrepDelayMs(app.sessionSeed, flanker.index);
-    let timeoutId = 0;
     const startId = window.setTimeout(() => {
       flanker.startTrial();
-      timeoutId = window.setTimeout(() => flanker.timeout(), 2000);
+      setFlankerSecsLeft(2);
+      flankerTickIntervalRef.current = window.setInterval(() => {
+        setFlankerSecsLeft((s) => Math.max(0, s - 1));
+      }, 1000);
+      flankerResponseTimeoutRef.current = window.setTimeout(() => {
+        clearFlankerTimers();
+        flanker.timeout();
+      }, 2000);
     }, prep);
     return () => {
       window.clearTimeout(startId);
-      window.clearTimeout(timeoutId);
+      clearFlankerTimers();
     };
   }, [app.stage, flanker.index, flanker.done, app.sessionSeed]);
+
+  const answerFlanker = (dir: '<' | '>') => {
+    if (!flanker.trialActive) return;
+    clearFlankerTimers();
+    flanker.answer(dir);
+  };
 
   const stroopAdvanceRef = useRef(false);
   useEffect(() => {
@@ -270,10 +295,10 @@ export const TestPage = () => {
           <p className="text-sm calm-body">
             Сначала введёте слова сразу, затем снова — после других заданий (примерно через 3 минуты).
           </p>
-          <div className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50/80 px-3 py-3">
-            <div className="flex items-center justify-between calm-accent text-sm font-semibold">
+          <div className="space-y-2.5 rounded-xl border border-white/15 bg-white/[0.06] px-3 py-3">
+            <div className="flex items-center justify-between text-sm font-semibold text-white/80">
               <span>Осталось времени</span>
-              <span className="tabular-nums text-2xl">{wordStudyTimer.remainingSec} с</span>
+              <span className="tabular-nums text-2xl font-bold text-teal-300">{wordStudyTimer.remainingSec} с</span>
             </div>
             <ProgressBar value={wordStudyTimer.remainingSec} max={WORD_STUDY_SEC} />
           </div>
@@ -319,7 +344,8 @@ export const TestPage = () => {
           Сейчас на экране будут появляться пять стрелок в ряд. Нажимайте кнопку <FlankerDirButtonPreview dir="left" />, если
           средняя стрелка из пяти смотрит <strong className="font-bold text-white">влево</strong> острым углом, и кнопку{' '}
           <FlankerDirButtonPreview dir="right" />, если средняя стрелка из пяти смотрит{' '}
-          <strong className="font-bold text-white">вправо</strong> острым углом.
+          <strong className="font-bold text-white">вправо</strong> острым углом. На каждую попытку —{' '}
+          <strong className="font-bold text-white">2 секунды</strong>; если не успели, попытка засчитывается как пропуск.
         </p>
       </TestInstruction>,
     );
@@ -338,18 +364,25 @@ export const TestPage = () => {
         <h2 className="app-heading">Фланкер {flanker.index + 1}/20</h2>
         <ProgressBar value={flanker.index} max={20} />
         <div className="text-5xl font-mono tracking-widest">{flanker.current?.arrows}</div>
+        <p className="calm-caption">
+          {flanker.trialActive
+            ? `Осталось ${flankerSecsLeft} с — нажмите ← или →`
+            : 'Приготовьтесь…'}
+        </p>
         <div className="grid w-full grid-cols-2 gap-3">
           <Button
             type="button"
             className="w-full py-4 text-2xl font-bold sm:py-5 sm:text-3xl"
-            onClick={() => flanker.answer('<')}
+            disabled={!flanker.trialActive}
+            onClick={() => answerFlanker('<')}
           >
             ←
           </Button>
           <Button
             type="button"
             className="w-full py-4 text-2xl font-bold sm:py-5 sm:text-3xl"
-            onClick={() => flanker.answer('>')}
+            disabled={!flanker.trialActive}
+            onClick={() => answerFlanker('>')}
           >
             →
           </Button>
@@ -396,10 +429,7 @@ export const TestPage = () => {
   if (app.stage === 'interference-wait') {
     return wrapWithTestProgress(
       app.stage,
-      <div className="calm-inset p-6 text-center">
-        <h2 className="app-heading">Ожидание до отсроченного воспроизведения</h2>
-        <p className="text-5xl mt-4">{timer.remainingSec}</p>
-      </div>,
+      <InterferenceWaitPanel remainingSec={timer.remainingSec} />,
     );
   }
 
@@ -407,10 +437,7 @@ export const TestPage = () => {
     const f = face.trials[faceStudyIndex];
     return wrapWithTestProgress(
       app.stage,
-      <div className="relative space-y-4 pt-12">
-        {faceStudyIndex > 0 ? (
-          <BackArrowButton onClick={() => setFaceStudyIndex((v) => v - 1)} />
-        ) : null}
+      <div className="space-y-4">
         <h2 className="app-heading">Задание 4: Лица-имена (изучение)</h2>
         <p className="calm-body">
           Изучите лица и соответствующие имена. Постарайтесь запомнить пары «лицо-имя», после отвлекающего задания будет проверка.
@@ -439,6 +466,9 @@ export const TestPage = () => {
           )}
         </div>
       </div>,
+      faceStudyIndex > 0 ? (
+        <BackArrowButton onClick={() => setFaceStudyIndex((v) => v - 1)} />
+      ) : undefined,
     );
   }
 
@@ -446,12 +476,8 @@ export const TestPage = () => {
     return wrapWithTestProgress(
       app.stage,
       <TestInstruction
-        title="Задание 4: струп"
-        text={
-          'На экране появится слово «КРАСНЫЙ», «СИНИЙ» или «ЗЕЛЕНЫЙ», написанное цветными буквами.\n' +
-          'Нажимайте кнопку с цветом букв (как окрашено слово), а не по смыслу слова.\n' +
-          'Пример: слово «СИНИЙ» красными буквами — правильный ответ «Красный».'
-        }
+        title="Задание 4: Струп"
+        text="Сейчас на экране поочередно будут появляться слова «КРАСНЫЙ», «СИНИЙ» или «ЗЕЛЕНЫЙ», написанные цветными буквами."
         onStart={() => app.setStage('stroop-confirm')}
       />,
     );
@@ -460,9 +486,10 @@ export const TestPage = () => {
   if (app.stage === 'stroop-confirm') {
     return wrapWithTestProgress(
       app.stage,
-      <StroopConfirmStep
-        onConfirm={() => app.setStage('stroop')}
-        onBack={() => app.setStage('stroop-instruction')}
+      <StroopConfirmStep onConfirm={() => app.setStage('stroop')} />,
+      <BackArrowButton
+        onClick={() => app.setStage('stroop-instruction')}
+        aria-label="Назад к инструкции"
       />,
     );
   }

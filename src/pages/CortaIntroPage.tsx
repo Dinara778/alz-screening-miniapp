@@ -1,35 +1,11 @@
 import { Button } from '../components/Button';
-import {
-  IconArrowRight,
-  IconPersonal,
-  IconScience,
-  IconShield,
-  IconShieldLock,
-} from '../components/landing/LandingIcons';
+import { IconArrowRight, IconShield } from '../components/landing/LandingIcons';
 import { TEST_DURATION_LABEL } from '../constants/testDuration';
 import { IntroShell } from '../components/landing/IntroShell';
 
 type Props = {
   onContinue: () => void;
 };
-
-const VALUE_PROPS = [
-  {
-    Icon: IconScience,
-    title: 'Основано на когнитивных науках и поведенческих методиках',
-    text: '',
-  },
-  {
-    Icon: IconPersonal,
-    title: 'Индивидуальный анализ вашего состояния, а не усреднённые нормы',
-    text: '',
-  },
-  {
-    Icon: IconShieldLock,
-    title: 'Данные обрабатываются безопасно и не передаются третьим лицам',
-    text: '',
-  },
-] as const;
 
 export const CortaIntroPage = ({ onContinue }: Props) => {
   const footer = (
@@ -39,7 +15,7 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
         className="flex w-full max-w-md items-center justify-center gap-2 rounded-2xl border-0 bg-emerald-400 py-4 text-center text-[1.0625rem] font-bold leading-snug text-slate-950 shadow-lg shadow-emerald-500/30 hover:bg-emerald-300 sm:py-[1.125rem] sm:text-xl"
         onClick={onContinue}
       >
-        <span>Проверить состояние бесплатно</span>
+        <span>Начать бесплатно</span>
         <IconArrowRight className="h-5 w-5 shrink-0" />
       </Button>
       <p className="flex max-w-md items-center justify-center gap-2 text-center text-sm text-emerald-200/90">
@@ -50,8 +26,8 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
   );
 
   return (
-    <IntroShell aria-label="Главный экран Corta" footer={footer} centerContent={false}>
-      <div className="space-y-5 pb-2 text-left">
+    <IntroShell aria-label="Главный экран Corta" footer={footer} centerContent>
+      <div className="mx-auto w-full max-w-md space-y-5 pb-2 text-left">
         <header className="flex justify-end">
           <img
             src="/corta-lab-logo.svg"
@@ -68,25 +44,14 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
             <span className="text-emerald-400">за {TEST_DURATION_LABEL}</span>
           </h1>
           <p className="text-sm leading-relaxed text-slate-300 sm:text-[0.9375rem]">
-            Система помогает увидеть текущее состояние вашего когнитивного ресурса — внимания, памяти и скорости мышления.
+            Система помогает увидеть текущее состояние вашего когнитивного ресурса — внимания, памяти и скорости
+            мышления.
+          </p>
+          <p className="pt-2 text-sm leading-relaxed text-slate-300 sm:pt-3 sm:text-[0.9375rem]">
             Вы получите персональный профиль, объяснение своих результатов и рекомендации для снижения перегрузки и
             повышения ясности мышления.
           </p>
         </div>
-
-        <ul className="flex flex-col gap-4">
-          {VALUE_PROPS.map(({ Icon, title, text }, i) => (
-            <li key={i} className="flex gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-400/25">
-                <Icon className="h-5 w-5" />
-              </span>
-              <div className="min-w-0 flex-1 pt-0.5">
-                <p className="text-sm font-semibold leading-snug text-white">{title}</p>
-                {text ? <p className="mt-1 text-sm leading-relaxed text-slate-400">{text}</p> : null}
-              </div>
-            </li>
-          ))}
-        </ul>
       </div>
     </IntroShell>
   );

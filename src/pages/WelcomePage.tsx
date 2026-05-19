@@ -1,5 +1,5 @@
 import { FormEvent, useRef, useState, type ReactNode } from 'react';
-import { BackArrowButton } from '../components/BackArrowButton';
+import { ScreenBackHeader } from '../components/ScreenBackHeader';
 import { Button } from '../components/Button';
 import { ScreenBottomCta } from '../components/ScreenBottomCta';
 import { IconArrowRight } from '../components/landing/LandingIcons';
@@ -288,8 +288,8 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
   }
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col pt-12">
-      {step >= 1 && step <= 5 ? <BackArrowButton onClick={goBack} /> : null}
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      {step >= 1 && step <= 5 ? <ScreenBackHeader onBack={goBack} /> : null}
       <div className="pointer-events-none absolute inset-x-0 top-20 flex justify-between px-1 text-5xl opacity-[0.14] select-none">
         <span>🌿</span>
         <span>🍊</span>
@@ -299,7 +299,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         <div className="pointer-events-none absolute -right-6 -top-6 text-8xl opacity-20">🌱</div>
         <div className="pointer-events-none absolute -bottom-4 left-4 text-6xl opacity-15">☀️</div>
 
-        <div className="relative z-10 mb-4 shrink-0 space-y-2">
+        <div className="relative mb-4 shrink-0 space-y-2">
           <div className="flex items-center justify-between gap-2 text-xs font-bold uppercase tracking-wide calm-accent">
             <span>{step === 0 ? 'Знакомство' : `Шаг ${step} из ${FIELD_STEP_MAX}`}</span>
             <span className="rounded-full bg-white/10 px-2 py-0.5 text-white/70">

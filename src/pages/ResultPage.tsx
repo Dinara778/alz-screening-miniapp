@@ -30,17 +30,17 @@ const DomainInterpretationBody = ({
   return (
     <div className="mx-auto w-full max-w-md space-y-4">
       <h2 className="app-heading text-center">{title}</h2>
-      <div className="calm-inset space-y-3 text-sm leading-relaxed calm-body">
+      <div className="calm-inset space-y-4 results-body text-center">
         <p>
-          <span className="font-semibold text-white/90">В жизни: </span>
+          <span className="block font-semibold text-white/95">В жизни</span>
           {inLife}
         </p>
         <p>
-          <span className="font-semibold text-white/90">Как проявляется: </span>
+          <span className="block font-semibold text-white/95">Как проявляется</span>
           {manifestations}
         </p>
         <p>
-          <span className="font-semibold text-white/90">О чём говорит результат: </span>
+          <span className="block font-semibold text-white/95">О чём говорит результат</span>
           {aboutResult}
         </p>
       </div>
@@ -58,19 +58,19 @@ const indexStatusPhrase = (label: string) => {
 const IndexInterpretationBody = ({ index }: { index: IndexInterpretation }) => (
   <div className="mx-auto w-full max-w-md space-y-4">
     <h2 className="app-heading text-center">{index.label}</h2>
-    <div className="calm-inset space-y-4 text-sm leading-relaxed calm-body">
+    <div className="calm-inset space-y-5 results-body text-center">
       <p>{index.description}</p>
       {index.recommendations.length > 0 ? (
         <div>
-          <p className="mb-2 font-semibold text-white/90">Рекомендации:</p>
-          <ul className="list-disc space-y-2 pl-5">
+          <p className="mb-3 font-semibold text-white/95">Рекомендации</p>
+          <ul className="mx-auto max-w-sm list-none space-y-2.5">
             {index.recommendations.map((rec) => (
               <li key={rec}>{rec}</li>
             ))}
           </ul>
         </div>
       ) : null}
-      <p className="text-xs text-white/50">{index.overloadMapIntro}</p>
+      <p className="text-sm text-white/55 sm:text-base">{index.overloadMapIntro}</p>
     </div>
   </div>
 );
@@ -176,8 +176,8 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   if (step === 'index') {
     return (
       <CalmScreen
-        kicker="Когнитивный профиль:"
-        kickerProminent
+        kicker="Ваш когнитивный профиль"
+        kickerProfile
         footer={
           <>
             {!a.validation.interpretationTrusted ? (
@@ -186,7 +186,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
               </p>
             ) : null}
             <Button type="button" className={calmBtnClass} onClick={() => setStep('index-detail')}>
-              Что это значит для вас
+              Узнать, что это значит
             </Button>
           </>
         }
@@ -197,7 +197,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           </span>
           <span className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-white/45">из 100</span>
         </OrganicMetricHalo>
-        <p className="mt-8 max-w-[min(20rem,92vw)] px-2 text-center text-[1.0625rem] font-semibold leading-snug text-white sm:mt-10 sm:text-lg">
+        <p className="mt-8 max-w-[min(22rem,92vw)] px-2 text-center text-lg font-semibold leading-snug text-white sm:mt-10 sm:text-xl">
           {indexStatusPhrase(a.index.label)}
         </p>
       </CalmScreen>
@@ -208,7 +208,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     return (
       <CalmScreen
         kicker="Индекс когнитивной устойчивости"
-        contentAlign="top"
+        contentAlign="readable"
         footer={
           <Button type="button" className={calmBtnClass} onClick={startDomains}>
             Далее — показатели профиля
@@ -228,11 +228,11 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         kicker={`${domainIndex + 1} / ${domains.length}`}
         footer={
           <Button type="button" className={calmBtnClass} onClick={() => setStep('domain-detail')}>
-            Что это значит для вас
+            Узнать, что это значит
           </Button>
         }
       >
-        <p className="mb-8 max-w-[16rem] text-center text-sm font-medium text-white/55">{d.title}</p>
+        <p className="mb-8 max-w-[18rem] text-center text-base font-medium text-white/70 sm:text-lg">{d.title}</p>
         <div className="relative flex h-[min(62vw,260px)] w-[min(62vw,260px)] items-center justify-center">
           <ScoreRing value={d.score} accent={dAccent} size={260} />
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
@@ -250,7 +250,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     return (
       <CalmScreen
         kicker={`${domainIndex + 1} / ${domains.length}`}
-        contentAlign="top"
+        contentAlign="readable"
         footer={
           <Button type="button" className={calmBtnClass} onClick={nextFromDomainDetail}>
             {domainIndex < domains.length - 1 ? 'Далее' : 'Готово'}
@@ -284,7 +284,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         </div>
       }
     >
-      <p className="max-w-[18rem] text-center text-lg font-medium leading-snug text-white/80">
+      <p className="max-w-[20rem] text-center text-xl font-medium leading-snug text-white/85 sm:text-2xl">
         Подробная карта перегрузки и рекомендации — в расширенном отчёте
       </p>
     </CalmScreen>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BackArrowButton } from '../components/BackArrowButton';
+import { ScreenBackHeader } from '../components/ScreenBackHeader';
 import { Button } from '../components/Button';
 import { useApp } from '../context/AppContext';
 import { isPaymentsStubbed, PAYMENT_STUB_MESSAGE } from '../utils/paymentStub';
@@ -108,8 +108,8 @@ export const ConsultationRequestPage = () => {
   };
 
   return (
-    <div className="relative space-y-6 pt-12">
-      {!paidOk ? <BackArrowButton onClick={goBack} /> : null}
+    <div className="relative space-y-6">
+      {!paidOk ? <ScreenBackHeader onBack={goBack} /> : null}
       <div className="calm-card">
         <h1 className="app-heading">Запись на персональную сессию</h1>
         {!latestResult ? (

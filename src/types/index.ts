@@ -84,6 +84,7 @@ export type SessionResult = {
 
 export type AppStage =
   | 'corta-intro'
+  | 'value-props-intro'
   | 'expert-intro'
   | 'intro-test-offer'
   | 'welcome'

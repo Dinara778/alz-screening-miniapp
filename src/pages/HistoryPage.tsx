@@ -1,4 +1,4 @@
-import { BackArrowButton } from '../components/BackArrowButton';
+import { ScreenBackHeader } from '../components/ScreenBackHeader';
 import { useApp } from '../context/AppContext';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 
@@ -6,8 +6,8 @@ export const HistoryPage = ({ onBack }: { onBack: () => void }) => {
   const { history } = useApp();
 
   return (
-    <div className="relative space-y-4 pt-12">
-      <BackArrowButton onClick={onBack} />
+    <div className="relative space-y-4">
+      <ScreenBackHeader onBack={onBack} />
       <h1 className="app-heading">История</h1>
       {!history.length && <div className="calm-inset p-4">Пока нет завершенных сессий.</div>}
       {history.map((h) => {
