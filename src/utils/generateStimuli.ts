@@ -1,5 +1,6 @@
 import { TrialType } from '../types';
 import { LEGACY_WORD_TARGETS, WORD_MEMORY_POOLS } from './wordPools';
+import { publicAsset } from './publicAsset';
 import { mulberry32, randomInt, shuffle, stimulusSubSeed } from './stimulusRng';
 
 export { LEGACY_WORD_TARGETS, WORD_MEMORY_POOLS } from './wordPools';
@@ -177,9 +178,9 @@ export type FaceStimulus = { id: number; label: string; image: string; correctNa
 export const createFaceTrials = (sessionSeed: number): FaceStimulus[] => {
   const rng = mulberry32(stimulusSubSeed(sessionSeed, 'face-name'));
   const base = [
-    { id: 1, label: 'Лицо 1', image: '/faces/man-1.svg', correctName: 'Михаил' },
-    { id: 2, label: 'Лицо 2', image: '/faces/man-2.svg', correctName: 'Иван' },
-    { id: 3, label: 'Лицо 3', image: '/faces/man-3.svg', correctName: 'Дмитрий' },
+    { id: 1, label: 'Лицо 1', image: publicAsset('/faces/man-1.svg'), correctName: 'Михаил' },
+    { id: 2, label: 'Лицо 2', image: publicAsset('/faces/man-2.svg'), correctName: 'Иван' },
+    { id: 3, label: 'Лицо 3', image: publicAsset('/faces/man-3.svg'), correctName: 'Дмитрий' },
   ];
   const names = ['Михаил', 'Иван', 'Дмитрий'];
   return shuffle(base, rng).map((f) => ({ ...f, options: shuffle(names, rng) }));

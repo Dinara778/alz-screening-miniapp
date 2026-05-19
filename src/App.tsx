@@ -1,8 +1,6 @@
 import { useEffect } from 'react';
-import { StageViewport } from './components/StageViewport';
-import { useApp } from './context/AppContext';
-import { useAppViewport } from './hooks/useAppViewport';
 import { useScrollToTopOnStage } from './hooks/useScrollToTopOnStage';
+import { useApp } from './context/AppContext';
 import { recoverProdamusPaymentFromUrl } from './utils/telegramPayments';
 import { applyTelegramTheme, attachTelegramThemeListener } from './utils/telegramTheme';
 import { HistoryPage } from './pages/HistoryPage';
@@ -17,7 +15,6 @@ import { WelcomePage } from './pages/WelcomePage';
 
 function App() {
   const app = useApp();
-  useAppViewport();
   const scrollRef = useScrollToTopOnStage(app.stage);
 
   useEffect(() => {
@@ -46,74 +43,48 @@ function App() {
   }, []);
 
   return (
-    <main className="app-calm-shell mx-auto flex h-[var(--app-vh,100dvh)] max-h-[var(--app-vh,100dvh)] min-h-0 w-full max-w-2xl flex-col overflow-hidden px-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] text-white shadow-none">
+    <main className="app-calm-shell mx-auto flex h-[100dvh] max-h-[100dvh] min-h-0 w-full max-w-2xl flex-col overflow-hidden px-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] text-white shadow-none">
       <div
         ref={scrollRef}
-        className="app-stage-scroll flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain pb-1 [-webkit-overflow-scrolling:touch]"
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] [overflow-anchor:none]"
       >
-        {app.stage === 'corta-intro' && (
-          <StageViewport>
+        <div key={app.stage} className="flex min-h-0 min-w-0 flex-1 flex-col">
+          {app.stage === 'corta-intro' && (
             <CortaIntroPage onContinue={() => app.setStage('expert-intro')} />
-          </StageViewport>
-        )}
-        {app.stage === 'expert-intro' && (
-          <StageViewport>
+          )}
+          {app.stage === 'expert-intro' && (
             <ExpertIntroPage onContinue={() => app.setStage('intro-test-offer')} />
-          </StageViewport>
-        )}
-        {app.stage === 'intro-test-offer' && (
-          <StageViewport>
+          )}
+          {app.stage === 'intro-test-offer' && (
             <IntroTestOfferPage onContinue={() => app.setStage('welcome')} />
-          </StageViewport>
-        )}
-        {app.stage === 'welcome' && (
-          <StageViewport>
+          )}
+          {app.stage === 'welcome' && (
             <WelcomePage
               onStart={(profile) => app.beginNewAssessment(profile)}
               onHistory={() => app.setStage('history')}
             />
-          </StageViewport>
-        )}
-        {app.stage === 'history' && (
-          <StageViewport>
-            <HistoryPage onBack={() => app.setStage('welcome')} />
-          </StageViewport>
-        )}
-        {[
-          'word-study',
-          'word-immediate',
-          'flanker-instruction',
-          'flanker',
-          'reaction-instruction',
-          'reaction',
-          'interference-wait',
-          'word-delayed',
-          'face-study',
-          'stroop-instruction',
-          'stroop-confirm',
-          'stroop',
-          'face-test-instruction',
-          'face-test',
-        ].includes(app.stage) && (
-          <StageViewport>
-            <TestPage key={app.sessionSeed} />
-          </StageViewport>
-        )}
-        {app.stage === 'result' && (
-          <StageViewport>
-            <ResultPage onRestart={app.resetSession} />
-          </StageViewport>
-        )}
-        {app.stage === 'full-report' && (
-          <StageViewport>
-            <FullReportPage />
-          </StageViewport>
-        )}
-        {app.stage === 'consultation-request' && (
-          <StageViewport>
-            <ConsultationRequestPage />
-          </StageViewport>
-        )}
+          )}
+          {app.stage === 'history' && <HistoryPage onBack={() => app.setStage('welcome')} />}
+          {[
+            'word-study',
+            'word-immediate',
+            'flanker-instruction',
+            'flanker',
+            'reaction-instruction',
+            'reaction',
+            'interference-wait',
+            'word-delayed',
+            'face-study',
+            'stroop-instruction',
+            'stroop-confirm',
+            'stroop',
+            'face-test-instruction',
+            'face-test',
+          ].includes(app.stage) && <TestPage key={app.sessionSeed} />}
+          {app.stage === 'result' && <ResultPage onRestart={app.resetSession} />}
+          {app.stage === 'full-report' && <FullReportPage />}
+          {app.stage === 'consultation-request' && <ConsultationRequestPage />}
+        </div>
       </div>
     </main>
   );

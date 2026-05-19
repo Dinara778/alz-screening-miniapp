@@ -460,6 +460,12 @@ export const TestPage = () => {
 
   if (app.stage === 'face-study') {
     const f = face.trials[faceStudyIndex];
+    if (!f) {
+      return wrapWithTestProgress(
+        app.stage,
+        <p className="text-center calm-caption">Загрузка задания…</p>,
+      );
+    }
     return wrapWithTestProgress(
       app.stage,
       <div className="space-y-4">

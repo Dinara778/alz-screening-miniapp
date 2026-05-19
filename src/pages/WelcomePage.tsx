@@ -16,7 +16,7 @@ const FIELD_STEP_MAX = 5;
 
 const inputClass = 'calm-input';
 
-const shellClass = 'calm-card relative flex min-h-full w-full flex-1 flex-col';
+const shellClass = 'calm-card relative flex min-h-0 w-full flex-1 flex-col';
 
 export const WelcomePage = ({ onStart, onHistory }: Props) => {
   const [step, setStep] = useState(0);
@@ -252,7 +252,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
   }
 
   return (
-    <div className="flex min-h-full min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       <div className={shellClass}>
         <div className="relative mb-4 shrink-0 space-y-3">
           <div className="flex items-start gap-3">

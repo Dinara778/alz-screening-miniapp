@@ -2,6 +2,7 @@ import { Button } from '../components/Button';
 import { IconArrowRight, IconShield } from '../components/landing/LandingIcons';
 import { TEST_DURATION_LABEL } from '../constants/testDuration';
 import { IntroShell } from '../components/landing/IntroShell';
+import { publicAsset } from '../utils/publicAsset';
 
 type Props = {
   onContinue: () => void;
@@ -26,16 +27,11 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
   );
 
   return (
-    <IntroShell
-      aria-label="Главный экран Corta"
-      footer={footer}
-      centerContent
-      liftCenteredContent
-    >
+    <IntroShell aria-label="Главный экран Corta" footer={footer} centerContent>
       <div className="mx-auto w-full max-w-md space-y-5 pb-2 text-left">
         <header className="flex justify-end">
           <img
-            src="/corta-lab-logo.svg"
+            src={publicAsset('/corta-lab-logo.svg')}
             alt="Corta"
             width={40}
             height={40}

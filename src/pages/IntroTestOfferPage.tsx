@@ -25,23 +25,15 @@ export const IntroTestOfferPage = ({ onContinue }: Props) => {
   );
 
   return (
-    <IntroShell
-      aria-label="Что мы анализируем"
-      footer={footer}
-      centerContent={false}
-      fillViewport
-      compactFit
-    >
-      <div className="min-h-0 space-y-2">
-        <h1 className="text-left text-lg font-bold leading-tight text-white sm:text-xl">
+    <IntroShell aria-label="Что мы анализируем" footer={footer} compact>
+      <div className="space-y-4 pb-2">
+        <h1 className="text-left text-xl font-bold leading-snug text-white sm:text-2xl">
           Оценка когнитивного профиля
         </h1>
-        <p className="text-xs leading-snug text-white/50 sm:text-sm">
-          Оценка займёт около {TEST_DURATION_LABEL}.
-        </p>
-        <div className="calm-inset p-3 sm:p-3.5">
-          <div className="text-base font-bold leading-snug text-white/95 sm:text-lg">Что мы анализируем:</div>
-          <ul className="mt-1.5 space-y-1 text-[0.8125rem] leading-snug text-white/88 sm:space-y-1.5 sm:text-sm">
+        <p className="calm-caption">Оценка займёт около {TEST_DURATION_LABEL}.</p>
+        <div className="calm-inset">
+          <div className="app-heading">Что мы анализируем:</div>
+          <ul className="mt-2 space-y-2 text-sm leading-relaxed text-white/90 sm:text-base">
             {MEASURES.map((line, i) => (
               <li key={line}>
                 {MEASURE_ICONS[i]} {line}

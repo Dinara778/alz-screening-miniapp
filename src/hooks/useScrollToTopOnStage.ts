@@ -6,11 +6,13 @@ export function useScrollToTopOnStage(stage: AppStage) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const id = requestAnimationFrame(() => {
+    const reset = () => {
       const el = scrollRef.current;
-      if (!el) return;
-      el.scrollTop = 0;
-    });
+      if (el) el.scrollTop = 0;
+      window.scrollTo(0, 0);
+    };
+    reset();
+    const id = requestAnimationFrame(reset);
     return () => cancelAnimationFrame(id);
   }, [stage]);
 
