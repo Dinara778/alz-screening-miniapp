@@ -8,22 +8,18 @@ type Props = {
 };
 
 const MEASURES = [
-  'Скорость обработки информации (как быстро мозг реагирует и переключается).',
-  'Стабильность внимания (насколько внимание устойчиво к отвлечениям).',
-  'Вариативность реакций (насколько мозг работает «ровно», без «рывков»).',
-  'Рабочая память (удержание информации в моменте).',
-  'Когнитивная выносливость (как быстро мозг начинает уставать).',
+  'Скорость обработки (реакция и переключение).',
+  'Стабильность внимания (устойчивость к отвлечениям).',
+  'Вариативность реакций (ровный ритм без «рывков»).',
+  'Рабочая память (удержание в моменте).',
+  'Когнитивная выносливость (усталость под нагрузкой).',
 ] as const;
 
 const MEASURE_ICONS = ['⚡', '🎯', '〰️', '🧩', '💪'] as const;
 
 export const IntroTestOfferPage = ({ onContinue }: Props) => {
   const footer = (
-    <Button
-      type="button"
-      className={CTA_BUTTON_CLASS}
-      onClick={onContinue}
-    >
+    <Button type="button" className={CTA_BUTTON_CLASS} onClick={onContinue}>
       Далее
     </Button>
   );
@@ -33,15 +29,19 @@ export const IntroTestOfferPage = ({ onContinue }: Props) => {
       aria-label="Что мы анализируем"
       footer={footer}
       centerContent={false}
+      fillViewport
+      compactFit
     >
-      <div className="space-y-4 pb-1">
-        <h1 className="text-left text-xl font-bold leading-snug text-white sm:text-2xl">
+      <div className="min-h-0 space-y-2">
+        <h1 className="text-left text-lg font-bold leading-tight text-white sm:text-xl">
           Оценка когнитивного профиля
         </h1>
-        <p className="calm-caption">Оценка займёт около {TEST_DURATION_LABEL}.</p>
-        <div className="calm-inset">
-          <div className="app-heading">Что мы анализируем:</div>
-          <ul className="mt-2 space-y-2.5 text-sm leading-relaxed text-white/90 sm:text-base">
+        <p className="text-xs leading-snug text-white/50 sm:text-sm">
+          Оценка займёт около {TEST_DURATION_LABEL}.
+        </p>
+        <div className="calm-inset p-3 sm:p-3.5">
+          <div className="text-base font-bold leading-snug text-white/95 sm:text-lg">Что мы анализируем:</div>
+          <ul className="mt-1.5 space-y-1 text-[0.8125rem] leading-snug text-white/88 sm:space-y-1.5 sm:text-sm">
             {MEASURES.map((line, i) => (
               <li key={line}>
                 {MEASURE_ICONS[i]} {line}

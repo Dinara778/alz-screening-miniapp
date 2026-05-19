@@ -9,6 +9,8 @@ type Props = {
   liftCenteredContent?: boolean;
   /** false — карточка по высоте контента, скролл снаружи (длинные списки) */
   fillViewport?: boolean;
+  /** Весь контент на экран без внутреннего скролла */
+  compactFit?: boolean;
   'aria-label'?: string;
 };
 
@@ -19,15 +21,18 @@ export const IntroShell = ({
   centerContent = false,
   liftCenteredContent = false,
   fillViewport = true,
+  compactFit = false,
   'aria-label': ariaLabel,
 }: Props) => {
   const contentAreaClass = !fillViewport
     ? 'w-full shrink-0 pt-0.5'
-    : centerContent
-      ? liftCenteredContent
-        ? 'flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain'
-        : 'flex min-h-0 flex-1 flex-col justify-center overflow-y-auto overscroll-contain py-2'
-      : 'flex min-h-0 flex-1 flex-col justify-start overflow-y-auto overscroll-contain py-1';
+    : compactFit
+      ? 'flex min-h-0 min-w-0 flex-1 flex-col justify-start overflow-hidden py-0.5'
+      : centerContent
+        ? liftCenteredContent
+          ? 'flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain'
+          : 'flex min-h-0 flex-1 flex-col justify-center overflow-y-auto overscroll-contain py-2'
+        : 'flex min-h-0 flex-1 flex-col justify-start overflow-y-auto overscroll-contain py-1';
 
   return (
     <section
@@ -37,7 +42,11 @@ export const IntroShell = ({
       aria-label={ariaLabel}
     >
       <div className="calm-glow" aria-hidden />
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col px-5 py-4 sm:px-6 sm:py-5">
+      <div
+        className={`relative z-10 flex flex-col px-5 py-4 sm:px-6 sm:py-5 ${
+          fillViewport ? 'min-h-0 flex-1' : ''
+        }`}
+      >
         {footer ? (
           <>
             <div className={contentAreaClass}>
@@ -51,7 +60,11 @@ export const IntroShell = ({
                 children
               )}
             </div>
-            <div className="mt-auto shrink-0 space-y-3 border-t border-white/10 pt-4 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
+            <div
+              className={`shrink-0 space-y-3 border-t border-white/10 pt-4 ${
+                fillViewport ? 'mt-auto pb-[max(0.25rem,env(safe-area-inset-bottom))]' : 'mt-4 pb-1'
+              }`}
+            >
               {footer}
             </div>
           </>

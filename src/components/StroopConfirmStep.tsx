@@ -9,16 +9,16 @@ export const StroopConfirmStep = ({ onConfirm }: Props) => {
   const [understood, setUnderstood] = useState(false);
 
   return (
-    <div className="space-y-4 calm-inset p-6 text-slate-950 shadow-sm dark:bg-slate-800 dark:text-slate-100">
+    <div className="space-y-4 calm-inset p-6">
       <h2 className="app-heading">Всё ли понятно?</h2>
-      <p className="calm-body dark:text-slate-200">
+      <p className="calm-body">
         Перед тестом проверьте правило: нажимаете <strong>цвет букв</strong>, а не то, что написано.
       </p>
 
-      <div className="space-y-3 rounded-xl border-2 border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40">
-        <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">Пример на экране</p>
-        <p className="text-center text-4xl font-bold text-red-600">СИНИЙ</p>
-        <p className="text-sm calm-body dark:text-slate-300">
+      <div className="space-y-3 rounded-xl border border-amber-400/35 bg-amber-400/10 p-4">
+        <p className="text-sm font-semibold text-amber-100">Пример на экране</p>
+        <p className="text-center text-4xl font-bold text-red-500">СИНИЙ</p>
+        <p className="text-sm calm-body text-white/80">
           Слово означает «синий», но буквы <strong>красные</strong>. Правильная кнопка —{' '}
           <strong>«Красный»</strong>, не «Синий».
         </p>
@@ -31,14 +31,14 @@ export const StroopConfirmStep = ({ onConfirm }: Props) => {
         </div>
       </div>
 
-      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-600">
+      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/15 bg-white/[0.03] p-4">
         <input
           type="checkbox"
           className="mt-1 h-5 w-5 shrink-0 accent-emerald-600"
           checked={understood}
           onChange={(e) => setUnderstood(e.target.checked)}
         />
-        <span className="text-left calm-body dark:text-slate-200">
+        <span className="text-left calm-body">
           Я понимаю: нажимаю кнопку с <strong>цветом букв</strong>, а не со значением слова.
         </span>
       </label>

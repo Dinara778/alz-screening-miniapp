@@ -5,11 +5,11 @@ type Props = { compact?: boolean };
 export const Footer = ({ compact = false }: Props) => {
   if (compact) {
     return (
-      <footer className="calm-footer mt-0 space-y-2 px-1 py-2 text-left text-xs">
-        <p className="leading-relaxed text-white/45">
+      <footer className="calm-footer mt-0 space-y-1.5 px-1 py-1 text-left text-[0.6875rem] leading-snug">
+        <p className="text-white/45">
           Данные обрабатываются в соответствии с политикой конфиденциальности.
         </p>
-        <p>
+        <p className="text-white/55">
           <a href="mailto:hello@bookvolon.ru" className="text-teal-300/90 underline underline-offset-2">
             hello@bookvolon.ru
           </a>
@@ -17,8 +17,9 @@ export const Footer = ({ compact = false }: Props) => {
           <a href={TELEGRAM_SUPPORT_URL} target="_blank" rel="noopener noreferrer">
             Техподдержка
           </a>
+          <span className="text-white/30"> · </span>
+          <span className="text-white/35">© {new Date().getFullYear()} Corta Lab</span>
         </p>
-        <p className="text-white/35">© {new Date().getFullYear()} Corta Lab · v1.0.0</p>
       </footer>
     );
   }

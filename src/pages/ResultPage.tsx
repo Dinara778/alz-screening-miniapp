@@ -73,7 +73,6 @@ const IndexInterpretationBody = ({ index, accent }: { index: IndexInterpretation
           </ul>
         </div>
       ) : null}
-      <p className="text-sm text-white/55 sm:text-base">{index.overloadMapIntro}</p>
     </div>
   </div>
 );
@@ -237,7 +236,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           </Button>
         }
       >
-        <p className="mb-8 max-w-[18rem] text-center text-base font-medium text-white/70 sm:text-lg">{d.title}</p>
+        <p className="metric-screen-title mb-8 max-w-[18rem]">{d.title}</p>
         <div className="relative flex h-[min(62vw,260px)] w-[min(62vw,260px)] items-center justify-center">
           <ScoreRing value={d.score} accent={dAccent} size={260} />
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">

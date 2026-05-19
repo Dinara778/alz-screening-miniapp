@@ -365,7 +365,7 @@ export const TestPage = () => {
     return wrapWithTestProgress(
       app.stage,
       <TestInstruction title="Задание 2: фланкер" onStart={() => app.setStage('flanker')}>
-        <p className="calm-body leading-relaxed dark:text-slate-200">
+        <p className="calm-body leading-relaxed">
           Сейчас на экране будут появляться пять стрелок в ряд. Нажимайте кнопку <FlankerDirButtonPreview dir="left" />, если
           средняя стрелка из пяти смотрит <strong className="font-bold text-white">влево</strong> острым углом, и кнопку{' '}
           <FlankerDirButtonPreview dir="right" />, если средняя стрелка из пяти смотрит{' '}
