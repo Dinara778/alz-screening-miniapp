@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { REACTION_TRIAL_COUNT } from '../constants/reactionTest';
 
 export const useReactionTest = () => {
   const [successful, setSuccessful] = useState<number[]>([]);
@@ -20,5 +21,12 @@ export const useReactionTest = () => {
     return { status: 'success' as const, rt };
   };
 
-  return { successful, anticipations, stimulusAt, registerStimulus, react, isDone: successful.length >= 30 };
+  return {
+    successful,
+    anticipations,
+    stimulusAt,
+    registerStimulus,
+    react,
+    isDone: successful.length >= REACTION_TRIAL_COUNT,
+  };
 };

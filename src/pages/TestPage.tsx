@@ -10,6 +10,7 @@ import { useFlankerTest } from '../hooks/useFlankerTest';
 import { useReactionTest } from '../hooks/useReactionTest';
 import { useStroopTest } from '../hooks/useStroopTest';
 import { useTimer } from '../hooks/useTimer';
+import { REACTION_TRIAL_COUNT } from '../constants/reactionTest';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { nextFlankerPrepDelayMs, nextReactionStimulusDelayMs, pickStudyWordList } from '../utils/generateStimuli';
 import { buildStatus, normalizeWords, scoreFaceName, scoreFlanker, scoreReaction, scoreStroop, scoreWordMemory } from '../utils/scoring';
@@ -145,7 +146,7 @@ export const TestPage = () => {
 
   useEffect(() => {
     if (app.stage !== 'reaction') return;
-    if (app.reactionSuccessful.length < 30) return;
+    if (app.reactionSuccessful.length < REACTION_TRIAL_COUNT) return;
 
     if (timer.remainingMs > 0) app.setStage('interference-wait');
     else app.setStage('word-delayed');
@@ -372,7 +373,7 @@ export const TestPage = () => {
           'Что делать: смотрите на экран. Как только увидите зелёный круг — сразу нажмите в любом месте экрана (пальцем, если на телефоне) или нажмите клавишу Пробел (если за компьютером).\n\n' +
           'Важно: круг появляется не сразу, а через непредсказуемую задержку — от 1 до 3 секунд. Просто ждите, старайтесь не нажимать заранее.\n\n' +
           'Если нажали слишком рано (до появления круга или быстрее, чем за 0,1 секунды после него) — такое нажатие не засчитывается, и круг появится снова. Не переживайте, это нормально.\n\n' +
-          'Всего нужно выполнить 30 успешных нажатий (когда вы нажали вовремя). Приложение само отсчитает их и перейдёт дальше.\n\n' +
+          `Всего нужно выполнить ${REACTION_TRIAL_COUNT} успешных нажатий (когда вы нажали вовремя). Приложение само отсчитает их и перейдёт дальше.\n\n` +
           'Просто будьте внимательны и старайтесь реагировать быстро, но без спешки. У вас всё получится!'
         }
         onStart={() => app.setStage('reaction')}
@@ -384,8 +385,10 @@ export const TestPage = () => {
     return wrapWithTestProgress(
       app.stage,
       <div className="space-y-4 text-center">
-        <h2 className="app-heading">Реакция {app.reactionSuccessful.length}/30</h2>
-        <ProgressBar value={app.reactionSuccessful.length} max={30} />
+        <h2 className="app-heading">
+          Реакция {app.reactionSuccessful.length}/{REACTION_TRIAL_COUNT}
+        </h2>
+        <ProgressBar value={app.reactionSuccessful.length} max={REACTION_TRIAL_COUNT} />
         <button
           type="button"
           className={`mx-auto flex h-40 w-40 items-center justify-center rounded-full px-3 text-center text-lg font-bold leading-tight text-white shadow-md transition active:scale-[0.98] sm:h-44 sm:w-44 sm:text-xl ${
