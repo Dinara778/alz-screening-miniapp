@@ -1,4 +1,4 @@
-import { FormEvent, useRef, useState, type ReactNode } from 'react';
+import { FormEvent, useRef, useState, type FocusEvent, type ReactNode } from 'react';
 import { BackArrowButton } from '../components/BackArrowButton';
 import { Button } from '../components/Button';
 import { ScreenBottomCta } from '../components/ScreenBottomCta';
@@ -16,7 +16,13 @@ const FIELD_STEP_MAX = 5;
 
 const inputClass = 'calm-input';
 
-const shellClass = 'calm-card relative flex min-h-0 w-full flex-1 flex-col';
+const shellClass = 'calm-card relative flex w-full flex-col';
+
+const scrollFieldIntoView = (e: FocusEvent<HTMLInputElement>) => {
+  requestAnimationFrame(() => {
+    e.target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  });
+};
 
 export const WelcomePage = ({ onStart, onHistory }: Props) => {
   const [step, setStep] = useState(0);
@@ -168,6 +174,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
           placeholder="Имя"
           value={name}
           autoFocus
+          onFocus={scrollFieldIntoView}
           onChange={(e) => {
             sendFormStartedEvent('name');
             setName(e.target.value);
@@ -218,6 +225,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
           max={100}
           value={age}
           autoFocus
+          onFocus={scrollFieldIntoView}
           onChange={(e) => {
             sendFormStartedEvent('age');
             setAge(e.target.value);
@@ -238,6 +246,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
           type="email"
           value={email}
           autoFocus
+          onFocus={scrollFieldIntoView}
           onChange={(e) => {
             sendFormStartedEvent('email');
             setEmail(e.target.value);
@@ -251,9 +260,11 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
     stepFooter = nextButton(4, { type: 'submit', form: 'welcome-email' });
   }
 
+  const stackForm = step >= 1 && step <= 4;
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className={shellClass}>
+    <div className={`flex flex-col ${stackForm ? 'shrink-0' : 'min-h-0 flex-1'}`}>
+      <div className={`${shellClass} ${stackForm ? '' : 'min-h-0 flex-1'}`}>
         <div className="relative mb-4 shrink-0 space-y-3">
           <div className="flex items-start gap-3">
             {step >= 1 && step <= 4 ? (
@@ -285,6 +296,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         <ScreenBottomCta
           className="relative z-10"
           fill={step === 0}
+          stackFooter={stackForm}
           contentAlign={step === 0 ? 'center' : 'start'}
           footer={stepFooter}
           footerExtra={

@@ -10,6 +10,8 @@ type Props = {
   contentAlign?: 'center' | 'start';
   /** false — карточка по высоте контента (шаги с полями ввода) */
   fill?: boolean;
+  /** CTA сразу под контентом — без пустого поля при открытой клавиатуре */
+  stackFooter?: boolean;
   className?: string;
 };
 
@@ -23,19 +25,28 @@ export const ScreenBottomCta = ({
   footerExtra,
   contentAlign = 'center',
   fill = true,
+  stackFooter = false,
   className = '',
-}: Props) => (
-  <div className={`flex min-h-0 flex-col ${fill ? 'flex-1' : ''} ${className}`}>
-    <div
-      className={`flex min-h-0 flex-col overflow-y-auto py-2 ${fill ? 'flex-1' : ''} ${
-        contentAlign === 'start' ? 'justify-start' : 'justify-center'
-      }`}
-    >
-      {children}
+}: Props) => {
+  const stretch = fill && !stackFooter;
+
+  return (
+    <div className={`flex min-h-0 flex-col ${stretch ? 'flex-1' : ''} ${className}`}>
+      <div
+        className={`flex flex-col py-2 ${stretch ? 'min-h-0 flex-1 overflow-y-auto' : 'shrink-0'} ${
+          stretch && contentAlign === 'start' ? 'justify-start' : stretch ? 'justify-center' : ''
+        }`}
+      >
+        {children}
+      </div>
+      <div
+        className={`shrink-0 space-y-3 pb-[max(0.25rem,env(safe-area-inset-bottom))] ${
+          stackFooter ? 'mt-4 pt-0' : 'mt-auto pt-4'
+        }`}
+      >
+        {footer}
+        {footerExtra}
+      </div>
     </div>
-    <div className="mt-auto shrink-0 space-y-3 pt-4 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
-      {footer}
-      {footerExtra}
-    </div>
-  </div>
-);
+  );
+};
