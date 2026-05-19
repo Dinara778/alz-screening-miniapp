@@ -54,7 +54,7 @@ function App() {
     app.stage !== 'result' && app.stage !== 'corta-intro' && app.stage !== 'value-props-intro';
 
   return (
-    <main className="app-calm-shell mx-auto flex min-h-screen min-h-[100dvh] max-w-2xl flex-col px-4 py-6 text-white shadow-none">
+    <main className="app-calm-shell mx-auto flex h-[100dvh] max-h-[100dvh] min-h-0 w-full max-w-2xl flex-col overflow-hidden px-4 py-4 text-white shadow-none">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {app.stage === 'corta-intro' && (
           <CortaIntroPage onContinue={() => app.setStage('value-props-intro')} />

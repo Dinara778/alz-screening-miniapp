@@ -4,6 +4,7 @@ import { CalmScreen } from '../components/results/CalmScreen';
 import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { OrganicMetricHalo } from '../components/results/OrganicMetricHalo';
 import { ScoreRing } from '../components/results/ScoreRing';
+import { SketchHighlightTitle } from '../components/results/SketchHighlightTitle';
 import { scoreAccentFromValue } from '../components/results/scoreAccent';
 import { useApp } from '../context/AppContext';
 import type { DomainInterpretationCopy } from '../copy/cognitiveDomainInterpretationsMid52';
@@ -22,25 +23,27 @@ const calmBtnGhost =
 const DomainInterpretationBody = ({
   title,
   interpretation,
+  accent,
 }: {
   title: string;
   interpretation: DomainInterpretationCopy;
+  accent: string;
 }) => {
   const { inLife, manifestations, aboutResult } = interpretation;
   return (
     <div className="mx-auto w-full max-w-md space-y-4">
-      <h2 className="app-heading text-center">{title}</h2>
-      <div className="calm-inset space-y-4 results-body text-center">
+      <SketchHighlightTitle accent={accent}>{title}</SketchHighlightTitle>
+      <div className="calm-inset space-y-4 results-body text-left">
         <p>
-          <span className="block font-semibold text-white/95">В жизни</span>
+          <span className="font-semibold text-white/95">В жизни: </span>
           {inLife}
         </p>
         <p>
-          <span className="block font-semibold text-white/95">Как проявляется</span>
+          <span className="font-semibold text-white/95">Как проявляется: </span>
           {manifestations}
         </p>
         <p>
-          <span className="block font-semibold text-white/95">О чём говорит результат</span>
+          <span className="font-semibold text-white/95">О чём говорит результат: </span>
           {aboutResult}
         </p>
       </div>
@@ -55,15 +58,15 @@ const indexStatusPhrase = (label: string) => {
   return `Прямо сейчас у вас ${rest.charAt(0).toLowerCase()}${rest.slice(1)}`;
 };
 
-const IndexInterpretationBody = ({ index }: { index: IndexInterpretation }) => (
+const IndexInterpretationBody = ({ index, accent }: { index: IndexInterpretation; accent: string }) => (
   <div className="mx-auto w-full max-w-md space-y-4">
-    <h2 className="app-heading text-center">{index.label}</h2>
-    <div className="calm-inset space-y-5 results-body text-center">
+    <SketchHighlightTitle accent={accent}>{index.label}</SketchHighlightTitle>
+    <div className="calm-inset space-y-5 results-body text-left">
       <p>{index.description}</p>
       {index.recommendations.length > 0 ? (
         <div>
-          <p className="mb-3 font-semibold text-white/95">Рекомендации</p>
-          <ul className="mx-auto max-w-sm list-none space-y-2.5">
+          <p className="mb-3 font-semibold text-white/95">Рекомендации:</p>
+          <ul className="list-none space-y-2.5">
             {index.recommendations.map((rec) => (
               <li key={rec}>{rec}</li>
             ))}
@@ -192,10 +195,12 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         }
       >
         <OrganicMetricHalo accent={accent} emphasis>
-          <span className="text-[clamp(3.75rem,17vw,5.25rem)] font-semibold tabular-nums leading-none tracking-tight text-white">
-            {a.index.value}
+          <span className="inline-flex items-baseline justify-center gap-0.5 tabular-nums leading-none">
+            <span className="text-[clamp(3.25rem,16vw,4.75rem)] font-bold tracking-tight text-white">
+              {a.index.value}
+            </span>
+            <span className="text-[clamp(0.75rem,3.2vw,1rem)] font-medium text-white/45">/100</span>
           </span>
-          <span className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-white/45">из 100</span>
         </OrganicMetricHalo>
         <p className="mt-8 max-w-[min(22rem,92vw)] px-2 text-center text-lg font-semibold leading-snug text-white sm:mt-10 sm:text-xl">
           {indexStatusPhrase(a.index.label)}
@@ -215,7 +220,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           </Button>
         }
       >
-        <IndexInterpretationBody index={a.index} />
+        <IndexInterpretationBody index={a.index} accent={accent} />
       </CalmScreen>
     );
   }
@@ -257,7 +262,11 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           </Button>
         }
       >
-        <DomainInterpretationBody title={d.title} interpretation={d.interpretation} />
+        <DomainInterpretationBody
+          title={d.title}
+          interpretation={d.interpretation}
+          accent={scoreAccentFromValue(d.score)}
+        />
       </CalmScreen>
     );
   }

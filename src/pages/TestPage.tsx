@@ -429,7 +429,7 @@ export const TestPage = () => {
   if (app.stage === 'interference-wait') {
     return wrapWithTestProgress(
       app.stage,
-      <InterferenceWaitPanel remainingSec={timer.remainingSec} />,
+      <InterferenceWaitPanel remainingSec={timer.remainingSec} totalSec={INTERFERENCE_MS / 1000} />,
     );
   }
 

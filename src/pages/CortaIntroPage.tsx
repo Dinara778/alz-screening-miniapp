@@ -9,19 +9,19 @@ type Props = {
 
 export const CortaIntroPage = ({ onContinue }: Props) => {
   const footer = (
-    <div className="flex w-full flex-col items-center space-y-4 text-center">
+    <div className="mx-auto flex w-full max-w-md flex-col items-stretch gap-3">
       <Button
         type="button"
-        className="flex w-full max-w-md items-center justify-center gap-2 rounded-2xl border-0 bg-emerald-400 py-4 text-center text-[1.0625rem] font-bold leading-snug text-slate-950 shadow-lg shadow-emerald-500/30 hover:bg-emerald-300 sm:py-[1.125rem] sm:text-xl"
+        className="cta-shimmer flex w-full items-center justify-center gap-2 rounded-2xl border-0 !bg-none py-4 text-center text-[1.0625rem] font-bold leading-snug !from-transparent !to-transparent hover:!from-transparent hover:!to-transparent sm:py-[1.125rem] sm:text-xl"
         onClick={onContinue}
       >
         <span>Начать бесплатно</span>
         <IconArrowRight className="h-5 w-5 shrink-0" />
       </Button>
-      <p className="flex max-w-md items-center justify-center gap-2 text-center text-sm text-emerald-200/90">
-        <IconShield className="h-5 w-5 shrink-0 text-emerald-400" />
-        <span>Это бесплатно и займёт всего {TEST_DURATION_LABEL}</span>
-      </p>
+      <div className="flex shrink-0 flex-row flex-nowrap items-center justify-center gap-2 text-sm leading-snug text-emerald-200/90">
+        <IconShield className="block h-5 w-5 shrink-0 text-emerald-400" aria-hidden />
+        <span>Ваши данные под защитой</span>
+      </div>
     </div>
   );
 

@@ -16,7 +16,7 @@ export const HistoryPage = ({ onBack }: { onBack: () => void }) => {
         <div key={h.id ?? `${h.date}-${Math.random()}`} className="calm-inset p-4 space-y-2">
           <div className="font-semibold">{h.date ? new Date(h.date).toLocaleString() : 'Дата недоступна'}</div>
           <div className="text-sm calm-body">
-            {(h.participant?.name ?? 'Пользователь')}, {(h.participant?.age ?? '—')} лет, {(h.participant?.sex ?? '—')}, ПК: {(h.participant?.pcConfidence ?? '—')}/5, образование: {(h.participant?.educationYears ?? '—')} лет
+            {(h.participant?.name ?? 'Пользователь')}, {(h.participant?.age ?? '—')} лет, {(h.participant?.sex ?? '—')}
           </div>
           <div>
             Индекс устойчивости: <span className="font-medium">{analytics.index.value}/100</span> — {analytics.index.label}

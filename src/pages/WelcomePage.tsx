@@ -11,8 +11,8 @@ import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
 type Props = { onStart: (profile: ParticipantProfile) => void; onHistory: () => void };
 
-/** После интро: имя → телефон → пол → возраст → образование+почта → экран перед заданиями. */
-const FIELD_STEP_MAX = 7;
+/** После интро: имя → пол → возраст → почта → экран перед заданиями. */
+const FIELD_STEP_MAX = 5;
 
 const inputClass = 'calm-input';
 
@@ -22,10 +22,8 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [sex, setSex] = useState<ParticipantProfile['sex']>('Женский');
   const [age, setAge] = useState('');
-  const [education, setEducation] = useState('');
   const formSessionIdRef = useRef(`welcome-${Date.now()}`);
   const hasSentFormStartRef = useRef(false);
 
@@ -40,7 +38,6 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
       participant: {
         name: name.trim() || undefined,
         email: email.trim() || undefined,
-        phone: phone.trim() || undefined,
       },
     }).catch(() => {});
   };
@@ -51,38 +48,36 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
   const canAdvanceFrom = (s: number): boolean => {
     if (s === 0) return true;
     if (s === 1) return name.trim().length >= 2;
-    if (s === 2) return phone.trim().length >= 6;
-    if (s === 3) return true;
-    if (s === 4) {
+    if (s === 2) return true;
+    if (s === 3) {
       const n = Number(age);
       return Number.isFinite(n) && n >= 18 && n <= 100;
     }
-    if (s === 5) return education.trim().length >= 2 && email.trim().includes('@');
+    if (s === 4) return email.trim().includes('@');
     return false;
   };
 
   const buildProfile = (): ParticipantProfile | null => {
     const normalizedEmail = email.trim();
-    const normalizedPhone = phone.trim();
     const parsedAge = Number(age);
-    if (!name.trim() || !normalizedEmail || !normalizedPhone || !education.trim() || !Number.isFinite(parsedAge)) {
+    if (!name.trim() || !normalizedEmail || !Number.isFinite(parsedAge)) {
       return null;
     }
     return {
       name: name.trim(),
       email: normalizedEmail,
-      phone: normalizedPhone,
+      phone: 'Не указано',
       sex,
       age: parsedAge,
-      education: education.trim(),
+      education: 'Не указано',
       educationYears: 12,
       pcConfidence: 3,
     };
   };
 
-  const completeEducationStep = (e: FormEvent) => {
+  const completeEmailStep = (e: FormEvent) => {
     e.preventDefault();
-    if (!canAdvanceFrom(5) || !buildProfile()) return;
+    if (!canAdvanceFrom(4) || !buildProfile()) return;
 
     const profile = buildProfile()!;
     void sendAnalyticsEventToSheets({
@@ -92,10 +87,8 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
       participant: {
         name: profile.name,
         email: profile.email,
-        phone: profile.phone,
         sex: profile.sex,
         age: profile.age,
-        education: profile.education,
         pcConfidence: 3,
       },
     }).catch(() => {});
@@ -123,7 +116,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
     </Button>
   );
 
-  if (step === 6) {
+  if (step === 5) {
     return (
       <div className="relative flex min-h-0 flex-1 flex-col">
         <ScreenBottomCta
@@ -160,7 +153,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
     stepBody = (
       <div className="space-y-5 text-center sm:text-left">
         <h2 className="app-heading text-center">Несколько вопросов перед началом оценки</h2>
-        <p className="calm-caption sm:text-base">Имя, контакты, возраст и образование. Займёт около минуты.</p>
+        <p className="calm-caption sm:text-base">Имя, пол, возраст и почта. Займёт около минуты.</p>
       </div>
     );
     stepFooter = nextButton(0);
@@ -184,26 +177,6 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
     );
     stepFooter = nextButton(1);
   } else if (step === 2) {
-    stepBody = (
-      <div className="space-y-4">
-        <div className="text-center text-5xl">📱</div>
-        <h2 className="app-heading text-center">Телефон для связи</h2>
-        <p className="text-center calm-caption">Можно с пробелами и скобками — как вам удобно</p>
-        <input
-          className={inputClass}
-          placeholder="Телефон"
-          type="tel"
-          value={phone}
-          autoFocus
-          onChange={(e) => {
-            sendFormStartedEvent('phone');
-            setPhone(e.target.value);
-          }}
-        />
-      </div>
-    );
-    stepFooter = nextButton(2);
-  } else if (step === 3) {
     stepBody = (
       <div className="space-y-4">
         <div className="text-center text-5xl">👥</div>
@@ -230,8 +203,8 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         </div>
       </div>
     );
-    stepFooter = nextButton(3);
-  } else if (step === 4) {
+    stepFooter = nextButton(2);
+  } else if (step === 3) {
     stepBody = (
       <div className="space-y-4">
         <div className="text-center text-5xl">🎂</div>
@@ -252,28 +225,19 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         />
       </div>
     );
-    stepFooter = nextButton(4);
-  } else if (step === 5) {
+    stepFooter = nextButton(3);
+  } else if (step === 4) {
     stepBody = (
-      <form id="welcome-education" className="space-y-4" onSubmit={completeEducationStep}>
-        <div className="text-center text-5xl">🎓</div>
-        <h2 className="app-heading text-center">Образование и почта</h2>
+      <form id="welcome-email" className="space-y-4" onSubmit={completeEmailStep}>
+        <div className="text-center text-5xl">📧</div>
+        <h2 className="app-heading text-center">Ваша почта</h2>
         <p className="text-center calm-caption">Последний шаг — и можно начинать замер</p>
-        <input
-          className={inputClass}
-          placeholder="Образование"
-          value={education}
-          autoFocus
-          onChange={(e) => {
-            sendFormStartedEvent('education');
-            setEducation(e.target.value);
-          }}
-        />
         <input
           className={inputClass}
           placeholder="Почта"
           type="email"
           value={email}
+          autoFocus
           onChange={(e) => {
             sendFormStartedEvent('email');
             setEmail(e.target.value);
@@ -284,27 +248,20 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         </p>
       </form>
     );
-    stepFooter = nextButton(5, { type: 'submit', form: 'welcome-education' });
+    stepFooter = nextButton(4, { type: 'submit', form: 'welcome-email' });
   }
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col">
-      {step >= 1 && step <= 5 ? <ScreenBackHeader onBack={goBack} /> : null}
-      <div className="pointer-events-none absolute inset-x-0 top-20 flex justify-between px-1 text-5xl opacity-[0.14] select-none">
-        <span>🌿</span>
-        <span>🍊</span>
-      </div>
-
+    <div className="flex min-h-0 flex-1 flex-col">
       <div className={shellClass}>
-        <div className="pointer-events-none absolute -right-6 -top-6 text-8xl opacity-20">🌱</div>
-        <div className="pointer-events-none absolute -bottom-4 left-4 text-6xl opacity-15">☀️</div>
+        {step >= 1 && step <= 4 ? <ScreenBackHeader onBack={goBack} className="mb-1" /> : null}
 
         <div className="relative mb-4 shrink-0 space-y-2">
           <div className="flex items-center justify-between gap-2 text-xs font-bold uppercase tracking-wide calm-accent">
             <span>{step === 0 ? 'Знакомство' : `Шаг ${step} из ${FIELD_STEP_MAX}`}</span>
             <span className="rounded-full bg-white/10 px-2 py-0.5 text-white/70">
               {step === 0
-                ? 'впереди 7 шагов'
+                ? 'впереди 5 шагов'
                 : step >= FIELD_STEP_MAX - 1
                   ? 'финиш ✨'
                   : `осталось шагов: ${FIELD_STEP_MAX - step}`}
@@ -315,6 +272,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
 
         <ScreenBottomCta
           className="relative z-10 min-h-0 flex-1"
+          contentAlign={step === 0 ? 'center' : 'start'}
           footer={stepFooter}
           footerExtra={
             step === 0 ? (
