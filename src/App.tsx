@@ -15,7 +15,7 @@ import { ExpertIntroPage } from './pages/ExpertIntroPage';
 import { IntroTestOfferPage } from './pages/IntroTestOfferPage';
 import { WelcomePage } from './pages/WelcomePage';
 
-const STAGES_HIDE_SUPPORT_FOOTER: AppStage[] = ['flanker', 'reaction', 'stroop', 'result'];
+const STAGES_HIDE_SUPPORT_FOOTER: AppStage[] = ['expert-intro', 'flanker', 'reaction', 'stroop', 'result'];
 
 function App() {
   const app = useApp();

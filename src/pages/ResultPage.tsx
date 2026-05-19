@@ -1,20 +1,79 @@
 import { useState } from 'react';
+import { Button } from '../components/Button';
 import { CalmScreen } from '../components/results/CalmScreen';
+import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { OrganicMetricHalo } from '../components/results/OrganicMetricHalo';
 import { ScoreRing } from '../components/results/ScoreRing';
 import { scoreAccentFromValue } from '../components/results/scoreAccent';
 import { useApp } from '../context/AppContext';
+import type { DomainInterpretationCopy } from '../copy/cognitiveDomainInterpretationsMid52';
 import { buildCognitiveAnalytics, type DomainScore } from '../utils/cognitiveAnalytics';
+import type { IndexInterpretation } from '../utils/indexInterpretationBands';
 import { buildResultShareText, getShareTestLink, shareOrCopyResultText } from '../utils/shareResult';
 import { isPaymentsStubbed, PAYMENT_STUB_MESSAGE } from '../utils/paymentStub';
 import { openTelegramInvoiceForProduct, reportPaidStorageKey } from '../utils/telegramPayments';
 
-type ResultStep = 'index' | 'domain' | 'hub';
+type ResultStep = 'index' | 'index-detail' | 'domain-metric' | 'domain-detail' | 'hub';
 
-const calmBtn =
-  'w-full rounded-full border border-white/20 bg-white py-4 text-[1rem] font-semibold tracking-tight text-[#0a0c0b] transition hover:bg-white/95 active:scale-[0.99]';
+const calmBtnClass = CTA_BUTTON_CLASS;
 const calmBtnGhost =
   'w-full rounded-full border border-white/15 bg-transparent py-3.5 text-[0.9375rem] font-medium text-white/90 transition hover:border-white/30 hover:bg-white/5';
+
+const DomainInterpretationBody = ({
+  title,
+  interpretation,
+}: {
+  title: string;
+  interpretation: DomainInterpretationCopy;
+}) => {
+  const { inLife, manifestations, aboutResult } = interpretation;
+  return (
+    <div className="mx-auto w-full max-w-md space-y-4">
+      <h2 className="app-heading text-center">{title}</h2>
+      <div className="calm-inset space-y-3 text-sm leading-relaxed calm-body">
+        <p>
+          <span className="font-semibold text-white/90">В жизни: </span>
+          {inLife}
+        </p>
+        <p>
+          <span className="font-semibold text-white/90">Как проявляется: </span>
+          {manifestations}
+        </p>
+        <p>
+          <span className="font-semibold text-white/90">О чём говорит результат: </span>
+          {aboutResult}
+        </p>
+      </div>
+    </div>
+  );
+};
+
+/** «Прямо сейчас у вас …» — из подписи индекса (без дублирования заглавной). */
+const indexStatusPhrase = (label: string) => {
+  const rest = label.trim();
+  if (!rest) return 'Прямо сейчас у вас заметная перегрузка внимания';
+  return `Прямо сейчас у вас ${rest.charAt(0).toLowerCase()}${rest.slice(1)}`;
+};
+
+const IndexInterpretationBody = ({ index }: { index: IndexInterpretation }) => (
+  <div className="mx-auto w-full max-w-md space-y-4">
+    <h2 className="app-heading text-center">{index.label}</h2>
+    <div className="calm-inset space-y-4 text-sm leading-relaxed calm-body">
+      <p>{index.description}</p>
+      {index.recommendations.length > 0 ? (
+        <div>
+          <p className="mb-2 font-semibold text-white/90">Рекомендации:</p>
+          <ul className="list-disc space-y-2 pl-5">
+            {index.recommendations.map((rec) => (
+              <li key={rec}>{rec}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      <p className="text-xs text-white/50">{index.overloadMapIntro}</p>
+    </div>
+  </div>
+);
 
 export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const { latestResult, setStage, setConsultationReturnTo } = useApp();
@@ -102,12 +161,13 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
 
   const startDomains = () => {
     setDomainIndex(0);
-    setStep('domain');
+    setStep('domain-metric');
   };
 
-  const nextDomain = () => {
+  const nextFromDomainDetail = () => {
     if (domainIndex < domains.length - 1) {
       setDomainIndex((i) => i + 1);
+      setStep('domain-metric');
     } else {
       setStep('hub');
     }
@@ -116,7 +176,8 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   if (step === 'index') {
     return (
       <CalmScreen
-        kicker="Когнитивный профиль"
+        kicker="Когнитивный профиль:"
+        kickerProminent
         footer={
           <>
             {!a.validation.interpretationTrusted ? (
@@ -124,38 +185,51 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
                 Ограниченная достоверность замера — пройдите все блоки заново для точного профиля.
               </p>
             ) : null}
-            <button type="button" className={calmBtn} onClick={startDomains}>
-              Узнать расшифровку
-            </button>
+            <Button type="button" className={calmBtnClass} onClick={() => setStep('index-detail')}>
+              Что это значит для вас
+            </Button>
           </>
         }
       >
-        <OrganicMetricHalo accent={accent}>
-          <span className="text-[clamp(3.5rem,16vw,5rem)] font-semibold tabular-nums leading-none tracking-tight text-white">
+        <OrganicMetricHalo accent={accent} emphasis>
+          <span className="text-[clamp(3.75rem,17vw,5.25rem)] font-semibold tabular-nums leading-none tracking-tight text-white">
             {a.index.value}
           </span>
           <span className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-white/45">из 100</span>
         </OrganicMetricHalo>
-        <p className="mt-10 max-w-[18rem] text-center text-sm font-medium leading-relaxed text-white/70">
-          {a.index.label}
-        </p>
-        <p className="mt-3 max-w-[20rem] text-center text-xs leading-relaxed text-white/40">
-          Индекс когнитивной устойчивости по вашему прохождению. Не диагноз.
+        <p className="mt-8 max-w-[min(20rem,92vw)] px-2 text-center text-[1.0625rem] font-semibold leading-snug text-white sm:mt-10 sm:text-lg">
+          {indexStatusPhrase(a.index.label)}
         </p>
       </CalmScreen>
     );
   }
 
-  if (step === 'domain' && currentDomain) {
+  if (step === 'index-detail') {
+    return (
+      <CalmScreen
+        kicker="Индекс когнитивной устойчивости"
+        contentAlign="top"
+        footer={
+          <Button type="button" className={calmBtnClass} onClick={startDomains}>
+            Далее — показатели профиля
+          </Button>
+        }
+      >
+        <IndexInterpretationBody index={a.index} />
+      </CalmScreen>
+    );
+  }
+
+  if (step === 'domain-metric' && currentDomain) {
     const d = currentDomain;
     const dAccent = scoreAccentFromValue(d.score);
     return (
       <CalmScreen
         kicker={`${domainIndex + 1} / ${domains.length}`}
         footer={
-          <button type="button" className={calmBtn} onClick={nextDomain}>
-            {domainIndex < domains.length - 1 ? 'Далее' : 'Готово'}
-          </button>
+          <Button type="button" className={calmBtnClass} onClick={() => setStep('domain-detail')}>
+            Что это значит для вас
+          </Button>
         }
       >
         <p className="mb-8 max-w-[16rem] text-center text-sm font-medium text-white/55">{d.title}</p>
@@ -167,9 +241,23 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
             </span>
           </div>
         </div>
-        <p className="mt-10 max-w-[20rem] text-center text-sm leading-relaxed text-white/65">
-          {d.interpretation.aboutResult}
-        </p>
+      </CalmScreen>
+    );
+  }
+
+  if (step === 'domain-detail' && currentDomain) {
+    const d = currentDomain;
+    return (
+      <CalmScreen
+        kicker={`${domainIndex + 1} / ${domains.length}`}
+        contentAlign="top"
+        footer={
+          <Button type="button" className={calmBtnClass} onClick={nextFromDomainDetail}>
+            {domainIndex < domains.length - 1 ? 'Далее' : 'Готово'}
+          </Button>
+        }
+      >
+        <DomainInterpretationBody title={d.title} interpretation={d.interpretation} />
       </CalmScreen>
     );
   }
@@ -179,9 +267,9 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       kicker="Дальше"
       footer={
         <div className="space-y-3">
-          <button type="button" className={calmBtn} disabled={payBusy} onClick={() => void handlePayFullReport()}>
+          <Button type="button" className={calmBtnClass} disabled={payBusy} onClick={() => void handlePayFullReport()}>
             {payBusy ? 'Открываем оплату…' : 'Расширенный отчёт — 399 ₽'}
-          </button>
+          </Button>
           <button type="button" className={calmBtnGhost} onClick={() => void handleShare()}>
             Поделиться
           </button>

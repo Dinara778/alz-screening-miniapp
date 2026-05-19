@@ -53,7 +53,7 @@ export const StroopConfirmStep = ({ onConfirm, onBack }: Props) => {
           className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug disabled:opacity-50 sm:py-[1.125rem] sm:text-xl"
           onClick={onConfirm}
         >
-          Понятно, перехожу к тесту
+          Понятно, далее
         </Button>
       </div>
     </div>

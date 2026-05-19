@@ -1,4 +1,5 @@
 import { Button } from '../components/Button';
+import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { TEST_DURATION_LABEL } from '../constants/testDuration';
 import { IntroShell } from '../components/landing/IntroShell';
 
@@ -20,7 +21,7 @@ export const IntroTestOfferPage = ({ onContinue }: Props) => {
   const footer = (
     <Button
       type="button"
-      className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug sm:py-[1.125rem] sm:text-xl"
+      className={CTA_BUTTON_CLASS}
       onClick={onContinue}
     >
       Далее
@@ -30,7 +31,9 @@ export const IntroTestOfferPage = ({ onContinue }: Props) => {
   return (
     <IntroShell aria-label="Что мы анализируем" footer={footer}>
       <div className="space-y-4 pb-4">
-        <h1 className="app-heading text-left">Оценка когнитивного профиля</h1>
+        <h1 className="text-left text-xl font-bold leading-snug text-white sm:text-2xl">
+          Оценка когнитивного профиля
+        </h1>
         <p className="calm-caption">Оценка займёт около {TEST_DURATION_LABEL}.</p>
         <div className="calm-inset">
           <div className="app-heading">Что мы анализируем:</div>

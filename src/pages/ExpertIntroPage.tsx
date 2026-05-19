@@ -1,4 +1,5 @@
 import { Button } from '../components/Button';
+import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { IntroShell } from '../components/landing/IntroShell';
 
 type Props = {
@@ -10,7 +11,7 @@ export const ExpertIntroPage = ({ onContinue }: Props) => {
     <Button
       type="button"
       variant="primary"
-      className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug sm:py-[1.125rem] sm:text-xl"
+      className={CTA_BUTTON_CLASS}
       onClick={onContinue}
     >
       Далее
@@ -18,13 +19,13 @@ export const ExpertIntroPage = ({ onContinue }: Props) => {
   );
 
   return (
-    <IntroShell aria-label="О проекте Corta и эксперте" footer={footer}>
-      <div className="flex flex-col items-center px-1 sm:px-2">
-        <h2 className="app-heading mt-4 text-center sm:mt-6">
+    <IntroShell aria-label="О проекте Corta и эксперте" footer={footer} centerContent>
+      <div className="flex flex-col items-center px-2 text-center sm:px-4">
+        <h2 className="app-heading max-w-md leading-snug">
           «Corta — это научный подход к вашему когнитивному здоровью»
         </h2>
-        <div className="mt-10 flex w-full max-w-md flex-row items-center justify-center gap-4 sm:mt-12 sm:gap-6">
-          <div className="relative h-[7.25rem] w-[7.25rem] shrink-0 overflow-hidden rounded-full shadow-md ring-2 ring-white/15 sm:h-36 sm:w-36">
+        <div className="mt-8 flex flex-col items-center gap-4 sm:mt-10">
+          <div className="relative h-[7.5rem] w-[7.5rem] shrink-0 overflow-hidden rounded-full shadow-md ring-2 ring-white/15 sm:h-[8.5rem] sm:w-[8.5rem]">
             <img
               src="/dinara-isaeva.png"
               alt="Динара Исаева"
@@ -34,11 +35,11 @@ export const ExpertIntroPage = ({ onContinue }: Props) => {
               decoding="async"
             />
           </div>
-          <div className="flex min-w-0 max-w-[11rem] flex-col items-start text-left sm:max-w-[13rem]">
+          <div className="flex max-w-xs flex-col items-center gap-1.5">
             <p className="font-signature text-[1.85rem] font-semibold leading-[1.1] text-white sm:text-[2.15rem]">
               Динара Исаева
             </p>
-            <p className="mt-1.5 text-[0.6875rem] font-medium leading-snug tracking-tight text-white/55 sm:text-xs">
+            <p className="text-[0.6875rem] font-medium leading-snug tracking-tight text-white/55 sm:text-xs">
               Эксперт по когнитивной эффективности
             </p>
           </div>

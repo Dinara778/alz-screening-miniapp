@@ -1,8 +1,10 @@
-import { FormEvent, useRef, useState } from 'react';
+import { FormEvent, useRef, useState, type ReactNode } from 'react';
 import { BackArrowButton } from '../components/BackArrowButton';
 import { Button } from '../components/Button';
+import { ScreenBottomCta } from '../components/ScreenBottomCta';
 import { IconArrowRight } from '../components/landing/LandingIcons';
 import { ProgressBar } from '../components/ProgressBar';
+import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { ParticipantProfile } from '../types';
 import { TEST_DURATION_LABEL } from '../constants/testDuration';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
@@ -12,10 +14,9 @@ type Props = { onStart: (profile: ParticipantProfile) => void; onHistory: () => 
 /** После интро: имя → телефон → пол → возраст → образование+почта → экран перед заданиями. */
 const FIELD_STEP_MAX = 7;
 
-const inputClass =
-  'calm-input';
+const inputClass = 'calm-input';
 
-const shellClass = 'calm-card';
+const shellClass = 'calm-card relative flex min-h-0 flex-1 flex-col';
 
 export const WelcomePage = ({ onStart, onHistory }: Props) => {
   const [step, setStep] = useState(0);
@@ -110,39 +111,186 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
 
   const progressValue = step === 0 ? 0 : step;
 
+  const nextButton = (fromStep: number, opts?: { type?: 'button' | 'submit'; form?: string }) => (
+    <Button
+      type={opts?.type ?? 'button'}
+      form={opts?.form}
+      className={CTA_BUTTON_CLASS}
+      disabled={fromStep > 0 && !canAdvanceFrom(fromStep)}
+      onClick={opts?.type === 'submit' ? undefined : goNext}
+    >
+      Далее
+    </Button>
+  );
+
   if (step === 6) {
     return (
-      <div className="relative flex min-h-0 flex-1 flex-col gap-6">
-        <div className="flex min-h-0 flex-1 flex-col justify-center space-y-5 px-1 sm:px-2">
-          <p className="text-base leading-relaxed calm-body dark:text-slate-200 sm:text-lg">
-            Дальше вас ждут короткие задания, которые помогут понять ваше текущее когнитивное состояние по вашим
-            поведенческим паттернам.
-          </p>
-          <p className="text-base font-semibold text-emerald-900 dark:text-emerald-200 sm:text-lg">
-            Это займёт около {TEST_DURATION_LABEL}.
-          </p>
-          <p className="text-sm leading-relaxed calm-body dark:text-slate-300 sm:text-base">
-            По возможности выполняйте их в спокойной обстановке, без отвлечений.
-          </p>
-        </div>
-        <div className="mt-auto shrink-0 pb-2 pt-4">
-          <Button
-            type="button"
-            className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug sm:rounded-3xl sm:py-[1.125rem] sm:text-xl"
-            onClick={startAssessment}
-          >
-            <span>Начать оценку</span>
-            <IconArrowRight className="h-5 w-5 shrink-0" />
-          </Button>
-        </div>
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <ScreenBottomCta
+          footer={
+            <Button type="button" className={CTA_BUTTON_CLASS} onClick={startAssessment}>
+              <span className="flex items-center justify-center gap-2">
+                Начать оценку
+                <IconArrowRight className="h-5 w-5 shrink-0" />
+              </span>
+            </Button>
+          }
+        >
+          <div className="space-y-5 px-1 sm:px-2">
+            <p className="text-base leading-relaxed calm-body sm:text-lg">
+              Дальше вас ждут короткие задания, которые помогут понять ваше текущее когнитивное состояние по вашим
+              поведенческим паттернам.
+            </p>
+            <p className="text-base font-semibold text-emerald-200 sm:text-lg">
+              Это займёт около {TEST_DURATION_LABEL}.
+            </p>
+            <p className="text-sm leading-relaxed calm-body sm:text-base">
+              По возможности выполняйте их в спокойной обстановке, без отвлечений.
+            </p>
+          </div>
+        </ScreenBottomCta>
       </div>
     );
   }
 
+  let stepBody: ReactNode = null;
+  let stepFooter: React.ReactNode = nextButton(step);
+
+  if (step === 0) {
+    stepBody = (
+      <div className="space-y-5 text-center sm:text-left">
+        <h2 className="app-heading text-center">Несколько вопросов перед началом оценки</h2>
+        <p className="calm-caption sm:text-base">Имя, контакты, возраст и образование. Займёт около минуты.</p>
+      </div>
+    );
+    stepFooter = nextButton(0);
+  } else if (step === 1) {
+    stepBody = (
+      <div className="space-y-4">
+        <div className="text-center text-5xl">✨</div>
+        <h2 className="app-heading text-center">Как вас зовут?</h2>
+        <p className="text-center calm-caption">Укажите, как к вам обращаться</p>
+        <input
+          className={inputClass}
+          placeholder="Имя"
+          value={name}
+          autoFocus
+          onChange={(e) => {
+            sendFormStartedEvent('name');
+            setName(e.target.value);
+          }}
+        />
+      </div>
+    );
+    stepFooter = nextButton(1);
+  } else if (step === 2) {
+    stepBody = (
+      <div className="space-y-4">
+        <div className="text-center text-5xl">📱</div>
+        <h2 className="app-heading text-center">Телефон для связи</h2>
+        <p className="text-center calm-caption">Можно с пробелами и скобками — как вам удобно</p>
+        <input
+          className={inputClass}
+          placeholder="Телефон"
+          type="tel"
+          value={phone}
+          autoFocus
+          onChange={(e) => {
+            sendFormStartedEvent('phone');
+            setPhone(e.target.value);
+          }}
+        />
+      </div>
+    );
+    stepFooter = nextButton(2);
+  } else if (step === 3) {
+    stepBody = (
+      <div className="space-y-4">
+        <div className="text-center text-5xl">👥</div>
+        <h2 className="app-heading text-center">Выберите пол</h2>
+        <p className="text-center calm-caption">Нужен для корректной нормы в аналитике</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {(['Женский', 'Мужской', 'Другой'] as const).map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => {
+                sendFormStartedEvent('sex');
+                setSex(opt);
+              }}
+              className={`rounded-2xl border-2 px-3 py-4 text-center text-sm font-bold transition ${
+                sex === opt
+                  ? 'border-teal-400/80 bg-teal-500/30 text-white shadow-md ring-2 ring-teal-400/40'
+                  : 'border-white/15 bg-white/5 text-white/80 hover:border-white/25 hover:bg-white/10'
+              }`}
+            >
+              {opt === 'Женский' ? '👩' : opt === 'Мужской' ? '👨' : '✨'} {opt}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+    stepFooter = nextButton(3);
+  } else if (step === 4) {
+    stepBody = (
+      <div className="space-y-4">
+        <div className="text-center text-5xl">🎂</div>
+        <h2 className="app-heading text-center">Ваш возраст</h2>
+        <p className="text-center calm-caption">Полных лет, от 18 до 100</p>
+        <input
+          className={inputClass}
+          placeholder="Возраст"
+          type="number"
+          min={18}
+          max={100}
+          value={age}
+          autoFocus
+          onChange={(e) => {
+            sendFormStartedEvent('age');
+            setAge(e.target.value);
+          }}
+        />
+      </div>
+    );
+    stepFooter = nextButton(4);
+  } else if (step === 5) {
+    stepBody = (
+      <form id="welcome-education" className="space-y-4" onSubmit={completeEducationStep}>
+        <div className="text-center text-5xl">🎓</div>
+        <h2 className="app-heading text-center">Образование и почта</h2>
+        <p className="text-center calm-caption">Последний шаг — и можно начинать замер</p>
+        <input
+          className={inputClass}
+          placeholder="Образование"
+          value={education}
+          autoFocus
+          onChange={(e) => {
+            sendFormStartedEvent('education');
+            setEducation(e.target.value);
+          }}
+        />
+        <input
+          className={inputClass}
+          placeholder="Почта"
+          type="email"
+          value={email}
+          onChange={(e) => {
+            sendFormStartedEvent('email');
+            setEmail(e.target.value);
+          }}
+        />
+        <p className="rounded-xl border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-center text-xs text-amber-100/90">
+          📧 Почта — для сервисных сообщений и отчёта о результатах.
+        </p>
+      </form>
+    );
+    stepFooter = nextButton(5, { type: 'submit', form: 'welcome-education' });
+  }
+
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col gap-4 pt-12">
+    <div className="relative flex min-h-0 flex-1 flex-col pt-12">
       {step >= 1 && step <= 5 ? <BackArrowButton onClick={goBack} /> : null}
-      <div className="pointer-events-none absolute inset-x-0 top-20 flex justify-between px-1 text-5xl opacity-[0.14] select-none dark:opacity-[0.1]">
+      <div className="pointer-events-none absolute inset-x-0 top-20 flex justify-between px-1 text-5xl opacity-[0.14] select-none">
         <span>🌿</span>
         <span>🍊</span>
       </div>
@@ -151,11 +299,9 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         <div className="pointer-events-none absolute -right-6 -top-6 text-8xl opacity-20">🌱</div>
         <div className="pointer-events-none absolute -bottom-4 left-4 text-6xl opacity-15">☀️</div>
 
-        <div className="mb-5 space-y-2">
+        <div className="relative z-10 mb-4 shrink-0 space-y-2">
           <div className="flex items-center justify-between gap-2 text-xs font-bold uppercase tracking-wide calm-accent">
-            <span>
-              {step === 0 ? 'Знакомство' : `Шаг ${step} из ${FIELD_STEP_MAX}`}
-            </span>
+            <span>{step === 0 ? 'Знакомство' : `Шаг ${step} из ${FIELD_STEP_MAX}`}</span>
             <span className="rounded-full bg-white/10 px-2 py-0.5 text-white/70">
               {step === 0
                 ? 'впереди 7 шагов'
@@ -167,174 +313,20 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
           <ProgressBar value={progressValue} max={FIELD_STEP_MAX} />
         </div>
 
-        {step === 0 && (
-          <div className="relative z-10 space-y-5 text-center sm:text-left">
-            <h2 className="app-heading text-center">
-              Несколько вопросов перед началом оценки
-            </h2>
-            <p className="calm-caption sm:text-base">
-              Имя, контакты, возраст и образование. Займёт около минуты.
-            </p>
-            <div className="w-full">
-              <Button
-                type="button"
-                className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug sm:py-[1.125rem] sm:text-xl"
-                onClick={goNext}
-              >
-                Далее
+        <ScreenBottomCta
+          className="relative z-10 min-h-0 flex-1"
+          footer={stepFooter}
+          footerExtra={
+            step === 0 ? (
+              <Button type="button" variant="secondary" onClick={onHistory} className="w-full">
+                📚 История прохождений
               </Button>
-            </div>
-          </div>
-        )}
-
-        {step === 1 && (
-          <div className="relative z-10 space-y-4">
-            <div className="text-center text-5xl">✨</div>
-            <h2 className="app-heading text-center">Как вас зовут?</h2>
-            <p className="text-center calm-caption">
-              Укажите, как к вам обращаться
-            </p>
-            <input
-              className={inputClass}
-              placeholder="Имя"
-              value={name}
-              autoFocus
-              onChange={(e) => {
-                sendFormStartedEvent('name');
-                setName(e.target.value);
-              }}
-            />
-            <Button type="button" className="w-full" disabled={!canAdvanceFrom(1)} onClick={goNext}>
-              Далее
-            </Button>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="relative z-10 space-y-4">
-            <div className="text-center text-5xl">📱</div>
-            <h2 className="app-heading text-center">Телефон для связи</h2>
-            <p className="text-center calm-caption">
-              Можно с пробелами и скобками — как вам удобно
-            </p>
-            <input
-              className={inputClass}
-              placeholder="Телефон"
-              type="tel"
-              value={phone}
-              autoFocus
-              onChange={(e) => {
-                sendFormStartedEvent('phone');
-                setPhone(e.target.value);
-              }}
-            />
-            <Button type="button" className="w-full" disabled={!canAdvanceFrom(2)} onClick={goNext}>
-              Далее
-            </Button>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="relative z-10 space-y-4">
-            <div className="text-center text-5xl">👥</div>
-            <h2 className="app-heading text-center">Выберите пол</h2>
-            <p className="text-center calm-caption">
-              Нужен для корректной нормы в аналитике
-            </p>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {(['Женский', 'Мужской', 'Другой'] as const).map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => {
-                    sendFormStartedEvent('sex');
-                    setSex(opt);
-                  }}
-                  className={`rounded-2xl border-2 px-3 py-4 text-center text-sm font-bold transition ${
-                    sex === opt
-                      ? 'border-teal-400/80 bg-teal-500/30 text-white shadow-md ring-2 ring-teal-400/40'
-                      : 'border-white/15 bg-white/5 text-white/80 hover:border-white/25 hover:bg-white/10'
-                  }`}
-                >
-                  {opt === 'Женский' ? '👩' : opt === 'Мужской' ? '👨' : '✨'} {opt}
-                </button>
-              ))}
-            </div>
-            <Button type="button" className="w-full" onClick={goNext}>
-              Далее
-            </Button>
-          </div>
-        )}
-
-        {step === 4 && (
-          <div className="relative z-10 space-y-4">
-            <div className="text-center text-5xl">🎂</div>
-            <h2 className="app-heading text-center">Ваш возраст</h2>
-            <p className="text-center calm-caption">
-              Полных лет, от 18 до 100
-            </p>
-            <input
-              className={inputClass}
-              placeholder="Возраст"
-              type="number"
-              min={18}
-              max={100}
-              value={age}
-              autoFocus
-              onChange={(e) => {
-                sendFormStartedEvent('age');
-                setAge(e.target.value);
-              }}
-            />
-            <Button type="button" className="w-full" disabled={!canAdvanceFrom(4)} onClick={goNext}>
-              Далее
-            </Button>
-          </div>
-        )}
-
-        {step === 5 && (
-          <form className="relative z-10 space-y-4" onSubmit={completeEducationStep}>
-            <div className="text-center text-5xl">🎓</div>
-            <h2 className="app-heading text-center">Образование и почта</h2>
-            <p className="text-center calm-caption">
-              Последний шаг — и можно начинать замер
-            </p>
-            <input
-              className={inputClass}
-              placeholder="Образование"
-              value={education}
-              autoFocus
-              onChange={(e) => {
-                sendFormStartedEvent('education');
-                setEducation(e.target.value);
-              }}
-            />
-            <input
-              className={inputClass}
-              placeholder="Почта"
-              type="email"
-              value={email}
-              onChange={(e) => {
-                sendFormStartedEvent('email');
-                setEmail(e.target.value);
-              }}
-            />
-            <p className="rounded-xl border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-center text-xs text-amber-100/90">
-              📧 Почта — для сервисных сообщений и отчёта о результатах.
-            </p>
-            <Button type="submit" className="w-full text-base" disabled={!canAdvanceFrom(5)}>
-              Далее
-            </Button>
-          </form>
-        )}
+            ) : undefined
+          }
+        >
+          {stepBody}
+        </ScreenBottomCta>
       </div>
-
-      {step === 0 ? (
-        <Button type="button" variant="secondary" onClick={onHistory} className="w-full sm:w-auto">
-          📚 История прохождений
-        </Button>
-      ) : null}
-
     </div>
   );
 };
