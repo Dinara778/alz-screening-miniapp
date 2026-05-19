@@ -2,19 +2,23 @@ import { useEffect } from 'react';
 
 let debounceId = 0;
 
+/** Стабильная высота: без клавиатуры — window.innerHeight (Telegram иногда шлёт половину экрана на переходах). */
 function syncAppViewport() {
+  const inner = window.innerHeight;
   const vv = window.visualViewport;
-  const height = vv?.height ?? window.innerHeight;
+  const vvH = vv?.height ?? inner;
+  const keyboardOpen = vvH < inner * 0.72;
+  const height = keyboardOpen ? vvH : inner;
+
   document.documentElement.style.setProperty('--app-vh', `${Math.round(height)}px`);
   document.documentElement.style.setProperty('--app-offset-top', `${Math.round(vv?.offsetTop ?? 0)}px`);
 }
 
 function scheduleSync() {
   window.clearTimeout(debounceId);
-  debounceId = window.setTimeout(syncAppViewport, 80);
+  debounceId = window.setTimeout(syncAppViewport, 50);
 }
 
-/** Синхронизирует высоту shell с visualViewport (клавиатура). Без scroll-событий — они давали дёрганье. */
 export function useAppViewport() {
   useEffect(() => {
     syncAppViewport();

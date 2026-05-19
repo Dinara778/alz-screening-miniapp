@@ -16,8 +16,7 @@ const FIELD_STEP_MAX = 5;
 
 const inputClass = 'calm-input';
 
-const shellClassTall = 'calm-card relative flex min-h-0 w-full flex-1 flex-col';
-const shellClassCompact = 'calm-card relative flex w-full shrink-0 flex-col';
+const shellClass = 'calm-card relative flex min-h-full w-full flex-1 flex-col';
 
 export const WelcomePage = ({ onStart, onHistory }: Props) => {
   const [step, setStep] = useState(0);
@@ -252,11 +251,9 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
     stepFooter = nextButton(4, { type: 'submit', form: 'welcome-email' });
   }
 
-  const isCompactStep = step >= 1 && step <= 4;
-
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className={isCompactStep ? shellClassCompact : shellClassTall}>
+    <div className="flex min-h-full min-h-0 flex-1 flex-col">
+      <div className={shellClass}>
         <div className="relative mb-4 shrink-0 space-y-3">
           <div className="flex items-start gap-3">
             {step >= 1 && step <= 4 ? (

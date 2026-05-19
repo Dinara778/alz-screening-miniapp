@@ -49,9 +49,7 @@ function App() {
     <main className="app-calm-shell mx-auto flex h-[var(--app-vh,100dvh)] max-h-[var(--app-vh,100dvh)] min-h-0 w-full max-w-2xl flex-col overflow-hidden px-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] text-white shadow-none">
       <div
         ref={scrollRef}
-        className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overscroll-contain [-webkit-overflow-scrolling:touch] ${
-          app.stage === 'intro-test-offer' ? 'overflow-hidden' : 'overflow-y-auto pb-1'
-        }`}
+        className="app-stage-scroll flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-contain pb-1 [-webkit-overflow-scrolling:touch]"
       >
         {app.stage === 'corta-intro' && (
           <StageViewport>

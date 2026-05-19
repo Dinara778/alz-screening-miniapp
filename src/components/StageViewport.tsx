@@ -12,7 +12,7 @@ export const StageViewport = ({ children, layout = 'fill' }: Props) => (
     className={
       layout === 'content'
         ? 'flex w-full shrink-0 flex-col'
-        : 'flex min-h-0 w-full flex-1 flex-col'
+        : 'flex min-h-full min-h-0 w-full flex-1 flex-col'
     }
   >
     {children}
