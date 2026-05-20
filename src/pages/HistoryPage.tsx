@@ -1,3 +1,4 @@
+import { CalmCardShell } from '../components/CalmCardShell';
 import { ScreenBackHeader } from '../components/ScreenBackHeader';
 import { useApp } from '../context/AppContext';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
@@ -6,7 +7,8 @@ export const HistoryPage = ({ onBack }: { onBack: () => void }) => {
   const { history } = useApp();
 
   return (
-    <div className="relative min-h-0 flex-1 space-y-4 pb-4">
+    <CalmCardShell fill className="text-white">
+      <div className="relative flex min-h-0 flex-1 flex-col space-y-4 overflow-y-auto overscroll-contain pb-4">
       <ScreenBackHeader onBack={onBack} />
       <h1 className="app-heading">История</h1>
       {!history.length && <div className="calm-inset p-4">Пока нет завершенных сессий.</div>}
@@ -29,6 +31,7 @@ export const HistoryPage = ({ onBack }: { onBack: () => void }) => {
         </div>
         );
       })}
-    </div>
+      </div>
+    </CalmCardShell>
   );
 };

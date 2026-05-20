@@ -1,5 +1,6 @@
 import { FormEvent, useCallback, useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import { BackArrowButton } from '../components/BackArrowButton';
+import { CalmCardShell } from '../components/CalmCardShell';
 import { Button } from '../components/Button';
 import { ProgressBar } from '../components/ProgressBar';
 import { StroopConfirmStep } from '../components/StroopConfirmStep';
@@ -26,7 +27,7 @@ const TEST_STAGES_CENTERED = new Set<AppStage>(['reaction', 'flanker', 'stroop',
 
 function wrapWithTestProgress(stage: AppStage, node: ReactNode, backButton?: ReactNode) {
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col text-white">
+    <CalmCardShell fill className="text-white">
       {backButton ? <div className="relative z-50 mb-2 h-11 w-full shrink-0">{backButton}</div> : null}
       <div className="shrink-0">
         <TestProgressBanner stage={stage} />
@@ -36,7 +37,7 @@ function wrapWithTestProgress(stage: AppStage, node: ReactNode, backButton?: Rea
       >
         {node}
       </div>
-    </div>
+    </CalmCardShell>
   );
 }
 

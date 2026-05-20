@@ -1,5 +1,6 @@
 import { FormEvent, useRef, useState, type FocusEvent, type ReactNode } from 'react';
 import { BackArrowButton } from '../components/BackArrowButton';
+import { CalmCardShell } from '../components/CalmCardShell';
 import { Button } from '../components/Button';
 import { ScreenBottomCta } from '../components/ScreenBottomCta';
 import { IconArrowRight } from '../components/landing/LandingIcons';
@@ -15,8 +16,6 @@ type Props = { onStart: (profile: ParticipantProfile) => void; onHistory: () => 
 const FIELD_STEP_MAX = 5;
 
 const inputClass = 'calm-input';
-
-const shellClass = 'calm-card relative flex w-full flex-col';
 
 const scrollFieldIntoView = (e: FocusEvent<HTMLInputElement>) => {
   requestAnimationFrame(() => {
@@ -124,7 +123,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
 
   if (step === 5) {
     return (
-      <div className="relative flex min-h-0 flex-1 flex-col">
+      <CalmCardShell fill>
         <ScreenBottomCta
           footer={
             <Button type="button" className={CTA_BUTTON_CLASS} onClick={startAssessment}>
@@ -148,7 +147,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
             </p>
           </div>
         </ScreenBottomCta>
-      </div>
+      </CalmCardShell>
     );
   }
 
@@ -264,7 +263,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
 
   return (
     <div className={`flex flex-col ${stackForm ? 'shrink-0' : 'min-h-0 flex-1'}`}>
-      <div className={`${shellClass} ${stackForm ? '' : 'min-h-0 flex-1'}`}>
+      <CalmCardShell fill={!stackForm}>
         <div className="relative mb-4 shrink-0 space-y-3">
           <div className="flex items-start gap-3">
             {step >= 1 && step <= 4 ? (
@@ -309,7 +308,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         >
           {stepBody}
         </ScreenBottomCta>
-      </div>
+      </CalmCardShell>
     </div>
   );
 };

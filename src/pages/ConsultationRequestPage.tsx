@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CalmCardShell } from '../components/CalmCardShell';
 import { ScreenBackHeader } from '../components/ScreenBackHeader';
 import { Button } from '../components/Button';
 import { useApp } from '../context/AppContext';
@@ -120,7 +121,7 @@ export const ConsultationRequestPage = () => {
   return (
     <div className="relative flex min-h-0 flex-1 flex-col pb-4">
       {!paidOk ? <ScreenBackHeader onBack={goBack} /> : null}
-      <div className="calm-card space-y-4">
+      <CalmCardShell className="space-y-4">
         <SketchHighlightTitle accent={accent}>Запись на персональную сессию</SketchHighlightTitle>
         {!latestResult ? (
           <>
@@ -162,7 +163,7 @@ export const ConsultationRequestPage = () => {
             </div>
           </div>
         )}
-      </div>
+      </CalmCardShell>
       <div className="mt-auto">
         <SupportFooter showDeveloperCredit={false} />
       </div>
