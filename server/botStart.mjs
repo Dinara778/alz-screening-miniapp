@@ -1,5 +1,7 @@
 /** Ответ бота на /start: приветствие и кнопка открытия мини-приложения. */
 
+let cachedBotUsername = null;
+
 export function isStartCommand(text) {
   if (typeof text !== 'string') return false;
   return /^\/start(@[A-Za-z0-9_]+)?(\s|$)/i.test(text.trim());
@@ -24,32 +26,62 @@ export function resolveAppOpenUrl(miniAppUrl, directTmeLink) {
   return normalizeMiniAppUrl(miniAppUrl);
 }
 
-export function buildStartMessagePayload(chatId, env = process.env) {
+function appendAppLinkToText(text, link) {
+  if (!link) return text;
+  return `${text}\n\nОткрыть Corta:\n${link}`;
+}
+
+export async function fetchBotUsername(tgApi) {
+  if (cachedBotUsername) return cachedBotUsername;
+  try {
+    const me = await tgApi('getMe', {});
+    if (me?.ok && me.result?.username) {
+      cachedBotUsername = String(me.result.username).replace(/^@/, '');
+    }
+  } catch {
+    /* ignore */
+  }
+  return cachedBotUsername;
+}
+
+/** Ссылка t.me на бота (если нет short name Mini App в BotFather). */
+export function buildTmeBotLink(env = process.env, botUsername = null) {
+  const direct = env.TELEGRAM_MINI_APP_TME_LINK?.trim();
+  if (direct && /^https:\/\/t\.me\//i.test(direct)) return direct;
+  const user = env.TELEGRAM_BOT_USERNAME?.trim().replace(/^@/, '') || botUsername;
+  if (user) return `https://t.me/${user}`;
+  return '';
+}
+
+export async function buildStartMessagePayload(chatId, tgApi, env = process.env) {
   const miniAppUrl = normalizeMiniAppUrl(env.TELEGRAM_MINI_APP_URL);
   const tmeLink = env.TELEGRAM_MINI_APP_TME_LINK?.trim();
-  const openUrl = resolveAppOpenUrl(miniAppUrl, tmeLink);
+  const botUser = await fetchBotUsername(tgApi);
+  let openUrl = resolveAppOpenUrl(miniAppUrl, tmeLink) || buildTmeBotLink(env, botUser);
   const welcomeText =
     env.TELEGRAM_START_MESSAGE?.trim() ||
     'Здравствуйте! Нажмите кнопку ниже, чтобы открыть мини-приложение Corta и пройти скрининг.';
   const buttonLabel = env.TELEGRAM_START_BUTTON_TEXT?.trim() || 'Открыть приложение';
 
+  const linkForText = openUrl || miniAppUrl;
   const payload = {
     chat_id: chatId,
-    text: welcomeText,
-    disable_web_page_preview: true,
+    text: appendAppLinkToText(welcomeText, linkForText),
+    disable_web_page_preview: false,
   };
 
+  const rows = [];
   if (miniAppUrl) {
-    payload.reply_markup = {
-      inline_keyboard: [[{ text: buttonLabel, web_app: { url: miniAppUrl } }]],
-    };
-  } else if (openUrl) {
-    payload.reply_markup = {
-      inline_keyboard: [[{ text: buttonLabel, url: openUrl }]],
-    };
+    rows.push([{ text: buttonLabel, web_app: { url: miniAppUrl } }]);
+  }
+  if (openUrl) {
+    rows.push([{ text: miniAppUrl ? 'Открыть по ссылке' : buttonLabel, url: openUrl }]);
+  }
+  if (rows.length) {
+    payload.reply_markup = { inline_keyboard: rows };
   } else {
     payload.text +=
-      '\n\n⚠️ Администратору: задайте TELEGRAM_MINI_APP_URL (HTTPS из @BotFather → Mini App) на сервере с вебхуком /webhook.';
+      '\n\n⚠️ Администратору: задайте TELEGRAM_MINI_APP_URL и TELEGRAM_BOT_TOKEN на сервере (Amvera → Запуск).';
   }
 
   return { payload, miniAppUrl, openUrl };
@@ -71,16 +103,28 @@ export function buildStartMessagePayloadUrlFallback(chatId, openUrl, env = proce
 }
 
 export async function sendStartMessage(tgApi, chatId, env = process.env) {
-  const { payload, miniAppUrl, openUrl } = buildStartMessagePayload(chatId, env);
+  const { payload, miniAppUrl, openUrl } = await buildStartMessagePayload(chatId, tgApi, env);
   let sent = await tgApi('sendMessage', payload);
-  if (sent.ok) return sent;
+  if (sent?.ok) {
+    console.info('[bot /start] сообщение отправлено', chatId);
+    return sent;
+  }
 
   const fallbackUrl = openUrl || miniAppUrl;
   if (fallbackUrl) {
-    console.warn('[bot /start] web_app send failed, retry url button:', sent.description || sent);
-    sent = await tgApi('sendMessage', buildStartMessagePayloadUrlFallback(chatId, fallbackUrl, env));
+    console.warn('[bot /start] повтор с кнопкой-ссылкой:', sent?.description || sent);
+    const welcomeText =
+      env.TELEGRAM_START_MESSAGE?.trim() ||
+      'Здравствуйте! Нажмите кнопку ниже, чтобы открыть мини-приложение Corta.';
+    sent = await tgApi('sendMessage', {
+      ...buildStartMessagePayloadUrlFallback(chatId, fallbackUrl, env),
+      text: appendAppLinkToText(welcomeText, fallbackUrl),
+    });
   }
 
+  if (!sent?.ok) {
+    console.error('[bot /start] sendMessage failed', chatId, sent?.description || sent);
+  }
   return sent;
 }
 
@@ -127,6 +171,18 @@ export async function ensureTelegramWebhook(tgApi, env = process.env) {
       const result = await tgApi('setWebhook', body);
       if (result.ok) {
         console.info('[bot] webhook установлен:', url);
+        try {
+          const info = await tgApi('getWebhookInfo', {});
+          if (info?.ok) {
+            const wh = info.result;
+            console.info('[bot] webhook info:', wh?.url, 'pending:', wh?.pending_update_count);
+            if (wh?.last_error_message) {
+              console.warn('[bot] webhook last error:', wh.last_error_message);
+            }
+          }
+        } catch {
+          /* ignore */
+        }
       } else {
         console.warn('[bot] setWebhook:', result.description || result);
       }
