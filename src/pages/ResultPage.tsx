@@ -13,7 +13,7 @@ import type { DomainInterpretationCopy } from '../copy/cognitiveDomainInterpreta
 import { buildCognitiveAnalytics, type DomainScore } from '../utils/cognitiveAnalytics';
 import type { IndexInterpretation } from '../utils/indexInterpretationBands';
 import { buildResultShareText, getShareTestLink, shareOrCopyResultText } from '../utils/shareResult';
-import { shouldBypassReportPayment } from '../utils/paymentStub';
+import { isPaymentsEnabled, shouldBypassReportPayment } from '../utils/paymentStub';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
 import { hasPaymentReturnInUrl } from '../utils/storage';
 import {
@@ -151,6 +151,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       unlockFullReport();
       return;
     }
+    if (!isPaymentsEnabled()) return;
     setPayNotice(null);
     setCheckoutOpen(true);
   };
@@ -297,7 +298,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           Узнайте, что перегружает вашу когнитивную систему
         </SketchHighlightTitle>
         <p className="results-body text-center sm:text-left">
-          И как это исправить — с помощью расширенного отчёта
+          и как это исправить — с помощью расширенного отчёта
           <br />
           на&nbsp;основе вашего&nbsp;индивидуального когнитивного профиля
         </p>

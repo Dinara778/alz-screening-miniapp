@@ -55,10 +55,19 @@ const BOT_TOKEN = normalizeBotToken(process.env.TELEGRAM_BOT_TOKEN);
 const PROVIDER_TOKEN = process.env.TELEGRAM_PAYMENT_PROVIDER_TOKEN;
 const PORT = Number(process.env.PORT) || 8787;
 function resolvePaymentProvider() {
-  const raw = (process.env.PAYMENT_PROVIDER || 'telegram').toLowerCase();
+  const raw = (process.env.PAYMENT_PROVIDER || 'none').toLowerCase();
   if (raw === 'auto') {
-    return process.env.TELEGRAM_PAYMENT_PROVIDER_TOKEN?.trim() ? 'telegram' : 'prodamus';
+    if (process.env.TELEGRAM_PAYMENT_PROVIDER_TOKEN?.trim()) return 'telegram';
+    if (
+      process.env.PRODAMUS_FORM_URL?.trim() &&
+      process.env.PRODAMUS_SECRET_KEY?.trim() &&
+      process.env.PAYMENTS_PUBLIC_BASE_URL?.trim()
+    ) {
+      return 'prodamus';
+    }
+    return 'none';
   }
+  if (raw === 'off' || raw === 'disabled') return 'none';
   return raw;
 }
 
@@ -278,6 +287,13 @@ app.post('/invoice', async (req, res) => {
     }
     const spec = PRODUCTS[product];
     if (!spec) return res.status(400).json({ error: 'Неизвестный product' });
+
+    if (PAYMENT_PROVIDER === 'none') {
+      return res.status(503).json({
+        error: 'Оплата временно отключена',
+        paymentsDisabled: true,
+      });
+    }
 
     if (PAYMENT_PROVIDER === 'prodamus') {
       const formUrl = process.env.PRODAMUS_FORM_URL?.trim();

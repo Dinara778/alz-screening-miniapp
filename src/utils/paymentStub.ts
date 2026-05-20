@@ -1,16 +1,9 @@
-/** Сообщение, пока оплата не подключена (Prodamus / счета). */
-export const PAYMENT_STUB_MESSAGE =
-  'Оплата скоро будет доступна. По вопросам напишите на hello@bookvolon.ru или в техподдержку в Telegram.';
-
 /**
  * Реальная оплата включена, если не выключено явно.
- * На Amvera в Dockerfile по умолчанию true; локально можно VITE_PAYMENTS_ENABLED=false.
+ * На Amvera: VITE_PAYMENTS_ENABLED=false в сборке, чтобы CTA не открывали Payform.
  */
 export const isPaymentsEnabled = (): boolean =>
   import.meta.env.VITE_PAYMENTS_ENABLED !== 'false';
-
-/** Заглушка только для явного dev-обхода — не из-за отсутствия переменной при сборке. */
-export const isPaymentsStubbed = (): boolean => isDevPaymentBypass();
 
 /** Только локальная разработка: VITE_DEV_BYPASS_REPORT_PAYMENT=true */
 export const isDevPaymentBypass = (): boolean =>

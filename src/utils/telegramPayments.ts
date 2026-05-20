@@ -1,4 +1,5 @@
 import { PAYMENT_PRODUCTS } from './paymentProducts';
+import { isPaymentsEnabled } from './paymentStub';
 
 export type TelegramInvoiceProduct = 'full_report' | 'consultation';
 
@@ -18,7 +19,8 @@ export type OpenInvoiceResult =
         | 'no_api_url'
         | 'no_init_data'
         | 'no_open_invoice'
-        | 'no_open_link';
+        | 'no_open_link'
+        | 'payments_disabled';
     }
   | { status: 'error'; message: string };
 
@@ -116,8 +118,9 @@ function resolvePaymentLink(raw: string): string | null {
   }
 }
 
-/** Задан URL бэкенда счетов (POST /invoice). Если нет — оплата недоступна. */
-export const isPaymentsBackendConfigured = (): boolean => Boolean(getPaymentsApiUrl());
+/** Задан URL бэкенда и оплата не выключена на сборке (VITE_PAYMENTS_ENABLED). */
+export const isPaymentsBackendConfigured = (): boolean =>
+  isPaymentsEnabled() && Boolean(getPaymentsApiUrl());
 
 /** Mini App открыт в Telegram и есть initData (не просто браузер). */
 export const isTelegramMiniApp = (): boolean => {
@@ -225,6 +228,7 @@ export const openTelegramInvoiceForProduct = async (
     sessionId?: string;
     product?: string;
     error?: string;
+    paymentsDisabled?: boolean;
   };
 
   let invoiceUrl: string | undefined;
@@ -255,6 +259,9 @@ export const openTelegramInvoiceForProduct = async (
       };
     }
     if (!res.ok) {
+      if (data.paymentsDisabled || res.status === 503) {
+        return { status: 'skipped', reason: 'payments_disabled' };
+      }
       return { status: 'error', message: data.error || `HTTP ${res.status}` };
     }
     if (data.alreadyPaid && data.sessionId) {

@@ -128,8 +128,10 @@ export const PaymentCheckoutSheet = ({
           no_init_data: 'Откройте приложение из бота Corta',
           no_open_invoice: 'Обновите Telegram до последней версии',
           no_open_link: 'Обновите Telegram до последней версии',
+          payments_disabled: '',
         };
-        showNotice(byReason[r.reason]);
+        const msg = byReason[r.reason];
+        if (msg) showNotice(msg);
         return;
       }
       if (r.status === 'cancelled') {

@@ -3,7 +3,6 @@ import type { AppStage } from '../types';
 
 /** Экраны, где нужны перезагрузка и выход в начало (после теста / оплаты). */
 export const REFRESH_CONTROLS_STAGES = new Set<AppStage>([
-  'result',
   'full-report',
   'consultation-request',
 ]);

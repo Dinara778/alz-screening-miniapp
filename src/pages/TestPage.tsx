@@ -476,10 +476,21 @@ export const TestPage = () => {
     return wrapWithTestProgress(
       app.stage,
       <div className="space-y-4">
-        <h2 className="app-heading">Задание 4: Лица-имена (изучение)</h2>
-        <p className="calm-body">
-          Изучите лица и соответствующие имена. Постарайтесь запомнить пары «лицо-имя», после отвлекающего задания будет проверка.
-        </p>
+        {faceStudyIndex === 0 ? (
+          <>
+            <h2 className="app-heading">Задание 4: Лица-имена (изучение)</h2>
+            <p className="calm-body">
+              Изучите лица и соответствующие имена. Постарайтесь запомнить пары «лицо-имя», после отвлекающего задания будет проверка.
+            </p>
+          </>
+        ) : (
+          <div className="space-y-2">
+            <h2 className="app-heading text-center">
+              Лицо {faceStudyIndex + 1} из {face.trials.length}
+            </h2>
+            <ProgressBar value={faceStudyIndex + 1} max={face.trials.length} />
+          </div>
+        )}
         <div className="rounded-xl overflow-hidden border-2 border-emerald-900 bg-white">
           <img src={f.image} alt={f.label} className="h-52 w-full object-cover" />
         </div>

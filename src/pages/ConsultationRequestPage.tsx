@@ -4,7 +4,7 @@ import { ReportFlowShell } from '../components/results/ReportFlowShell';
 import { ScreenBackHeader } from '../components/ScreenBackHeader';
 import { Button } from '../components/Button';
 import { useApp } from '../context/AppContext';
-import { isDevPaymentBypass } from '../utils/paymentStub';
+import { isDevPaymentBypass, isPaymentsEnabled } from '../utils/paymentStub';
 import { SketchHighlightTitle } from '../components/results/SketchHighlightTitle';
 import { scoreAccentFromValue } from '../components/results/scoreAccent';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
@@ -12,7 +12,6 @@ import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
 import {
   consultationPaidStorageKey,
-  isPaymentsBackendConfigured,
   pollProdamusOrderPaidQuick,
   prodamusPendingOrderKey,
 } from '../utils/telegramPayments';
@@ -77,21 +76,13 @@ export const ConsultationRequestPage = () => {
   };
 
   const openCheckout = () => {
-    if (!latestResult) {
-      setNotice('Нет данных сессии. Вернитесь к результатам и откройте запись снова.');
-      return;
-    }
+    if (!latestResult) return;
     if (isDevPaymentBypass()) {
       markConsultationPaid();
       return;
     }
+    if (!isPaymentsEnabled()) return;
     setNotice(null);
-    if (!isPaymentsBackendConfigured()) {
-      setNotice(
-        'Оплата в Telegram подключается — скоро здесь можно будет оплатить сессию. Пока напишите в поддержку или на hello@bookvolon.ru.',
-      );
-      return;
-    }
     setCheckoutOpen(true);
   };
 
@@ -101,16 +92,9 @@ export const ConsultationRequestPage = () => {
 
   const paymentFooter =
     latestResult && !paidOk ? (
-      <div className="flex flex-col gap-3">
-        {notice ? (
-          <p className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2.5 text-center text-xs leading-relaxed text-emerald-100/95">
-            {notice}
-          </p>
-        ) : null}
-        <Button variant="sell" type="button" className={CTA_BUTTON_CLASS} onClick={openCheckout}>
-          Записаться на персональную сессию — 5 490 ₽
-        </Button>
-      </div>
+      <Button variant="sell" type="button" className={CTA_BUTTON_CLASS} onClick={openCheckout}>
+        Записаться на персональную сессию — 5 490 ₽
+      </Button>
     ) : undefined;
 
   return (
