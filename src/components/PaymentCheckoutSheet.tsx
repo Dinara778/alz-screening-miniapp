@@ -57,6 +57,7 @@ export const PaymentCheckoutSheet = ({
       onClose();
       return true;
     }
+    setAwaitingReturn(false);
     showNotice(r.message);
     return false;
   }, [product, sessionId, onPaid, onClose, showNotice]);
@@ -86,13 +87,13 @@ export const PaymentCheckoutSheet = ({
   useEffect(() => {
     if (!open) return;
     const onVis = () => {
-      if (document.visibilityState !== 'visible') return;
+      if (document.visibilityState !== 'visible' || !awaitingReturn) return;
       if (product === 'full_report') void tryUnlock();
       if (product === 'consultation') void tryConfirmConsultationPaid();
     };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
-  }, [open, product, tryUnlock, tryConfirmConsultationPaid]);
+  }, [open, product, awaitingReturn, tryUnlock, tryConfirmConsultationPaid]);
 
   if (!open) return null;
 

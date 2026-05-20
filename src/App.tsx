@@ -76,7 +76,7 @@ function App() {
             'face-test-instruction',
             'face-test',
           ].includes(app.stage) && <TestPage key={app.sessionSeed} />}
-          {app.stage === 'result' && <ResultPage onRestart={app.resetSession} />}
+          {app.stage === 'result' && <ResultPage onRestart={app.restartApp} />}
           {app.stage === 'full-report' && <FullReportPage />}
           {app.stage === 'consultation-request' && <ConsultationRequestPage />}
         </div>

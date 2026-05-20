@@ -1,5 +1,6 @@
 const HARD_RELOAD_KEY = 'alz_hard_reload';
 const RESTART_KEY = 'alz_restart';
+const PROGRESS_KEY = 'alz_progress_v1';
 
 /** Убрать параметры возврата с оплаты из адреса (чтобы не зацикливать recovery). */
 export function stripPaymentQueryFromUrl(): void {
@@ -12,6 +13,8 @@ export function stripPaymentQueryFromUrl(): void {
     'payment_status',
     'payment',
     'status',
+    'r',
+    'boot',
   ];
   let changed = false;
   for (const key of drop) {
@@ -65,25 +68,33 @@ export function consumeRestartIntent(): boolean {
   return false;
 }
 
-export function reloadApplication(): void {
-  markHardReload();
-  window.location.reload();
-}
-
-export function restartApplicationToIntro(): void {
-  markRestartIntent();
-  stripPaymentQueryFromUrl();
+export function clearTransientUiKeys(): void {
   try {
     sessionStorage.removeItem('alz_result_ui_v1');
     sessionStorage.removeItem('alz_report_ui_v1');
   } catch {
     /* ignore */
   }
-  const url = new URL(window.location.href);
-  url.search = '';
-  const target = url.pathname + url.hash;
-  if (`${window.location.pathname}${window.location.hash}` !== target) {
-    window.location.replace(target);
+}
+
+/** Сброс навигации и переход на intro (полная перезагрузка WebView). */
+export function goToIntroFresh(): void {
+  markRestartIntent();
+  stripPaymentQueryFromUrl();
+  clearTransientUiKeys();
+  try {
+    localStorage.removeItem(PROGRESS_KEY);
+  } catch {
+    /* ignore */
   }
-  window.location.reload();
+  const base = window.location.pathname + (window.location.hash || '');
+  window.location.replace(`${base}?r=${Date.now()}`);
+}
+
+export function reloadApplication(): void {
+  goToIntroFresh();
+}
+
+export function restartApplicationToIntro(): void {
+  goToIntroFresh();
 }

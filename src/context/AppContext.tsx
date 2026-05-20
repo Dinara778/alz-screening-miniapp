@@ -11,18 +11,14 @@ import {
   saveLastSessionId,
   saveProgress,
   saveSession,
-  shouldClearProgressOnReload,
   shouldRestoreProgress,
   loadProgress,
 } from '../utils/storage';
-import { reloadApplication, restartApplicationToIntro, stripPaymentQueryFromUrl } from '../utils/appReload';
+import { goToIntroFresh, stripPaymentQueryFromUrl } from '../utils/appReload';
+import { MID_TEST_STAGES } from '../utils/storage';
 import { isReportPaidUnlocked } from '../utils/telegramPayments';
 import { pickStudyWordList } from '../utils/generateStimuli';
-import {
-  findPaidReportSessionId,
-  recoverProdamusPaymentFromUrl,
-  tryRecoverReportAccess,
-} from '../utils/telegramPayments';
+import { recoverProdamusPaymentFromUrl, tryRecoverReportAccess } from '../utils/telegramPayments';
 import { sendAnalyticsEventToSheets, sendSessionToSheets } from '../utils/sheetsWebhook';
 
 type ConsultationReturnStage = 'result' | 'full-report';
@@ -43,77 +39,80 @@ type BootState = {
   studyWordList: string[];
 };
 
-function resolveInitialStage(): AppStage {
+function hasPendingProdamusPayment(): boolean {
+  if (typeof sessionStorage === 'undefined') return false;
+  for (let i = 0; i < sessionStorage.length; i++) {
+    if (sessionStorage.key(i)?.startsWith('prodamus_pending_')) return true;
+  }
+  return false;
+}
+
+/** Стартовый экран: только intro или продолжение теста; не result/full-report. */
+export function getInitialAppStage(): AppStage {
+  stripPaymentQueryFromUrl();
+  purgeStalePostTestProgress();
+  if (isRestartBoot() || isPageReload()) {
+    if (!hasPaymentReturnInUrl()) return 'corta-intro';
+  }
   if (hasPaymentReturnInUrl()) return 'result';
+  const raw = loadProgress();
+  if (raw && shouldRestoreProgress(raw)) return raw.stage;
   return 'corta-intro';
 }
 
-function resolveBootStage(r: ReturnType<typeof loadProgress>): AppStage {
-  if (hasPaymentReturnInUrl()) return 'result';
-  if (r && shouldRestoreProgress(r)) {
-    if (r.stage === 'full-report') {
-      const sid = r.latestSessionId ?? loadLastSessionId();
-      if (sid && isReportPaidUnlocked(sid)) return 'full-report';
-      return 'result';
+function emptyBootState(): BootState {
+  return {
+    stage: 'corta-intro',
+    sessionSeed: Date.now(),
+    interferenceStart: null,
+    immediateWords: [],
+    delayedWords: [],
+    flankerTrials: [],
+    reactionSuccessful: [],
+    reactionAnticipations: 0,
+    stroopTrials: [],
+    participant: null,
+    studyWordList: [],
+  };
+}
+
+function purgeStalePostTestProgress(): void {
+  try {
+    const raw = localStorage.getItem('alz_progress_v1');
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as { stage?: AppStage };
+    if (parsed?.stage === 'result' || parsed?.stage === 'full-report' || parsed?.stage === 'consultation-request') {
+      clearProgress();
     }
-    return r.stage;
+  } catch {
+    /* ignore */
   }
-  const lastId = loadLastSessionId();
-  if (lastId && loadSessionFromHistory(lastId)) return 'result';
-  return resolveInitialStage();
 }
 
-function resolveBootLatestResult(stage: AppStage): SessionResult | null {
-  if (stage === 'full-report') {
-    const paidId = findPaidReportSessionId();
-    if (paidId) return loadSessionFromHistory(paidId);
-  }
-  const prog = loadProgress();
-  const sid =
-    stage === 'result' || stage === 'full-report' || stage === 'consultation-request'
-      ? (prog?.latestSessionId ?? loadLastSessionId())
-      : loadLastSessionId();
-  return loadSessionFromHistory(sid);
-}
-
-function buildBootState(): BootState {
-  if (isRestartBoot()) {
+function buildBootState(stage: AppStage): BootState {
+  if (isRestartBoot() || isPageReload()) {
     clearProgress();
-    return {
-      stage: 'corta-intro',
-      sessionSeed: Date.now(),
-      interferenceStart: null,
-      immediateWords: [],
-      delayedWords: [],
-      flankerTrials: [],
-      reactionSuccessful: [],
-      reactionAnticipations: 0,
-      stroopTrials: [],
-      participant: null,
-      studyWordList: [],
-    };
+    return emptyBootState();
   }
 
-  const reloaded = isPageReload();
-  const rawBeforeClear = loadProgress();
-  if (reloaded && shouldClearProgressOnReload(rawBeforeClear)) {
-    clearProgress();
-  }
+  if (stage === 'corta-intro') return emptyBootState();
+
   const raw = loadProgress();
-  const r = shouldRestoreProgress(raw) ? raw : null;
-  const stage = resolveBootStage(r);
+  const r = raw && shouldRestoreProgress(raw) ? raw : null;
+  if (!r) return emptyBootState();
+
   return {
     stage,
-    sessionSeed: typeof r?.sessionSeed === 'number' ? r.sessionSeed : Date.now(),
-    interferenceStart: r?.startedAt ?? null,
-    immediateWords: r?.immediateWords ?? [],
-    delayedWords: r?.delayedWords ?? [],
-    flankerTrials: r?.flankerTrials ?? [],
-    reactionSuccessful: r?.reactionSuccessful ?? [],
-    reactionAnticipations: r?.reactionAnticipations ?? 0,
-    stroopTrials: r?.stroopTrials ?? [],
-    participant: r?.participant ?? null,
-    studyWordList: Array.isArray(r?.studyWordList) ? r.studyWordList : [],
+    sessionSeed: typeof r.sessionSeed === 'number' ? r.sessionSeed : Date.now(),
+    interferenceStart: r.startedAt ?? null,
+    immediateWords: r.immediateWords ?? [],
+    delayedWords: r.delayedWords ?? [],
+    flankerTrials: r.flankerTrials ?? [],
+    reactionSuccessful: r.reactionSuccessful ?? [],
+    reactionAnticipations: r.reactionAnticipations ?? 0,
+    stroopTrials: r.stroopTrials ?? [],
+    participant: r.participant ?? null,
+    studyWordList: Array.isArray(r.studyWordList) ? r.studyWordList : [],
   };
 }
 
@@ -160,13 +159,10 @@ type AppState = {
 const Ctx = createContext<AppState | null>(null);
 
 export const AppProvider = ({ children }: { children: React.ReactNode }) => {
-  const bootRef = useRef<BootState | null>(null);
-  if (bootRef.current === null) {
-    bootRef.current = buildBootState();
-  }
-  const b = bootRef.current;
+  const initialStage = getInitialAppStage();
+  const b = buildBootState(initialStage);
 
-  const [stage, setStage] = useState<AppStage>(b.stage);
+  const [stage, setStage] = useState<AppStage>(initialStage);
   const [interferenceStart, setInterferenceStart] = useState<number | null>(b.interferenceStart);
   const [immediateWords, setImmediateWords] = useState<string[]>(b.immediateWords);
   const [delayedWords, setDelayedWords] = useState<string[]>(b.delayedWords);
@@ -176,9 +172,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [stroopTrials, setStroopTrials] = useState<TrialResult[]>(b.stroopTrials);
   const [faceAnswers, setFaceAnswers] = useState<FaceAnswer[]>([]);
   const [history, setHistory] = useState<SessionResult[]>(() => loadHistory());
-  const [latestResult, setLatestResult] = useState<SessionResult | null>(() =>
-    resolveBootLatestResult(b.stage),
-  );
+  const [latestResult, setLatestResult] = useState<SessionResult | null>(null);
   const [sessionSeed, setSessionSeed] = useState(b.sessionSeed);
   const [participant, setParticipant] = useState<ParticipantProfile | null>(b.participant);
   const [consultationReturnTo, setConsultationReturnTo] = useState<ConsultationReturnStage | null>(null);
@@ -190,20 +184,38 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   }, [sessionSeed]);
 
   useEffect(() => {
+    const boot = getInitialAppStage();
+    if (hasPaymentReturnInUrl() || hasPendingProdamusPayment()) return;
+    if (stage === boot) return;
+    if (MID_TEST_STAGES.has(stage) && MID_TEST_STAGES.has(boot)) return;
+    setStage(boot);
+    if (boot === 'corta-intro') {
+      setLatestResult(null);
+      clearProgress();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (stage !== 'result' && stage !== 'full-report' && stage !== 'consultation-request') return;
+    if (latestResult) return;
+    const session = loadSessionFromHistory(loadProgress()?.latestSessionId ?? loadLastSessionId());
+    if (session) setLatestResult(session);
+  }, [stage, latestResult]);
+
+  useEffect(() => {
+    if (!hasPaymentReturnInUrl()) return;
     const run = async () => {
       const recovery = await recoverProdamusPaymentFromUrl();
-      if (recovery) {
-        const session = loadHistory().find((h) => h.id === recovery.sessionId) ?? null;
-        if (session) setLatestResult(session);
-        if (recovery.product === 'full_report') {
-          setStage('full-report');
-          return;
-        }
-        if (recovery.product === 'consultation') {
-          setConsultationReturnTo('full-report');
-          setStage('consultation-request');
-          return;
-        }
+      if (!recovery) return;
+      const session = loadHistory().find((h) => h.id === recovery.sessionId) ?? null;
+      if (session) setLatestResult(session);
+      if (recovery.product === 'full_report') {
+        setStage('full-report');
+        return;
+      }
+      if (recovery.product === 'consultation') {
+        setConsultationReturnTo('full-report');
+        setStage('consultation-request');
       }
     };
     void run();
@@ -215,7 +227,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       setHistory(loadHistory());
       if (stage !== 'result' && stage !== 'full-report') return;
       if (latestResult?.id) return;
-      const session = resolveBootLatestResult(stage);
+      const session = loadSessionFromHistory(loadProgress()?.latestSessionId ?? loadLastSessionId());
       if (session) setLatestResult(session);
       if (stage === 'full-report' && session?.id) {
         const ok = await tryRecoverReportAccess(session.id);
@@ -228,7 +240,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
 
   useEffect(() => {
-    const existing = loadProgress();
+    if (!MID_TEST_STAGES.has(stage)) return;
     saveProgress({
       stage,
       latestSessionId: latestResult?.id,
@@ -242,7 +254,6 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       sessionSeed,
       participant,
       studyWordList,
-      reportStep: stage === 'full-report' ? existing?.reportStep : undefined,
     });
   }, [
     stage,
@@ -316,41 +327,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const refreshApp = useCallback(() => {
-    const existing = loadProgress();
-    saveProgress({
-      stage,
-      latestSessionId: latestResult?.id,
-      startedAt: interferenceStart,
-      immediateWords,
-      delayedWords,
-      flankerTrials,
-      reactionSuccessful,
-      reactionAnticipations,
-      stroopTrials,
-      sessionSeed,
-      participant,
-      studyWordList,
-      reportStep: stage === 'full-report' ? existing?.reportStep : undefined,
-    });
-    reloadApplication();
-  }, [
-    stage,
-    latestResult?.id,
-    interferenceStart,
-    immediateWords,
-    delayedWords,
-    flankerTrials,
-    reactionSuccessful,
-    reactionAnticipations,
-    stroopTrials,
-    sessionSeed,
-    participant,
-    studyWordList,
-  ]);
+    goToIntroFresh();
+  }, []);
 
   const restartApp = useCallback(() => {
-    clearProgress();
-    restartApplicationToIntro();
+    goToIntroFresh();
   }, []);
 
   const beginNewAssessment = useCallback((profile: ParticipantProfile) => {
@@ -398,21 +379,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       // Ignore webhook errors to keep UX stable.
     });
     setHistory(loadHistory());
-    saveProgress({
-      stage: 'result',
-      latestSessionId: result.id,
-      startedAt: null,
-      immediateWords: [],
-      delayedWords: [],
-      flankerTrials: [],
-      reactionSuccessful: [],
-      reactionAnticipations: 0,
-      stroopTrials: [],
-      sessionSeed,
-      participant: result.participant,
-      studyWordList: [],
-    });
-  }, [sessionSeed]);
+    clearProgress();
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -477,6 +445,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   );
 
   useEffect(() => {
+    stripPaymentQueryFromUrl();
     if (!hasPaymentReturnInUrl()) return;
     const t = window.setTimeout(() => stripPaymentQueryFromUrl(), 800);
     return () => window.clearTimeout(t);

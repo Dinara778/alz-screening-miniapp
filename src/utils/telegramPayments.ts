@@ -24,6 +24,20 @@ export type OpenInvoiceResult =
 
 export const prodamusPendingOrderKey = (sessionId: string) => `prodamus_pending_${sessionId}`;
 
+const PRODAMUS_PENDING_PREFIX = 'prodamus_pending_';
+
+function findSessionIdForPendingOrder(orderId: string): string | null {
+  if (typeof sessionStorage === 'undefined') return null;
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const key = sessionStorage.key(i);
+    if (!key?.startsWith(PRODAMUS_PENDING_PREFIX)) continue;
+    if (sessionStorage.getItem(key) === orderId) {
+      return key.slice(PRODAMUS_PENDING_PREFIX.length);
+    }
+  }
+  return null;
+}
+
 const invoiceOrderStorageKey = (sessionId: string) => `invoice_order_${sessionId}`;
 
 function rememberInvoiceOrder(sessionId: string, orderId: string) {
@@ -177,17 +191,10 @@ export async function pollProdamusOrderPaidQuick(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ initData: tg.initData, orderId }),
       });
-      let data = (await res.json()) as { paid?: boolean; sessionId?: string };
-      if (res.ok && data.paid === true && data.sessionId === sessionId) {
+      const data = (await res.json()) as PaidOrderPayload;
+      if (res.ok && data.paid === true && data.sessionId === sessionId && applyPaidOrder(data)) {
         sessionStorage.removeItem(prodamusPendingOrderKey(sessionId));
         return true;
-      }
-      if (!data.paid) {
-        data = (await fetchPaidOrder(orderId, 'payment-return-confirm')) ?? data;
-        if (data.paid && data.sessionId === sessionId) {
-          applyPaidOrder(data);
-          return true;
-        }
       }
     } catch {
       /* сеть */
@@ -317,7 +324,10 @@ function isPaymentReturnSuccess(): boolean {
   const params = new URLSearchParams(window.location.search);
   if (!parsePaymentReturnOrderId()) return false;
   const status = (params.get('prodamus_status') || params.get('payment_status') || '').toLowerCase();
-  if (!status) return true;
+  if (!status) return false;
+  if (status === 'cancel' || status === 'cancelled' || status === 'fail' || status === 'failed') {
+    return false;
+  }
   return status === 'ok' || status === 'success' || status === 'paid';
 }
 
@@ -336,45 +346,44 @@ function stripPaymentReturnParamsFromUrl(): void {
   }
 }
 
-async function confirmOrderPaid(orderId: string): Promise<ProdamusPaymentRecovery | null> {
-  let data = await fetchPaidOrder(orderId, 'payment-return-confirm');
-  let recovery = data ? applyPaidOrder(data) : null;
-  if (recovery) return recovery;
-  for (let i = 0; i < 8; i++) {
-    await new Promise((r) => setTimeout(r, 1500));
-    data = await fetchPaidOrder(orderId, 'payment-order-status');
-    recovery = data ? applyPaidOrder(data) : null;
-    if (recovery) return recovery;
-  }
-  return null;
+async function confirmOrderPaid(orderId: string, sessionId: string): Promise<ProdamusPaymentRecovery | null> {
+  const paid = await pollProdamusOrderPaidQuick(orderId, sessionId);
+  if (!paid) return null;
+  const data = await fetchPaidOrder(orderId, 'payment-order-status');
+  return data ? applyPaidOrder(data) : null;
 }
 
-/** Ожидающий заказ в sessionStorage (если вернулись в бот без параметров в URL). */
+/** Ожидающий заказ — только опрос статуса (без «подтверждения» без вебхука). */
 export async function recoverProdamusPaymentPending(): Promise<ProdamusPaymentRecovery | null> {
   if (typeof window === 'undefined') return null;
   for (let i = 0; i < sessionStorage.length; i++) {
     const key = sessionStorage.key(i);
     if (!key?.startsWith('prodamus_pending_')) continue;
+    const sessionId = key.slice(PRODAMUS_PENDING_PREFIX.length);
     const orderId = sessionStorage.getItem(key);
-    if (!orderId) continue;
-    const recovery = await confirmOrderPaid(orderId);
+    if (!orderId || !sessionId) continue;
+    const recovery = await confirmOrderPaid(orderId, sessionId);
     if (recovery) return recovery;
   }
   return null;
 }
 
-/** Возврат с Payform: подтверждение заказа и разблокировка отчёта. */
+/** Возврат с Payform по urlSuccess — опрос статуса после вебхука. */
 export async function recoverProdamusPaymentFromUrl(): Promise<ProdamusPaymentRecovery | null> {
   const orderId = parsePaymentReturnOrderId();
-  let recovery: ProdamusPaymentRecovery | null = null;
-
-  if (orderId && isPaymentReturnSuccess()) {
-    recovery = await confirmOrderPaid(orderId);
-    stripPaymentReturnParamsFromUrl();
-    if (recovery) return recovery;
+  if (!orderId || !isPaymentReturnSuccess()) {
+    if (orderId) stripPaymentReturnParamsFromUrl();
+    return null;
   }
 
-  recovery = await recoverProdamusPaymentPending();
+  const sid = findSessionIdForPendingOrder(orderId);
+  if (!sid) {
+    stripPaymentReturnParamsFromUrl();
+    return null;
+  }
+
+  const recovery = await confirmOrderPaid(orderId, sid);
+  stripPaymentReturnParamsFromUrl();
   return recovery;
 }
 
@@ -408,9 +417,7 @@ export const isReportPaidUnlocked = (sessionId: string): boolean => {
 async function confirmReportPaymentFast(sessionId: string): Promise<boolean> {
   for (const orderId of getRememberedOrderIds(sessionId)) {
     for (let i = 0; i < 6; i++) {
-      let data = await fetchPaidOrder(orderId, 'payment-return-confirm');
-      if (data?.paid && applyPaidOrder(data)) return true;
-      data = await fetchPaidOrder(orderId, 'payment-order-status');
+      const data = await fetchPaidOrder(orderId, 'payment-order-status');
       if (data?.paid && data.sessionId === sessionId && applyPaidOrder(data)) return true;
       if (i < 5) await new Promise((r) => setTimeout(r, 1000));
     }
@@ -457,11 +464,6 @@ export async function recoverFullReportAccess(sessionId: string): Promise<Recove
     }
 
     if (await confirmReportPaymentFast(sessionId)) return { ok: true };
-
-    const anyPending = await recoverProdamusPaymentPending();
-    if (anyPending?.product === 'full_report' && anyPending.sessionId === sessionId) {
-      return { ok: true };
-    }
   }
 
   return {

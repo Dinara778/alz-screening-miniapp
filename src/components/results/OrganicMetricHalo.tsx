@@ -1,4 +1,5 @@
-import { useId, type ReactNode } from 'react';
+import { useId, type CSSProperties, type ReactNode } from 'react';
+import { shouldReduceSvgFilters } from '../../utils/deviceHints';
 
 type Props = {
   children: ReactNode;
@@ -43,32 +44,47 @@ const BLOB_PARTICLES: ReadonlyArray<{ x: number; y: number; r: number; o: number
 /** Один неровный контур + облако частиц; метрика строго по центру внутри */
 const CloudHalo = ({ children, accent }: { children: ReactNode; accent: string }) => {
   const uid = useId().replace(/:/g, '');
+  const softGlow = shouldReduceSvgFilters();
+  const shellStyle = { '--halo-accent': accent } as CSSProperties;
 
   return (
-    <div className="relative mx-auto flex aspect-square w-[min(88vw,340px)] items-center justify-center">
+    <div
+      className={`relative mx-auto flex aspect-square w-[min(88vw,340px)] items-center justify-center ${
+        softGlow ? 'metric-halo-android-safe' : ''
+      }`}
+      style={shellStyle}
+    >
       <svg className="absolute inset-0 h-full w-full" viewBox="0 0 200 200" aria-hidden>
         <defs>
-          <filter id={`${uid}-stroke-glow`} x="-55%" y="-55%" width="210%" height="210%">
-            <feGaussianBlur stdDeviation="3.5" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-          <filter id={`${uid}-outer-bloom`} x="-70%" y="-70%" width="240%" height="240%">
-            <feGaussianBlur stdDeviation="10" />
-          </filter>
+          {!softGlow ? (
+            <>
+              <filter id={`${uid}-stroke-glow`} x="-55%" y="-55%" width="210%" height="210%">
+                <feGaussianBlur stdDeviation="3.5" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+              <filter id={`${uid}-outer-bloom`} x="-70%" y="-70%" width="240%" height="240%">
+                <feGaussianBlur stdDeviation="10" />
+              </filter>
+            </>
+          ) : null}
           <clipPath id={`${uid}-blob-clip`}>
             <path d={BLOB_OUTLINE} />
           </clipPath>
           <radialGradient id={`${uid}-bg`} cx="50%" cy="48%" r="58%">
-            <stop offset="0%" stopColor={accent} stopOpacity="0.06" />
-            <stop offset="55%" stopColor={accent} stopOpacity="0.14" />
-            <stop offset="100%" stopColor={accent} stopOpacity="0.22" />
+            <stop offset="0%" stopColor={accent} stopOpacity={softGlow ? '0.08' : '0.06'} />
+            <stop offset="55%" stopColor={accent} stopOpacity={softGlow ? '0.16' : '0.14'} />
+            <stop offset="100%" stopColor={accent} stopOpacity={softGlow ? '0.24' : '0.22'} />
           </radialGradient>
         </defs>
 
-        <path d={BLOB_OUTLINE} fill={accent} opacity="0.08" filter={`url(#${uid}-outer-bloom)`} />
+        {softGlow ? (
+          <path d={BLOB_OUTLINE} fill={accent} opacity="0.1" />
+        ) : (
+          <path d={BLOB_OUTLINE} fill={accent} opacity="0.08" filter={`url(#${uid}-outer-bloom)`} />
+        )}
 
         <g clipPath={`url(#${uid}-blob-clip)`}>
           <path d={BLOB_OUTLINE} fill={`url(#${uid}-bg)`} />
@@ -78,15 +94,15 @@ const CloudHalo = ({ children, accent }: { children: ReactNode; accent: string }
         </g>
 
         <path
-          className="metric-cloud-pulse"
+          className={softGlow ? undefined : 'metric-cloud-pulse'}
           d={BLOB_OUTLINE}
           fill="none"
           stroke={accent}
-          strokeWidth="2.25"
+          strokeWidth={softGlow ? '2' : '2.25'}
           strokeLinejoin="round"
           strokeLinecap="round"
           opacity="0.95"
-          filter={`url(#${uid}-stroke-glow)`}
+          filter={softGlow ? undefined : `url(#${uid}-stroke-glow)`}
         />
       </svg>
 
@@ -104,17 +120,31 @@ export const OrganicMetricHalo = ({ children, accent = '#2dd4bf', emphasis = fal
   }
 
   const id = 'metric-halo';
+  const softGlow = shouldReduceSvgFilters();
+  const shellStyle = { '--halo-accent': accent } as CSSProperties;
+
   return (
-    <div className="relative mx-auto flex aspect-square w-[min(78vw,300px)] items-center justify-center">
-      <svg className="metric-halo-spin absolute inset-0 h-full w-full" viewBox="0 0 200 200" aria-hidden>
+    <div
+      className={`relative mx-auto flex aspect-square w-[min(78vw,300px)] items-center justify-center ${
+        softGlow ? 'metric-halo-android-safe' : ''
+      }`}
+      style={shellStyle}
+    >
+      <svg
+        className={`absolute inset-0 h-full w-full ${softGlow ? '' : 'metric-halo-spin'}`}
+        viewBox="0 0 200 200"
+        aria-hidden
+      >
         <defs>
-          <filter id={`${id}-glow`} x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="3" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
+          {!softGlow ? (
+            <filter id={`${id}-glow`} x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          ) : null}
           <radialGradient id={`${id}-fill`} cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor={accent} stopOpacity="0.14" />
             <stop offset="100%" stopColor={accent} stopOpacity="0" />
@@ -122,13 +152,13 @@ export const OrganicMetricHalo = ({ children, accent = '#2dd4bf', emphasis = fal
         </defs>
         <circle cx="100" cy="100" r="72" fill={`url(#${id}-fill)`} />
         <path
-          className="metric-halo-pulse"
+          className={softGlow ? undefined : 'metric-halo-pulse'}
           d="M100 28 C132 30 158 52 168 84 C176 112 162 142 136 158 C112 172 84 170 62 154 C38 136 28 108 34 78 C40 50 68 26 100 28 Z"
           fill="none"
           stroke={accent}
           strokeWidth="1.25"
           strokeLinecap="round"
-          filter={`url(#${id}-glow)`}
+          filter={softGlow ? undefined : `url(#${id}-glow)`}
           opacity="0.85"
         />
       </svg>

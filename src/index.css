@@ -227,6 +227,30 @@ input:focus-visible {
   animation-delay: 2s;
 }
 
+/* Android / Telegram WebView: без SVG feGaussianBlur — мягкое свечение через CSS */
+.metric-halo-android-safe {
+  isolation: isolate;
+}
+
+.metric-halo-android-safe > svg {
+  overflow: visible;
+}
+
+.metric-halo-android-safe::before {
+  content: '';
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 48%,
+    color-mix(in srgb, var(--halo-accent, #eab308) 22%, transparent) 0%,
+    color-mix(in srgb, var(--halo-accent, #eab308) 8%, transparent) 55%,
+    transparent 72%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
 @keyframes value-prop-in {
   from {
     opacity: 0;

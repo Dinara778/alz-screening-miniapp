@@ -96,14 +96,10 @@ export function prodamusOrderPaidForUser(orderId, tgUserId) {
 }
 
 /**
- * Успешный return URL с Payform — помечаем оплаченным, если вебхук ещё не успел.
+ * Возврат с Payform — только читаем статус. Оплаченным считаем заказ только после вебхука Prodamus.
  */
 export function prodamusConfirmReturnForUser(orderId, tgUserId) {
-  if (!orderId || tgUserId == null) return { paid: false };
-  const o = orders.get(orderId);
-  if (!o || o.tgUserId !== tgUserId) return { paid: false };
-  if (o.status !== 'paid') prodamusMarkOrderPaid(orderId);
-  return { paid: true, product: o.product, sessionId: o.sessionId };
+  return prodamusOrderPaidForUser(orderId, tgUserId);
 }
 
 /**

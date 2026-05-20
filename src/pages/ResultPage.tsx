@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useHydrateLatestResult } from '../hooks/useHydrateLatestResult';
 import { Button } from '../components/Button';
 import { CalmScreen } from '../components/results/CalmScreen';
@@ -15,13 +15,13 @@ import type { IndexInterpretation } from '../utils/indexInterpretationBands';
 import { buildResultShareText, getShareTestLink, shareOrCopyResultText } from '../utils/shareResult';
 import { shouldBypassReportPayment } from '../utils/paymentStub';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
-import { RetakeTestButton } from '../components/RetakeTestButton';
+import { hasPaymentReturnInUrl } from '../utils/storage';
 import {
   isReportPaidUnlocked,
   pollProdamusOrderPaidQuick,
   prodamusPendingOrderKey,
   reportPaidStorageKey,
-  tryRecoverReportAccess,
+  recoverProdamusPaymentFromUrl,
 } from '../utils/telegramPayments';
 
 type ResultStep = 'index' | 'index-detail' | 'domain-metric' | 'domain-detail' | 'hub';
@@ -87,49 +87,14 @@ const IndexInterpretationBody = ({ index, accent }: { index: IndexInterpretation
   </div>
 );
 
-const RESULT_UI_KEY = 'alz_result_ui_v1';
-
-type SavedResultUi = { step: ResultStep; domainIndex: number };
-
-function loadSavedResultUi(): SavedResultUi | null {
-  try {
-    const raw = sessionStorage.getItem(RESULT_UI_KEY);
-    if (!raw) return null;
-    const p = JSON.parse(raw) as SavedResultUi;
-    if (!p?.step) return null;
-    return { step: p.step, domainIndex: typeof p.domainIndex === 'number' ? p.domainIndex : 0 };
-  } catch {
-    return null;
-  }
-}
-
 export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
-  const { latestResult, setStage, retakeTest } = useApp();
+  const { latestResult, setStage } = useApp();
   useHydrateLatestResult();
-  const uiRestoredRef = useRef(false);
-  const [step, setStep] = useState<ResultStep>(() => loadSavedResultUi()?.step ?? 'index');
-  const [domainIndex, setDomainIndex] = useState(() => loadSavedResultUi()?.domainIndex ?? 0);
+  const [step, setStep] = useState<ResultStep>('index');
+  const [domainIndex, setDomainIndex] = useState(0);
   const [shareNotice, setShareNotice] = useState<string | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [payNotice, setPayNotice] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (uiRestoredRef.current || !latestResult) return;
-    uiRestoredRef.current = true;
-    const saved = loadSavedResultUi();
-    if (saved) {
-      setStep(saved.step);
-      setDomainIndex(saved.domainIndex);
-    }
-  }, [latestResult]);
-
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(RESULT_UI_KEY, JSON.stringify({ step, domainIndex }));
-    } catch {
-      /* ignore */
-    }
-  }, [step, domainIndex]);
 
   if (!latestResult) {
     return (
@@ -169,9 +134,12 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   };
 
   useEffect(() => {
-    if (!latestResult?.id || skipNativePayment) return;
-    void tryRecoverReportAccess(latestResult.id).then((ok) => {
-      if (ok) setStage('full-report');
+    if (!latestResult?.id || skipNativePayment || !hasPaymentReturnInUrl()) return;
+    void recoverProdamusPaymentFromUrl().then((recovery) => {
+      if (recovery?.product === 'full_report' && recovery.sessionId === latestResult.id) {
+        localStorage.setItem(reportPaidStorageKey(latestResult.id), '1');
+        setStage('full-report');
+      }
     });
   }, [latestResult?.id, skipNativePayment, setStage]);
 
@@ -320,9 +288,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           >
             {reportUnlocked ? 'Открыть расширенный отчёт' : 'Получить расширенный отчёт — 399 ₽'}
           </Button>
-          {shareNotice ? <p className="text-center text-xs text-white/50">{shareNotice}</p> : null}
-          {payNotice ? <p className="text-center text-xs text-amber-200/90">{payNotice}</p> : null}
-          <RetakeTestButton onClick={retakeTest} />
           <SupportFooter showDeveloperCredit={false} />
         </div>
       }
