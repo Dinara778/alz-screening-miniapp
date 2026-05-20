@@ -81,5 +81,9 @@ export function restartApplicationToIntro(): void {
   }
   const url = new URL(window.location.href);
   url.search = '';
-  window.location.replace(url.pathname + url.hash);
+  const target = url.pathname + url.hash;
+  if (`${window.location.pathname}${window.location.hash}` !== target) {
+    window.location.replace(target);
+  }
+  window.location.reload();
 }

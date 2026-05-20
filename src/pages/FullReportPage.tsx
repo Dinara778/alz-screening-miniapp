@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '../components/Button';
 import { DomainProfileCard } from '../components/DomainProfileCard';
 import { ResultOverloadMap } from '../components/ResultOverloadMap';
@@ -14,8 +14,10 @@ import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { downloadCognitiveReportPdf } from '../utils/pdfReport';
 import { isReportPaidUnlocked, isPaymentsBackendConfigured } from '../utils/telegramPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
+import type { ReportFlowStep } from '../types';
+import { loadSavedReportStep, patchProgressReportStep } from '../utils/storage';
 
-type ReportStep = 'ready' | 'report' | 'learned' | 'upsell';
+type ReportStep = ReportFlowStep;
 
 const learnedItems = [
   'ваши зоны перегрузки',
@@ -33,22 +35,37 @@ const upsellFeatures = [
 
 const REPORT_UI_KEY = 'alz_report_ui_v1';
 
+function loadInitialReportStep(): ReportStep {
+  const fromProgress = loadSavedReportStep();
+  if (fromProgress) return fromProgress;
+  try {
+    const raw = sessionStorage.getItem(REPORT_UI_KEY);
+    if (!raw) return 'ready';
+    const p = JSON.parse(raw) as { step?: ReportStep };
+    if (p.step === 'report' || p.step === 'learned' || p.step === 'upsell') return p.step;
+  } catch {
+    /* ignore */
+  }
+  return 'ready';
+}
+
 export const FullReportPage = () => {
   const { latestResult, participant, setStage, setConsultationReturnTo, retakeTest } = useApp();
   useHydrateLatestResult();
-  const [step, setStep] = useState<ReportStep>(() => {
-    try {
-      const raw = sessionStorage.getItem(REPORT_UI_KEY);
-      if (!raw) return 'ready';
-      const p = JSON.parse(raw) as { step?: ReportStep };
-      return p.step === 'report' || p.step === 'learned' || p.step === 'upsell' ? p.step : 'ready';
-    } catch {
-      return 'ready';
-    }
-  });
+  const [step, setStep] = useState<ReportStep>(loadInitialReportStep);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
+
+  const goReportStep = useCallback((next: ReportStep) => {
+    setStep(next);
+    patchProgressReportStep(next);
+    try {
+      sessionStorage.setItem(REPORT_UI_KEY, JSON.stringify({ step: next }));
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const analytics = useMemo(() => {
     if (!latestResult) return null;
@@ -56,6 +73,7 @@ export const FullReportPage = () => {
   }, [latestResult]);
 
   useEffect(() => {
+    patchProgressReportStep(step);
     try {
       sessionStorage.setItem(REPORT_UI_KEY, JSON.stringify({ step }));
     } catch {
@@ -178,7 +196,7 @@ export const FullReportPage = () => {
       <ReportFlowShell
         footer={
           <div className="flex flex-col gap-3">
-            <Button type="button" className={CTA_BUTTON_CLASS} onClick={() => setStep('report')}>
+            <Button type="button" className={CTA_BUTTON_CLASS} onClick={() => goReportStep('report')}>
               Далее
             </Button>
             <RetakeTestButton onClick={retakeTest} />
@@ -217,7 +235,7 @@ export const FullReportPage = () => {
                 {pdfBusy ? 'Формируем PDF…' : 'Скачать PDF'}
               </Button>
               {pdfError ? <p className="text-center text-sm text-amber-200/90">{pdfError}</p> : null}
-              <Button type="button" variant="secondary" className="w-full" onClick={() => setStep('learned')}>
+              <Button type="button" variant="secondary" className="w-full" onClick={() => goReportStep('learned')}>
                 Далее
               </Button>
               <RetakeTestButton onClick={retakeTest} />
@@ -277,7 +295,7 @@ export const FullReportPage = () => {
     return (
       <ReportFlowShell
         footer={
-          <Button type="button" className={CTA_BUTTON_CLASS} onClick={() => setStep('upsell')}>
+          <Button type="button" className={CTA_BUTTON_CLASS} onClick={() => goReportStep('upsell')}>
             Далее
           </Button>
         }

@@ -1,4 +1,35 @@
-import { AppStage, SavedProgress, SessionResult } from '../types';
+import { AppStage, ReportFlowStep, SavedProgress, SessionResult } from '../types';
+
+const VALID_REPORT_STEPS = new Set<ReportFlowStep>(['ready', 'report', 'learned', 'upsell']);
+
+export function normalizeReportStep(raw: unknown): ReportFlowStep | null {
+  return typeof raw === 'string' && VALID_REPORT_STEPS.has(raw as ReportFlowStep)
+    ? (raw as ReportFlowStep)
+    : null;
+}
+
+export function loadSavedReportStep(): ReportFlowStep | null {
+  return normalizeReportStep(loadProgress()?.reportStep);
+}
+
+export function patchProgressReportStep(step: ReportFlowStep): void {
+  const prev = loadProgress();
+  saveProgress({
+    stage: prev?.stage ?? 'full-report',
+    latestSessionId: prev?.latestSessionId,
+    startedAt: prev?.startedAt ?? null,
+    immediateWords: prev?.immediateWords,
+    delayedWords: prev?.delayedWords,
+    flankerTrials: prev?.flankerTrials,
+    reactionSuccessful: prev?.reactionSuccessful,
+    reactionAnticipations: prev?.reactionAnticipations,
+    stroopTrials: prev?.stroopTrials,
+    sessionSeed: prev?.sessionSeed,
+    participant: prev?.participant,
+    studyWordList: prev?.studyWordList,
+    reportStep: step,
+  });
+}
 import { consumeHardReloadFlag, consumeRestartIntent } from './appReload';
 
 const HISTORY_KEY = 'alz_history_v1';

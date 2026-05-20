@@ -228,6 +228,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
 
   useEffect(() => {
+    const existing = loadProgress();
     saveProgress({
       stage,
       latestSessionId: latestResult?.id,
@@ -241,6 +242,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       sessionSeed,
       participant,
       studyWordList,
+      reportStep: stage === 'full-report' ? existing?.reportStep : undefined,
     });
   }, [
     stage,
@@ -314,6 +316,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const refreshApp = useCallback(() => {
+    const existing = loadProgress();
     saveProgress({
       stage,
       latestSessionId: latestResult?.id,
@@ -327,6 +330,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       sessionSeed,
       participant,
       studyWordList,
+      reportStep: stage === 'full-report' ? existing?.reportStep : undefined,
     });
     reloadApplication();
   }, [

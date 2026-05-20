@@ -106,6 +106,9 @@ export type AppStage =
   | 'full-report'
   | 'consultation-request';
 
+/** Подэкран внутри full-report (сохраняется при «Обновить»). */
+export type ReportFlowStep = 'ready' | 'report' | 'learned' | 'upsell';
+
 export type SavedProgress = {
   /** Время сохранения; старые записи без поля всё ещё восстанавливаются */
   savedAt?: number;
@@ -122,4 +125,5 @@ export type SavedProgress = {
   sessionSeed?: number;
   participant?: ParticipantProfile | null;
   studyWordList?: string[];
+  reportStep?: ReportFlowStep;
 };
