@@ -3,7 +3,7 @@ import { CalmCardShell } from '../components/CalmCardShell';
 import { ScreenBackHeader } from '../components/ScreenBackHeader';
 import { Button } from '../components/Button';
 import { useApp } from '../context/AppContext';
-import { isPaymentsStubbed } from '../utils/paymentStub';
+import { isDevPaymentBypass } from '../utils/paymentStub';
 import { SupportFooter } from '../components/SupportFooter';
 import { SketchHighlightTitle } from '../components/results/SketchHighlightTitle';
 import { scoreAccentFromValue } from '../components/results/scoreAccent';
@@ -45,7 +45,7 @@ export const ConsultationRequestPage = () => {
       setNotice('Нет данных сессии. Вернитесь к результатам и откройте запись снова.');
       return;
     }
-    if (isPaymentsStubbed()) {
+    if (isDevPaymentBypass()) {
       localStorage.setItem(consultationPaidStorageKey(latestResult.id), '1');
       setPaidOk(true);
       return;
