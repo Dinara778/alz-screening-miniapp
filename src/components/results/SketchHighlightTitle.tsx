@@ -7,10 +7,8 @@ type Props = {
   className?: string;
   /** Меньше выступ SVG снизу — чтобы обводка не заходила на текст под заголовком */
   tuckBottomOutline?: boolean;
-  /** Больше отступ обводки — длинные заголовки на intro-экранах */
+  /** Больше отступ обводки — длинные заголовки на intro-экранах (2+ строк) */
   generousOutline?: boolean;
-  /** Высокая обводка под 3 строки заголовка */
-  threeLineOutline?: boolean;
 };
 
 /** Небрежная ручная обводка вокруг заголовка интерпретации */
@@ -20,39 +18,35 @@ export const SketchHighlightTitle = ({
   className = '',
   tuckBottomOutline = false,
   generousOutline = false,
-  threeLineOutline = false,
 }: Props) => {
   const uid = useId().replace(/:/g, '');
   const relaxed = generousOutline && !tuckBottomOutline;
-  const tall = threeLineOutline && relaxed;
 
   return (
     <h2
       className={`relative mb-1 max-w-full text-left ${
-        relaxed ? 'block w-full' : 'inline-block'
+        relaxed ? 'inline-block w-fit max-w-full' : 'inline-block'
       } ${className}`}
     >
       <svg
         className={`pointer-events-none absolute overflow-visible ${
-          tall
-            ? '-left-4 -right-4 w-[calc(100%+2rem)] -top-3 -bottom-3'
-            : relaxed
-              ? '-left-4 -right-4 w-[calc(100%+2rem)] -top-3 bottom-2'
-              : `-left-2.5 -right-2.5 w-[calc(100%+1.25rem)] ${
-                  tuckBottomOutline ? '-top-1 bottom-1.5' : '-top-1.5 bottom-[-0.25rem]'
-                }`
+          relaxed
+            ? '-left-4 -right-4 -top-3 -bottom-3 h-[calc(100%+1.5rem)] w-[calc(100%+2rem)]'
+            : `-left-2.5 -right-2.5 w-[calc(100%+1.25rem)] ${
+                tuckBottomOutline ? '-top-1 bottom-1.5' : '-top-1.5 bottom-[-0.25rem]'
+              }`
         }`}
-        viewBox={tall ? '0 0 280 120' : relaxed ? '0 0 280 88' : '0 0 280 64'}
+        viewBox={relaxed ? '0 0 280 96' : '0 0 280 64'}
         preserveAspectRatio="none"
         aria-hidden
       >
         <defs>
           <filter
             id={`${uid}-glow`}
-            x={tall ? '-22%' : relaxed ? '-20%' : '-15%'}
-            y={tall ? '-35%' : relaxed ? '-30%' : '-25%'}
-            width={tall ? '145%' : relaxed ? '140%' : '130%'}
-            height={tall ? '175%' : relaxed ? '165%' : '150%'}
+            x={relaxed ? '-20%' : '-15%'}
+            y={relaxed ? '-32%' : '-25%'}
+            width={relaxed ? '140%' : '130%'}
+            height={relaxed ? '170%' : '150%'}
           >
             <feGaussianBlur stdDeviation="1.8" result="blur" />
             <feMerge>
@@ -84,7 +78,7 @@ export const SketchHighlightTitle = ({
       </svg>
       <span
         className={`app-heading relative z-10 block leading-snug ${
-          tall ? 'px-3 py-3 sm:px-4 sm:py-3.5' : relaxed ? 'px-3 py-2.5 sm:px-3.5 sm:py-3' : 'px-0.5 py-1'
+          relaxed ? 'px-3 py-2.5 sm:px-3.5 sm:py-3' : 'px-0.5 py-1'
         }`}
       >
         {children}
