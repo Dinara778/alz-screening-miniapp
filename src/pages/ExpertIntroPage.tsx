@@ -21,7 +21,7 @@ export const ExpertIntroPage = ({ onContinue }: Props) => {
   return (
     <IntroShell aria-label="О проекте Corta и эксперте" footer={footer} centerContent={true}>
       <div className="flex flex-col items-center px-2 text-center sm:px-4">
-        <h2 className="app-heading max-w-md leading-snug">
+        <h2 className="max-w-md text-lg font-bold leading-snug text-white/95 sm:text-xl">
           «Corta — это научный подход к вашему когнитивному здоровью»
         </h2>
         <div className="mt-8 flex flex-col items-center gap-4 sm:mt-10">

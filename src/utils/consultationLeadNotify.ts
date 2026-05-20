@@ -1,4 +1,5 @@
 import type { ParticipantProfile } from '../types';
+import { getPaymentsApiUrl } from './telegramPayments';
 
 export type ConsultationLeadNotifyResult =
   | { ok: true; skipped: true }
@@ -16,7 +17,7 @@ export const notifyConsultationLeadServer = async (
   sessionId: string,
   participant?: ParticipantProfile,
 ): Promise<ConsultationLeadNotifyResult> => {
-  const apiUrl = (import.meta.env.VITE_TELEGRAM_PAYMENTS_URL as string | undefined)?.trim();
+  const apiUrl = getPaymentsApiUrl();
   const tg = window.Telegram?.WebApp;
   if (!apiUrl || !tg?.initData) {
     return { ok: true, skipped: true };

@@ -116,9 +116,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   }, [sessionSeed]);
 
   useEffect(() => {
-    const api = (import.meta.env.VITE_TELEGRAM_PAYMENTS_URL as string | undefined)?.trim();
-    if (!api) return;
-    void recoverProdamusPaymentFromUrl(api).then((recovery) => {
+    void recoverProdamusPaymentFromUrl().then((recovery) => {
       if (!recovery) return;
       if (recovery.product === 'full_report') {
         const session = loadHistory().find((h) => h.id === recovery.sessionId) ?? null;

@@ -17,15 +17,39 @@ export type OpenInvoiceResult =
 
 const trimApi = (url: string) => url.replace(/\/$/, '');
 
+function stripEnvQuotes(s: string): string {
+  const t = s.trim();
+  if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
+    return t.slice(1, -1).trim();
+  }
+  return t;
+}
+
 /** Абсолютный HTTPS-URL API; без схемы Safari даёт «did not match the expected pattern». */
 function resolvePaymentsApiUrl(raw: string): string | null {
-  const trimmed = raw.trim();
+  const trimmed = stripEnvQuotes(raw);
   if (!trimmed) return null;
   const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
   try {
     const u = new URL(withScheme);
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
-    return trimApi(u.toString());
+    return trimApi(u.origin);
+  } catch {
+    return null;
+  }
+}
+
+/** URL бэкенда оплат: из VITE_TELEGRAM_PAYMENTS_URL или тот же домен (Amvera SERVE_STATIC). */
+export function getPaymentsApiUrl(): string | null {
+  const envRaw = stripEnvQuotes(
+    (import.meta.env.VITE_TELEGRAM_PAYMENTS_URL as string | undefined) ?? '',
+  );
+  const fromEnv = envRaw ? resolvePaymentsApiUrl(envRaw) : null;
+  if (fromEnv) return fromEnv;
+
+  if (!import.meta.env.PROD || typeof window === 'undefined') return null;
+  try {
+    return trimApi(new URL(window.location.href).origin);
   } catch {
     return null;
   }
@@ -42,11 +66,7 @@ function resolvePaymentLink(raw: string): string | null {
 }
 
 /** Задан URL бэкенда счетов (POST /invoice). Если нет — оплата недоступна. */
-export const isPaymentsBackendConfigured = (): boolean => {
-  return Boolean(
-    resolvePaymentsApiUrl((import.meta.env.VITE_TELEGRAM_PAYMENTS_URL as string | undefined) ?? ''),
-  );
-};
+export const isPaymentsBackendConfigured = (): boolean => Boolean(getPaymentsApiUrl());
 
 /** Mini App открыт в Telegram и есть initData (не просто браузер). */
 export const isTelegramMiniApp = (): boolean => {
@@ -88,7 +108,7 @@ export const openTelegramInvoiceForProduct = async (
   sessionId: string,
 ): Promise<OpenInvoiceResult> => {
   const tg = window.Telegram?.WebApp;
-  const apiUrl = (import.meta.env.VITE_TELEGRAM_PAYMENTS_URL as string | undefined)?.trim();
+  const apiUrl = getPaymentsApiUrl();
 
   if (!apiUrl) return { status: 'skipped', reason: 'no_api_url' };
   if (!tg?.initData) return { status: 'skipped', reason: 'no_init_data' };
@@ -105,7 +125,7 @@ export const openTelegramInvoiceForProduct = async (
   let orderId: string | undefined;
 
   try {
-    const res = await fetch(`${trimApi(apiUrl)}/invoice`, {
+    const res = await fetch(`${apiUrl}/invoice`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ initData: tg.initData, product, sessionId }),
@@ -126,7 +146,7 @@ export const openTelegramInvoiceForProduct = async (
       return {
         status: 'error',
         message:
-          'Неверный адрес сервера оплаты. В Amvera (Сборка) задайте VITE_TELEGRAM_PAYMENTS_URL=https://ваш-домен.amvera.io',
+          'Не удалось обратиться к серверу оплаты. В Amvera → Сборка: VITE_TELEGRAM_PAYMENTS_URL=https://corta-ns-1234dinara.amvera.io (с https://), затем пересоберите проект.',
       };
     }
     return { status: 'error', message: msg };
@@ -146,7 +166,7 @@ export const openTelegramInvoiceForProduct = async (
       const msg = e instanceof Error ? e.message : String(e);
       return { status: 'error', message: msg };
     }
-    const paid = await pollProdamusOrderPaid(trimApi(apiUrl), tg.initData, orderId);
+    const paid = await pollProdamusOrderPaid(apiUrl, tg.initData, orderId);
     if (paid) return { status: 'paid' };
     return { status: 'failed', detail: 'prodamus_timeout' };
   }
@@ -177,9 +197,7 @@ export type ProdamusPaymentRecovery = {
 };
 
 /** Возврат с Payform: проверка order_id в URL и разблокировка доступа. */
-export async function recoverProdamusPaymentFromUrl(
-  apiUrl: string,
-): Promise<ProdamusPaymentRecovery | null> {
+export async function recoverProdamusPaymentFromUrl(): Promise<ProdamusPaymentRecovery | null> {
   const raw = typeof window !== 'undefined' ? window.location.search : '';
   const params = new URLSearchParams(raw);
   const orderId = params.get('prodamus_order');
@@ -187,13 +205,13 @@ export async function recoverProdamusPaymentFromUrl(
   if (!orderId?.trim() || status !== 'ok') return null;
 
   const tg = window.Telegram?.WebApp;
-  const base = resolvePaymentsApiUrl(apiUrl);
+  const base = getPaymentsApiUrl();
   if (!tg?.initData || !base) return null;
 
   let recovery: ProdamusPaymentRecovery | null = null;
 
   try {
-    const res = await fetch(`${trimApi(base)}/payment-order-status`, {
+    const res = await fetch(`${base}/payment-order-status`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ initData: tg.initData, orderId }),

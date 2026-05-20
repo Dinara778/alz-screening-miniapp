@@ -298,7 +298,9 @@ export const ResultPage = ({ onRestart: _onRestart }: { onRestart: () => void })
           Узнайте, что перегружает вашу когнитивную систему
         </SketchHighlightTitle>
         <p className="results-body text-center sm:text-left">
-          И как это исправить — с помощью расширенного отчёта на основе вашего индивидуального когнитивного профиля
+          И как это исправить — с помощью расширенного отчёта
+          <br />
+          на&nbsp;основе вашего&nbsp;индивидуального когнитивного профиля
         </p>
         <div className="calm-inset space-y-3">
           <p className="text-sm font-semibold text-white/90 sm:text-base">Что входит в отчёт:</p>
