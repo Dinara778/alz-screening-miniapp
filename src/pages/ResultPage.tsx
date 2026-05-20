@@ -12,7 +12,7 @@ import { useApp } from '../context/AppContext';
 import type { DomainInterpretationCopy } from '../copy/cognitiveDomainInterpretationsMid52';
 import { buildCognitiveAnalytics, type DomainScore } from '../utils/cognitiveAnalytics';
 import type { IndexInterpretation } from '../utils/indexInterpretationBands';
-import { buildResultShareText, getShareTestLink, shareOrCopyResultText } from '../utils/shareResult';
+import { shareResultWithCard } from '../utils/shareResult';
 import { isPaymentsEnabled, shouldBypassReportPayment } from '../utils/paymentStub';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
 import { hasPaymentReturnInUrl } from '../utils/storage';
@@ -93,6 +93,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const [step, setStep] = useState<ResultStep>('index');
   const [domainIndex, setDomainIndex] = useState(0);
   const [shareNotice, setShareNotice] = useState<string | null>(null);
+  const [shareBusy, setShareBusy] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [payNotice, setPayNotice] = useState<string | null>(null);
 
@@ -114,16 +115,19 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
 
   const handleShare = async () => {
     setShareNotice(null);
-    const link = getShareTestLink();
-    const text = buildResultShareText(a.activePatternCount, a.index.value);
+    setShareBusy(true);
     try {
-      const mode = await shareOrCopyResultText(text, link);
-      if (mode === 'clipboard') {
-        setShareNotice('Скопировано в буфер обмена');
+      const mode = await shareResultWithCard({ indexValue: a.index.value, accent });
+      if (mode === 'download_and_telegram') {
+        setShareNotice('Картинка сохранена — прикрепите её в чат; ссылка на бота откроется отдельно');
+      } else if (mode === 'clipboard') {
+        setShareNotice('Картинка сохранена, ссылка на бота скопирована');
       }
     } catch (e) {
       if ((e as Error).name === 'AbortError') return;
       setShareNotice('Не удалось поделиться');
+    } finally {
+      setShareBusy(false);
     }
   };
 
@@ -279,8 +283,16 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       contentAlign="readable"
       footer={
         <div className="space-y-3">
-          <button type="button" className={calmBtnGhost} onClick={() => void handleShare()}>
-            Поделиться результатом
+          {shareNotice ? (
+            <p className="text-center text-xs leading-relaxed text-white/70">{shareNotice}</p>
+          ) : null}
+          <button
+            type="button"
+            className={calmBtnGhost}
+            disabled={shareBusy}
+            onClick={() => void handleShare()}
+          >
+            {shareBusy ? 'Готовим картинку…' : 'Поделиться результатом'}
           </button>
           <Button
             type="button"
