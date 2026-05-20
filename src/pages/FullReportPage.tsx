@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '../components/Button';
 import { DomainProfileCard } from '../components/DomainProfileCard';
 import { ResultOverloadMap } from '../components/ResultOverloadMap';
@@ -13,9 +13,7 @@ import { downloadCognitiveReportPdf } from '../utils/pdfReport';
 import { isReportPaidUnlocked, isPaymentsBackendConfigured } from '../utils/telegramPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
-const REPORT_EMAIL_PREFIX = 'corta_report_email_';
-
-type ReportStep = 'report' | 'email' | 'pdf-sent' | 'learned' | 'upsell';
+type ReportStep = 'ready' | 'report' | 'learned' | 'upsell';
 
 const learnedItems = [
   'ваши зоны перегрузки',
@@ -33,8 +31,7 @@ const upsellFeatures = [
 
 export const FullReportPage = () => {
   const { latestResult, participant, setStage, setConsultationReturnTo } = useApp();
-  const [step, setStep] = useState<ReportStep>('report');
-  const [reportEmail, setReportEmail] = useState('');
+  const [step, setStep] = useState<ReportStep>('ready');
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
@@ -43,13 +40,6 @@ export const FullReportPage = () => {
     if (!latestResult) return null;
     return buildCognitiveAnalytics(latestResult);
   }, [latestResult]);
-
-  useEffect(() => {
-    if (!latestResult) return;
-    const saved = localStorage.getItem(`${REPORT_EMAIL_PREFIX}${latestResult.id}`);
-    if (saved) setReportEmail(saved);
-    else if (participant?.email) setReportEmail(participant.email);
-  }, [latestResult?.id, participant?.email]);
 
   useEffect(() => {
     if (!latestResult) return;
@@ -89,30 +79,18 @@ export const FullReportPage = () => {
 
   const accent = scoreAccentFromValue(analytics.index.value);
 
-  const persistEmail = (email: string) => {
-    localStorage.setItem(`${REPORT_EMAIL_PREFIX}${latestResult.id}`, email);
-    void sendAnalyticsEventToSheets({
-      eventType: 'report_delivery_email',
-      sessionId: latestResult.id,
-      reportEmail: email,
-      participant: participant ?? undefined,
-    }).catch(() => {});
-  };
-
-  const handleEmailSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    const trimmed = reportEmail.trim();
-    if (!trimmed || !trimmed.includes('@')) return;
-    persistEmail(trimmed);
-    setStep('pdf-sent');
-  };
-
-  const handlePdf = async () => {
+  const handlePdfDownload = async () => {
     if (!pdfRef.current) return;
     setPdfBusy(true);
     setPdfError(null);
     try {
-      await downloadCognitiveReportPdf(pdfRef.current, `otchet-${latestResult.id.slice(0, 8)}.pdf`);
+      await downloadCognitiveReportPdf(pdfRef.current, `otchet-corta-${latestResult.id.slice(0, 8)}.pdf`);
+      void sendAnalyticsEventToSheets({
+        eventType: 'report_pdf_downloaded',
+        sessionId: latestResult.id,
+        stage: 'full-report',
+        participant: participant ?? undefined,
+      }).catch(() => {});
     } catch (e) {
       console.error('[pdf]', e);
       setPdfError(
@@ -175,20 +153,54 @@ export const FullReportPage = () => {
     </div>
   );
 
+  if (step === 'ready') {
+    return (
+      <ReportFlowShell
+        footer={
+          <Button type="button" className={CTA_BUTTON_CLASS} onClick={() => setStep('report')}>
+            Далее
+          </Button>
+        }
+      >
+        <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5 py-6 text-center sm:text-left">
+          <h2 className="app-heading leading-snug">
+            <span className="inline-flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+              <span>Ваш расширенный отчёт готов!</span>
+              <span className="text-[1.35em] leading-none" aria-hidden>
+                🎉
+              </span>
+            </span>
+          </h2>
+          <p className="results-body">
+            Дальше — расширенная расшифровка именно по вашему когнитивному профилю.
+          </p>
+        </div>
+      </ReportFlowShell>
+    );
+  }
+
   if (step === 'report') {
     return (
       <>
         <ReportFlowShell
           footer={
-            <Button type="button" className={CTA_BUTTON_CLASS} onClick={() => setStep('email')}>
-              Получить PDF на почту
-            </Button>
+            <div className="flex flex-col gap-3">
+              <Button
+                type="button"
+                className={CTA_BUTTON_CLASS}
+                disabled={pdfBusy}
+                onClick={() => void handlePdfDownload()}
+              >
+                {pdfBusy ? 'Формируем PDF…' : 'Скачать PDF'}
+              </Button>
+              {pdfError ? <p className="text-center text-sm text-amber-200/90">{pdfError}</p> : null}
+              <Button type="button" variant="secondary" className="w-full" onClick={() => setStep('learned')}>
+                Далее
+              </Button>
+            </div>
           }
         >
           <div className="mx-auto w-full max-w-md space-y-6">
-            <SketchHighlightTitle accent={accent}>Ваш расширенный отчёт готов</SketchHighlightTitle>
-            <p className="results-body">Ниже — расширенная расшифровка по вашему прохождению.</p>
-
             <div className="calm-inset space-y-3">
               <SketchHighlightTitle accent={accent}>Индекс когнитивной устойчивости</SketchHighlightTitle>
               <div className="text-4xl font-bold tabular-nums">{analytics.index.value}</div>
@@ -234,71 +246,6 @@ export const FullReportPage = () => {
         </ReportFlowShell>
         {hiddenPdfLayer}
       </>
-    );
-  }
-
-  if (step === 'email') {
-    return (
-      <>
-        <ReportFlowShell
-          footer={
-            <Button type="submit" form="report-email-form" className={CTA_BUTTON_CLASS}>
-              Отправить PDF на почту
-            </Button>
-          }
-        >
-          <div className="mx-auto w-full max-w-md space-y-5">
-            <SketchHighlightTitle accent={accent}>PDF-отчёт на почту</SketchHighlightTitle>
-            <p className="results-body">
-              Укажите почту — мы отправим расширенный отчёт в PDF. Пока можно также скачать файл на устройство.
-            </p>
-            <form id="report-email-form" className="space-y-3" onSubmit={handleEmailSubmit}>
-              <input
-                className="calm-input"
-                type="email"
-                required
-                placeholder="Электронная почта"
-                value={reportEmail}
-                onChange={(e) => setReportEmail(e.target.value)}
-              />
-            </form>
-            {pdfError ? <p className="text-sm text-amber-200/90">{pdfError}</p> : null}
-            <Button type="button" variant="secondary" disabled={pdfBusy} onClick={() => void handlePdf()}>
-              {pdfBusy ? 'Формирование…' : 'Скачать PDF на устройство'}
-            </Button>
-          </div>
-        </ReportFlowShell>
-        {hiddenPdfLayer}
-      </>
-    );
-  }
-
-  if (step === 'pdf-sent') {
-    const email = reportEmail.trim();
-    return (
-      <ReportFlowShell
-        footer={
-          <Button type="button" className={CTA_BUTTON_CLASS} onClick={() => setStep('learned')}>
-            Далее
-          </Button>
-        }
-      >
-        <div className="mx-auto my-auto w-full max-w-md space-y-5 text-center sm:text-left">
-          <h2 className="app-heading text-center sm:text-left">PDF отправлен на вашу почту</h2>
-          <div className="calm-inset">
-            <p className="results-body">
-            {email ? (
-              <>
-                Отчёт отправлен на <span className="font-medium text-white">{email}</span>. Проверьте входящие и папку
-                «Спам».
-              </>
-            ) : (
-              'Адрес сохранён. Отправка письма подключится на сервере; PDF можно скачать на предыдущем шаге.'
-            )}
-            </p>
-          </div>
-        </div>
-      </ReportFlowShell>
     );
   }
 

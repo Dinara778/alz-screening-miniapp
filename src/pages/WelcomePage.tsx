@@ -252,7 +252,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
           }}
         />
         <p className="rounded-xl border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-center text-xs text-amber-100/90">
-          📧 Почта — для сервисных сообщений и отчёта о результатах.
+          📧 Почта — для сервисных сообщений и связи с вами.
         </p>
       </form>
     );
