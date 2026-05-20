@@ -313,10 +313,10 @@ export const FullReportPage = () => {
         }
       >
         <div className="mx-auto w-full max-w-md space-y-5">
-          <SketchHighlightTitle accent={accent}>Что вы узнали</SketchHighlightTitle>
-          <ul className="calm-inset space-y-2.5 text-sm leading-relaxed text-white/88 sm:text-base">
+          <SketchHighlightTitle accent={accent}>Что вы узнали:</SketchHighlightTitle>
+          <ul className="calm-inset space-y-2.5 text-base leading-relaxed text-white/88 sm:text-lg">
             {learnedItems.map((item) => (
-              <li key={item} className="flex gap-2 capitalize">
+              <li key={item} className="flex gap-2">
                 <span className="text-emerald-400" aria-hidden>
                   •
                 </span>

@@ -11,7 +11,7 @@ export const SupportFooter = ({
   return (
     <footer className="calm-footer">
       {showSupport ? (
-        <div className="mb-3">
+        <div className={showDeveloperCredit ? 'mb-3' : ''}>
           <a href={TELEGRAM_SUPPORT_URL} target="_blank" rel="noopener noreferrer">
             Техподдержка
           </a>

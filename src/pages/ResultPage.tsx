@@ -78,7 +78,7 @@ const IndexInterpretationBody = ({ index, accent }: { index: IndexInterpretation
   </div>
 );
 
-export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
+export const ResultPage = ({ onRestart: _onRestart }: { onRestart: () => void }) => {
   const { latestResult, setStage } = useApp();
   const [step, setStep] = useState<ResultStep>('index');
   const [domainIndex, setDomainIndex] = useState(0);
@@ -276,7 +276,12 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       contentAlign="readable"
       footer={
         <div className="space-y-3">
-          <Button type="button" className={calmBtnClass} disabled={payBusy} onClick={() => void handlePayFullReport()}>
+          <Button
+            type="button"
+            className={`cta-shimmer border-0 !bg-none !from-transparent !to-transparent hover:!from-transparent hover:!to-transparent ${calmBtnClass}`}
+            disabled={payBusy}
+            onClick={() => void handlePayFullReport()}
+          >
             {payBusy ? 'Открываем оплату…' : 'Получить расширенный отчёт — 399 ₽'}
           </Button>
           <p className="text-center text-sm leading-relaxed text-white/55">
@@ -284,9 +289,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           </p>
           <button type="button" className={calmBtnGhost} onClick={() => void handleShare()}>
             Поделиться результатом
-          </button>
-          <button type="button" className={`${calmBtnGhost} !text-white/50`} onClick={onRestart}>
-            Пройти снова
           </button>
           {shareNotice ? <p className="text-center text-xs text-white/50">{shareNotice}</p> : null}
           {payNotice ? <p className="text-center text-xs text-amber-200/90">{payNotice}</p> : null}

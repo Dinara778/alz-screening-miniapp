@@ -7,6 +7,7 @@ import { SupportFooter } from '../components/SupportFooter';
 import { SketchHighlightTitle } from '../components/results/SketchHighlightTitle';
 import { scoreAccentFromValue } from '../components/results/scoreAccent';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
+import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import {
   consultationPaidStorageKey,
   isPaymentsBackendConfigured,
@@ -117,7 +118,7 @@ export const ConsultationRequestPage = () => {
     : '#34d399';
 
   return (
-    <div className="relative min-h-0 flex-1 space-y-6 pb-4">
+    <div className="relative flex min-h-0 flex-1 flex-col pb-4">
       {!paidOk ? <ScreenBackHeader onBack={goBack} /> : null}
       <div className="calm-card space-y-4">
         <SketchHighlightTitle accent={accent}>Запись на персональную сессию</SketchHighlightTitle>
@@ -139,7 +140,7 @@ export const ConsultationRequestPage = () => {
             </div>
           </>
         ) : (
-          <>
+          <div className="flex min-h-[42vh] flex-col">
             <p className="mt-3 calm-body leading-relaxed dark:text-slate-200">
               Нажмите кнопку ниже — откроется оплата в Telegram. После успешной оплаты менеджер свяжется с вами по адресу
               почты из платёжных данных.
@@ -149,21 +150,23 @@ export const ConsultationRequestPage = () => {
                 {notice}
               </p>
             ) : null}
-            <div className="mt-4 flex flex-col gap-3">
+            <div className="mt-auto flex flex-col gap-3 pt-5">
               <Button
                 variant="sell"
                 type="button"
-                className="w-full rounded-2xl px-5 py-3 font-bold sm:py-4"
+                className={`${CTA_BUTTON_CLASS} mt-2`}
                 disabled={busy}
                 onClick={() => void handlePay()}
               >
                 {busy ? 'Открываем оплату…' : 'Записаться на персональную сессию — 5 490 ₽'}
               </Button>
             </div>
-          </>
+          </div>
         )}
       </div>
-      <SupportFooter showDeveloperCredit={false} />
+      <div className="mt-auto">
+        <SupportFooter showDeveloperCredit={false} />
+      </div>
     </div>
   );
 };
