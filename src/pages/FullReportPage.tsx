@@ -17,9 +17,6 @@ const REPORT_EMAIL_PREFIX = 'corta_report_email_';
 
 type ReportStep = 'report' | 'email' | 'pdf-sent' | 'learned' | 'upsell';
 
-const calmBtnGhost =
-  'w-full rounded-full border border-white/15 bg-transparent py-3.5 text-[0.9375rem] font-medium text-white/90 transition hover:border-white/30 hover:bg-white/5';
-
 const learnedItems = [
   'ваши зоны перегрузки',
   'скорость восстановления',
@@ -28,7 +25,7 @@ const learnedItems = [
 ] as const;
 
 const upsellFeatures = [
-  'Расшифровку результатов простым языком',
+  'Онлайн-расшифровку результатов простым языком с опытным экспертом по когнитивной устойчивости (созвон)',
   'Персональные рекомендации под вашу ситуацию',
   'Понимание, что больше всего мешает вашему ресурсу',
   'План улучшения показателей',
@@ -286,9 +283,10 @@ export const FullReportPage = () => {
           </Button>
         }
       >
-        <div className="mx-auto w-full max-w-md space-y-4 text-center sm:text-left">
-          <SketchHighlightTitle accent={accent}>PDF отправлен на вашу почту</SketchHighlightTitle>
-          <p className="results-body">
+        <div className="mx-auto my-auto w-full max-w-md space-y-5 text-center sm:text-left">
+          <h2 className="app-heading text-center sm:text-left">PDF отправлен на вашу почту</h2>
+          <div className="calm-inset">
+            <p className="results-body">
             {email ? (
               <>
                 Отчёт отправлен на <span className="font-medium text-white">{email}</span>. Проверьте входящие и папку
@@ -297,7 +295,8 @@ export const FullReportPage = () => {
             ) : (
               'Адрес сохранён. Отправка письма подключится на сервере; PDF можно скачать на предыдущем шаге.'
             )}
-          </p>
+            </p>
+          </div>
         </div>
       </ReportFlowShell>
     );
@@ -332,21 +331,20 @@ export const FullReportPage = () => {
   return (
     <ReportFlowShell
       footer={
-        <div className="space-y-3">
-          <Button type="button" variant="sell" className={CTA_BUTTON_CLASS} onClick={handleConsultation}>
-            Записаться на сессию — 5 490 ₽
-          </Button>
+        <div className="flex flex-col gap-3">
           <p className="text-center text-sm leading-relaxed text-white/55">
             После оформления заказа мы с вами свяжемся в течение 15 минут.
           </p>
-          <button type="button" className={calmBtnGhost} onClick={() => setStage('welcome')}>
-            На главную
-          </button>
+          <Button type="button" variant="sell" className={CTA_BUTTON_CLASS} onClick={handleConsultation}>
+            Записаться на сессию — 5 490 ₽
+          </Button>
         </div>
       }
     >
       <div className="mx-auto w-full max-w-md space-y-5">
-        <SketchHighlightTitle accent={accent}>Разобрать результаты с экспертом</SketchHighlightTitle>
+        <SketchHighlightTitle accent={accent} tuckBottomOutline className="mb-3">
+          Разобрать результаты с экспертом
+        </SketchHighlightTitle>
         <p className="results-body">
           30-минутная сессия по вашему когнитивному профилю с экспертом по когнитивной устойчивости.
         </p>

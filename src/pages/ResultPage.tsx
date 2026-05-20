@@ -276,6 +276,9 @@ export const ResultPage = ({ onRestart: _onRestart }: { onRestart: () => void })
       contentAlign="readable"
       footer={
         <div className="space-y-3">
+          <button type="button" className={calmBtnGhost} onClick={() => void handleShare()}>
+            Поделиться результатом
+          </button>
           <Button
             type="button"
             className={`cta-shimmer border-0 !bg-none !from-transparent !to-transparent hover:!from-transparent hover:!to-transparent ${calmBtnClass}`}
@@ -284,12 +287,6 @@ export const ResultPage = ({ onRestart: _onRestart }: { onRestart: () => void })
           >
             {payBusy ? 'Открываем оплату…' : 'Получить расширенный отчёт — 399 ₽'}
           </Button>
-          <p className="text-center text-sm leading-relaxed text-white/55">
-            На основе вашего индивидуального когнитивного профиля.
-          </p>
-          <button type="button" className={calmBtnGhost} onClick={() => void handleShare()}>
-            Поделиться результатом
-          </button>
           {shareNotice ? <p className="text-center text-xs text-white/50">{shareNotice}</p> : null}
           {payNotice ? <p className="text-center text-xs text-amber-200/90">{payNotice}</p> : null}
           <SupportFooter showDeveloperCredit={false} />
@@ -301,7 +298,7 @@ export const ResultPage = ({ onRestart: _onRestart }: { onRestart: () => void })
           Узнайте, что перегружает вашу когнитивную систему
         </SketchHighlightTitle>
         <p className="results-body text-center sm:text-left">
-          И как это исправить — с помощью расширенного отчёта.
+          И как это исправить — с помощью расширенного отчёта На основе вашего индивидуального когнитивного профиля
         </p>
         <div className="calm-inset space-y-3">
           <p className="text-sm font-semibold text-white/90 sm:text-base">Что входит в отчёт:</p>

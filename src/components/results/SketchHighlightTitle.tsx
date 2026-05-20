@@ -5,16 +5,25 @@ type Props = {
   /** Цвет облака / шкалы (как на экране индекса) */
   accent: string;
   className?: string;
+  /** Меньше выступ SVG снизу — чтобы обводка не заходила на текст под заголовком */
+  tuckBottomOutline?: boolean;
 };
 
 /** Небрежная ручная обводка вокруг заголовка интерпретации */
-export const SketchHighlightTitle = ({ children, accent, className = '' }: Props) => {
+export const SketchHighlightTitle = ({
+  children,
+  accent,
+  className = '',
+  tuckBottomOutline = false,
+}: Props) => {
   const uid = useId().replace(/:/g, '');
 
   return (
     <h2 className={`relative mb-1 inline-block max-w-full text-left ${className}`}>
       <svg
-        className="pointer-events-none absolute -left-2.5 -right-2.5 -top-1.5 bottom-[-0.25rem] w-[calc(100%+1.25rem)] overflow-visible"
+        className={`pointer-events-none absolute -left-2.5 -right-2.5 w-[calc(100%+1.25rem)] overflow-visible ${
+          tuckBottomOutline ? '-top-1 bottom-1.5' : '-top-1.5 bottom-[-0.25rem]'
+        }`}
         viewBox="0 0 280 64"
         preserveAspectRatio="none"
         aria-hidden
