@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { useHydrateLatestResult } from '../hooks/useHydrateLatestResult';
 import { Button } from '../components/Button';
 import { CalmScreen } from '../components/results/CalmScreen';
 import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
@@ -14,6 +15,7 @@ import type { IndexInterpretation } from '../utils/indexInterpretationBands';
 import { buildResultShareText, getShareTestLink, shareOrCopyResultText } from '../utils/shareResult';
 import { shouldBypassReportPayment } from '../utils/paymentStub';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
+import { RetakeTestButton } from '../components/RetakeTestButton';
 import {
   isReportPaidUnlocked,
   pollProdamusOrderPaidQuick,
@@ -85,15 +87,60 @@ const IndexInterpretationBody = ({ index, accent }: { index: IndexInterpretation
   </div>
 );
 
-export const ResultPage = ({ onRestart: _onRestart }: { onRestart: () => void }) => {
-  const { latestResult, setStage } = useApp();
-  const [step, setStep] = useState<ResultStep>('index');
-  const [domainIndex, setDomainIndex] = useState(0);
+const RESULT_UI_KEY = 'alz_result_ui_v1';
+
+type SavedResultUi = { step: ResultStep; domainIndex: number };
+
+function loadSavedResultUi(): SavedResultUi | null {
+  try {
+    const raw = sessionStorage.getItem(RESULT_UI_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw) as SavedResultUi;
+    if (!p?.step) return null;
+    return { step: p.step, domainIndex: typeof p.domainIndex === 'number' ? p.domainIndex : 0 };
+  } catch {
+    return null;
+  }
+}
+
+export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
+  const { latestResult, setStage, retakeTest } = useApp();
+  useHydrateLatestResult();
+  const uiRestoredRef = useRef(false);
+  const [step, setStep] = useState<ResultStep>(() => loadSavedResultUi()?.step ?? 'index');
+  const [domainIndex, setDomainIndex] = useState(() => loadSavedResultUi()?.domainIndex ?? 0);
   const [shareNotice, setShareNotice] = useState<string | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [payNotice, setPayNotice] = useState<string | null>(null);
 
-  if (!latestResult) return null;
+  useEffect(() => {
+    if (uiRestoredRef.current || !latestResult) return;
+    uiRestoredRef.current = true;
+    const saved = loadSavedResultUi();
+    if (saved) {
+      setStep(saved.step);
+      setDomainIndex(saved.domainIndex);
+    }
+  }, [latestResult]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(RESULT_UI_KEY, JSON.stringify({ step, domainIndex }));
+    } catch {
+      /* ignore */
+    }
+  }, [step, domainIndex]);
+
+  if (!latestResult) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-10 text-center text-white/80">
+        <p className="text-sm">Загружаем результаты…</p>
+        <button type="button" className={calmBtnGhost} onClick={onRestart}>
+          Начать сначала
+        </button>
+      </div>
+    );
+  }
   const a = buildCognitiveAnalytics(latestResult);
   const domains = a.domains;
   const currentDomain: DomainScore | undefined = domains[domainIndex];
@@ -275,12 +322,13 @@ export const ResultPage = ({ onRestart: _onRestart }: { onRestart: () => void })
           </Button>
           {shareNotice ? <p className="text-center text-xs text-white/50">{shareNotice}</p> : null}
           {payNotice ? <p className="text-center text-xs text-amber-200/90">{payNotice}</p> : null}
+          <RetakeTestButton onClick={retakeTest} />
           <SupportFooter showDeveloperCredit={false} />
         </div>
       }
     >
       <div className="mx-auto w-full max-w-md space-y-5 pb-4">
-        <SketchHighlightTitle accent={accent}>
+        <SketchHighlightTitle accent={accent} generousOutline>
           Узнайте, что перегружает вашу когнитивную систему
         </SketchHighlightTitle>
         <p className="results-body text-center sm:text-left">

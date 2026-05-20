@@ -22,6 +22,33 @@ export type OpenInvoiceResult =
 
 export const prodamusPendingOrderKey = (sessionId: string) => `prodamus_pending_${sessionId}`;
 
+const invoiceOrderStorageKey = (sessionId: string) => `invoice_order_${sessionId}`;
+
+function rememberInvoiceOrder(sessionId: string, orderId: string) {
+  sessionStorage.setItem(prodamusPendingOrderKey(sessionId), orderId);
+  try {
+    localStorage.setItem(invoiceOrderStorageKey(sessionId), orderId);
+  } catch {
+    /* ignore */
+  }
+}
+
+function getRememberedOrderIds(sessionId: string): string[] {
+  const ids = new Set<string>();
+  const a = sessionStorage.getItem(prodamusPendingOrderKey(sessionId));
+  const b = localStorage.getItem(invoiceOrderStorageKey(sessionId));
+  if (a) ids.add(a);
+  if (b) ids.add(b);
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const key = sessionStorage.key(i);
+    if (key?.startsWith('prodamus_pending_')) {
+      const v = sessionStorage.getItem(key);
+      if (v) ids.add(v);
+    }
+  }
+  return [...ids];
+}
+
 const trimApi = (url: string) => url.replace(/\/$/, '');
 
 function stripEnvQuotes(s: string): string {
@@ -244,6 +271,7 @@ export const openTelegramInvoiceForProduct = async (
   }
 
   if (paymentUrl && orderId) {
+    rememberInvoiceOrder(sessionId, orderId);
     if (typeof tg.openLink !== 'function') {
       return { status: 'skipped', reason: 'no_open_link' };
     }
@@ -261,7 +289,7 @@ export const openTelegramInvoiceForProduct = async (
       status: 'redirected',
       orderId,
       message:
-        'Открыли безопасную оплату. После оплаты закройте её и вернитесь в Corta в Telegram — доступ откроется автоматически.',
+        'Страница оплаты открыта. После оплаты вернитесь в этот чат с Corta и нажмите «Я уже оплатил — открыть отчёт».',
     };
   }
 
@@ -375,13 +403,40 @@ export const isReportPaidUnlocked = (sessionId: string): boolean => {
   return localStorage.getItem(reportPaidStorageKey(sessionId)) === '1';
 };
 
-/** Не платить повторно: проверка на сервере + ожидающий заказ + localStorage. */
-export async function tryRecoverReportAccess(sessionId: string): Promise<boolean> {
-  if (isReportPaidUnlocked(sessionId)) return true;
+/** Быстрая проверка оплаты (кнопка «Я уже оплатил», без долгого ожидания). */
+async function confirmReportPaymentFast(sessionId: string): Promise<boolean> {
+  for (const orderId of getRememberedOrderIds(sessionId)) {
+    for (let i = 0; i < 6; i++) {
+      let data = await fetchPaidOrder(orderId, 'payment-return-confirm');
+      if (data?.paid && applyPaidOrder(data)) return true;
+      data = await fetchPaidOrder(orderId, 'payment-order-status');
+      if (data?.paid && data.sessionId === sessionId && applyPaidOrder(data)) return true;
+      if (i < 5) await new Promise((r) => setTimeout(r, 1000));
+    }
+  }
+  return false;
+}
+
+export type RecoverReportResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
+/** Восстановить доступ к отчёту после Prodamus. */
+export async function recoverFullReportAccess(sessionId: string): Promise<RecoverReportResult> {
+  if (isReportPaidUnlocked(sessionId)) return { ok: true };
 
   const tg = window.Telegram?.WebApp;
+  if (!tg?.initData) {
+    return { ok: false, message: 'Откройте Corta из бота в Telegram (не из браузера).' };
+  }
+
+  const fromUrl = await recoverProdamusPaymentFromUrl();
+  if (fromUrl?.product === 'full_report' && fromUrl.sessionId === sessionId) {
+    return { ok: true };
+  }
+
   const base = getPaymentsApiUrl();
-  if (tg?.initData && base) {
+  if (base) {
     try {
       const res = await fetch(`${trimApi(base)}/payment-recover-session`, {
         method: 'POST',
@@ -389,18 +444,34 @@ export async function tryRecoverReportAccess(sessionId: string): Promise<boolean
         body: JSON.stringify({ initData: tg.initData, sessionId, product: 'full_report' }),
       });
       const data = (await res.json()) as PaidOrderPayload;
-      if (res.ok && applyPaidOrder(data)) return true;
+      if (res.ok && data.paid && applyPaidOrder(data)) return { ok: true };
+      if (res.status === 404) {
+        return {
+          ok: false,
+          message: 'Сервер ещё без обновления. Задеплойте последний код на Amvera и повторите.',
+        };
+      }
     } catch {
-      /* ignore */
+      return { ok: false, message: 'Нет связи с сервером. Проверьте интернет и повторите.' };
+    }
+
+    if (await confirmReportPaymentFast(sessionId)) return { ok: true };
+
+    const anyPending = await recoverProdamusPaymentPending();
+    if (anyPending?.product === 'full_report' && anyPending.sessionId === sessionId) {
+      return { ok: true };
     }
   }
 
-  const fromUrl = await recoverProdamusPaymentFromUrl();
-  if (fromUrl?.product === 'full_report' && fromUrl.sessionId === sessionId) return true;
+  return {
+    ok: false,
+    message:
+      'Оплату пока не видим. Подождите 1–2 минуты и нажмите снова. Если деньги списались — напишите в поддержку с датой и @username в Telegram.',
+  };
+}
 
-  const pending = sessionStorage.getItem(prodamusPendingOrderKey(sessionId));
-  if (pending && (await pollProdamusOrderPaidQuick(pending, sessionId))) return true;
-
-  const anyPending = await recoverProdamusPaymentPending();
-  return anyPending?.product === 'full_report' && anyPending.sessionId === sessionId;
+/** Не платить повторно: проверка на сервере + ожидающий заказ + localStorage. */
+export async function tryRecoverReportAccess(sessionId: string): Promise<boolean> {
+  const r = await recoverFullReportAccess(sessionId);
+  return r.ok;
 };

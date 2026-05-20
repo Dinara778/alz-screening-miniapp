@@ -110,6 +110,8 @@ export type SavedProgress = {
   /** Время сохранения; старые записи без поля всё ещё восстанавливаются */
   savedAt?: number;
   stage: AppStage;
+  /** ID сессии из alz_history_v1 — для экранов result / full-report после перезагрузки */
+  latestSessionId?: string;
   startedAt: number | null;
   immediateWords?: string[];
   delayedWords?: string[];

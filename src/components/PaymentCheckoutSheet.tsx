@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from './Button';
 import { CalmCardShell } from './CalmCardShell';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
 import {
   isReportPaidUnlocked,
   openTelegramInvoiceForProduct,
-  prodamusPendingOrderKey,
-  tryRecoverReportAccess,
+  recoverFullReportAccess,
   type TelegramInvoiceProduct,
 } from '../utils/telegramPayments';
 
@@ -19,10 +18,6 @@ type Props = {
   onNotice: (message: string | null) => void;
 };
 
-/**
- * Оформление в дизайне Corta. Данные карты здесь не вводятся — только счёт;
- * оплата идёт через Telegram или защищённую страницу Prodamus (требование банков).
- */
 export const PaymentCheckoutSheet = ({
   open,
   product,
@@ -32,27 +27,70 @@ export const PaymentCheckoutSheet = ({
   onNotice,
 }: Props) => {
   const meta = PAYMENT_PRODUCTS[product];
-  const [busy, setBusy] = useState(false);
+  const [payBusy, setPayBusy] = useState(false);
   const [recoverBusy, setRecoverBusy] = useState(false);
+  const [awaitingReturn, setAwaitingReturn] = useState(false);
   const [alreadyPaid, setAlreadyPaid] = useState(() =>
     product === 'full_report' ? isReportPaidUnlocked(sessionId) : false,
   );
+  const [sheetNotice, setSheetNotice] = useState<string | null>(null);
+  const payInFlightRef = useRef(false);
+
+  const showNotice = useCallback(
+    (msg: string | null) => {
+      setSheetNotice(msg);
+      onNotice(msg);
+    },
+    [onNotice],
+  );
+
+  const tryUnlock = useCallback(async (): Promise<boolean> => {
+    if (product !== 'full_report') return false;
+    const r = await recoverFullReportAccess(sessionId);
+    if (r.ok) {
+      setAlreadyPaid(true);
+      setAwaitingReturn(false);
+      onPaid();
+      onClose();
+      return true;
+    }
+    showNotice(r.message);
+    return false;
+  }, [product, sessionId, onPaid, onClose, showNotice]);
 
   useEffect(() => {
     if (!open || product !== 'full_report') return;
     setAlreadyPaid(isReportPaidUnlocked(sessionId));
+    setAwaitingReturn(false);
+    setSheetNotice(null);
+    payInFlightRef.current = false;
   }, [open, product, sessionId]);
+
+  useEffect(() => {
+    if (!open || product !== 'full_report') return;
+    const onVis = () => {
+      if (document.visibilityState === 'visible') {
+        void tryUnlock();
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [open, product, tryUnlock]);
 
   if (!open) return null;
 
+  const anyBusy = payBusy || recoverBusy;
+
   const handlePay = async () => {
+    if (anyBusy || payInFlightRef.current) return;
     if (product === 'full_report' && isReportPaidUnlocked(sessionId)) {
       onPaid();
       onClose();
       return;
     }
-    setBusy(true);
-    onNotice(null);
+    payInFlightRef.current = true;
+    setPayBusy(true);
+    showNotice(null);
     try {
       const r = await openTelegramInvoiceForProduct(product, sessionId);
       if (r.status === 'paid') {
@@ -61,11 +99,8 @@ export const PaymentCheckoutSheet = ({
         return;
       }
       if (r.status === 'redirected') {
-        sessionStorage.setItem(prodamusPendingOrderKey(sessionId), r.orderId);
-        onNotice(
-          'Оплата уже была — не платите повторно, если деньги списались. Закройте страницу оплаты и снова откройте Corta из бота. Нажмите «Я уже оплатил» ниже.',
-        );
-        onClose();
+        setAwaitingReturn(true);
+        showNotice(r.message);
         return;
       }
       if (r.status === 'skipped') {
@@ -76,40 +111,36 @@ export const PaymentCheckoutSheet = ({
           no_open_invoice: 'Обновите Telegram до последней версии',
           no_open_link: 'Обновите Telegram до последней версии',
         };
-        onNotice(byReason[r.reason]);
+        showNotice(byReason[r.reason]);
         return;
       }
       if (r.status === 'cancelled') {
-        onNotice('Оплата отменена');
+        showNotice('Оплата отменена');
         return;
       }
       if (r.status === 'failed') {
-        onNotice('Оплата не завершена. Если деньги уже списались — нажмите «Я уже оплатил».');
+        showNotice(
+          product === 'full_report'
+            ? 'Оплата не завершена. Нажмите «Я уже оплатил», если деньги списались.'
+            : 'Оплата не завершена. Попробуйте ещё раз.',
+        );
         return;
       }
       if (r.status === 'error') {
-        onNotice(r.message);
+        showNotice(r.message);
       }
     } finally {
-      setBusy(false);
+      setPayBusy(false);
+      payInFlightRef.current = false;
     }
   };
 
   const handleAlreadyPaid = async () => {
-    if (product !== 'full_report') return;
+    if (product !== 'full_report' || anyBusy) return;
     setRecoverBusy(true);
-    onNotice(null);
+    showNotice(null);
     try {
-      const ok = await tryRecoverReportAccess(sessionId);
-      if (ok) {
-        setAlreadyPaid(true);
-        onPaid();
-        onClose();
-        return;
-      }
-      onNotice(
-        'Оплату на сервере не видим. Закройте приложение, откройте Corta снова из бота. Если списание было — напишите в поддержку с датой и @username.',
-      );
+      await tryUnlock();
     } finally {
       setRecoverBusy(false);
     }
@@ -129,98 +160,120 @@ export const PaymentCheckoutSheet = ({
         onClick={onClose}
       />
       <CalmCardShell
-        className="relative z-10 max-h-[92dvh] w-full max-w-md rounded-b-none sm:rounded-3xl"
-        innerClassName="gap-4 p-5 pb-8 sm:p-6"
+        className="relative z-10 flex max-h-[min(92dvh,720px)] w-full max-w-md flex-col rounded-b-none sm:rounded-3xl"
+        innerClassName="flex min-h-0 flex-1 flex-col p-0"
       >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-emerald-300/90">Оплата</p>
-            <h2 id="payment-checkout-title" className="app-heading mt-1 text-xl">
-              {alreadyPaid && product === 'full_report' ? 'Доступ уже есть' : meta.title}
-            </h2>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-3 pt-5 sm:px-6 sm:pt-6">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-emerald-300/90">Оплата</p>
+              <h2 id="payment-checkout-title" className="app-heading mt-1 text-xl">
+                {alreadyPaid && product === 'full_report' ? 'Доступ уже есть' : meta.title}
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="shrink-0 rounded-full px-2 py-1 text-2xl leading-none text-white/50 hover:text-white"
+              aria-label="Закрыть"
+            >
+              ×
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="shrink-0 rounded-full px-2 py-1 text-2xl leading-none text-white/50 hover:text-white"
-            aria-label="Закрыть"
-          >
-            ×
-          </button>
+
+          {alreadyPaid && product === 'full_report' ? (
+            <div className="mt-4 space-y-4">
+              <p className="calm-body text-sm text-emerald-100/95">
+                Оплата учтена. Откройте расширенный отчёт.
+              </p>
+              <Button
+                type="button"
+                variant="sell"
+                className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold sm:text-lg"
+                onClick={() => {
+                  onPaid();
+                  onClose();
+                }}
+              >
+                Открыть расширенный отчёт
+              </Button>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-4">
+              <p className="calm-body text-sm text-white/80">{meta.subtitle}</p>
+
+              <ul className="calm-inset space-y-2 text-sm text-white/85">
+                {meta.bullets.map((line) => (
+                  <li key={line} className="flex gap-2">
+                    <span className="text-emerald-400" aria-hidden>
+                      ✓
+                    </span>
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {awaitingReturn ? (
+                <p className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2.5 text-xs leading-relaxed text-emerald-100/95">
+                  После оплаты вернитесь в этот чат и нажмите зелёную кнопку ниже — отчёт откроется автоматически.
+                </p>
+              ) : null}
+
+              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-center">
+                <p className="text-3xl font-bold tabular-nums leading-none text-white">{meta.priceRub} ₽</p>
+                <p className="mt-2 text-xs leading-relaxed text-white/55">{meta.paymentNote}</p>
+              </div>
+
+              {sheetNotice ? (
+                <p className="text-center text-xs leading-relaxed text-amber-200/90">{sheetNotice}</p>
+              ) : null}
+            </div>
+          )}
         </div>
 
-        {alreadyPaid && product === 'full_report' ? (
-          <>
-            <p className="calm-body text-sm text-emerald-100/95">
-              Оплата за этот результат уже учтена. Повторно платить не нужно — откройте расширенный отчёт.
-            </p>
+        {!alreadyPaid || product !== 'full_report' ? (
+          <div className="shrink-0 space-y-3 border-t border-white/10 px-5 py-4 sm:px-6">
             <Button
               type="button"
               variant="sell"
-              className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold sm:text-lg"
-              onClick={() => {
-                onPaid();
-                onClose();
-              }}
-            >
-              Открыть расширенный отчёт
-            </Button>
-          </>
-        ) : (
-          <>
-            <p className="calm-body text-sm text-white/80">{meta.subtitle}</p>
-
-            <ul className="calm-inset space-y-2 text-sm text-white/85">
-              {meta.bullets.map((line) => (
-                <li key={line} className="flex gap-2">
-                  <span className="text-emerald-400" aria-hidden>
-                    ✓
-                  </span>
-                  <span>{line}</span>
-                </li>
-              ))}
-            </ul>
-
-            <div className="rounded-2xl border border-amber-400/25 bg-amber-500/10 px-3 py-2.5 text-xs leading-relaxed text-amber-100/95">
-              Если 399 ₽ уже списались — не оплачивайте снова. Нажмите «Я уже оплатил».
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center">
-              <p className="text-3xl font-bold tabular-nums text-white">{meta.priceRub} ₽</p>
-              <p className="mt-1 text-xs text-white/55">Безопасная оплата · чек на email при необходимости</p>
-            </div>
-
-            <Button
-              type="button"
-              variant="sell"
-              disabled={busy || recoverBusy}
-              className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold sm:text-lg"
+              disabled={anyBusy || awaitingReturn}
+              className="w-full shrink-0 rounded-2xl py-4 text-[1.0625rem] font-bold sm:text-lg"
               onClick={() => void handlePay()}
             >
-              {busy ? 'Подключаем оплату…' : `Оплатить ${meta.priceRub} ₽`}
+              {payBusy ? 'Открываем оплату…' : awaitingReturn ? 'Оплата открыта' : `Оплатить ${meta.priceRub} ₽`}
             </Button>
 
             {product === 'full_report' ? (
               <Button
                 type="button"
                 variant="secondary"
-                disabled={busy || recoverBusy}
-                className="w-full rounded-2xl py-3.5 text-sm font-semibold"
+                disabled={anyBusy}
+                className="w-full shrink-0 rounded-2xl py-3.5 text-sm font-semibold"
                 onClick={() => void handleAlreadyPaid()}
               >
                 {recoverBusy ? 'Проверяем оплату…' : 'Я уже оплатил — открыть отчёт'}
               </Button>
             ) : null}
-          </>
-        )}
 
-        <button
-          type="button"
-          className="w-full py-2 text-sm text-white/45 hover:text-white/70"
-          onClick={onClose}
-        >
-          Назад
-        </button>
+            <button
+              type="button"
+              className="w-full py-1 text-sm text-white/45 hover:text-white/70"
+              onClick={onClose}
+            >
+              Назад
+            </button>
+          </div>
+        ) : (
+          <div className="shrink-0 px-5 pb-4 sm:px-6">
+            <button
+              type="button"
+              className="w-full py-2 text-sm text-white/45 hover:text-white/70"
+              onClick={onClose}
+            >
+              Назад
+            </button>
+          </div>
+        )}
       </CalmCardShell>
     </div>
   );

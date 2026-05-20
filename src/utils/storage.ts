@@ -1,7 +1,9 @@
 import { AppStage, SavedProgress, SessionResult } from '../types';
+import { consumeHardReloadFlag, consumeRestartIntent } from './appReload';
 
 const HISTORY_KEY = 'alz_history_v1';
 const PROGRESS_KEY = 'alz_progress_v1';
+const LAST_SESSION_ID_KEY = 'alz_last_session_id';
 
 const PROGRESS_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -14,15 +16,23 @@ export function hasPaymentReturnInUrl(): boolean {
   return status === 'ok' || status === 'success' || status === 'paid';
 }
 
-/** Полная перезагрузка вкладки (F5) — не сбрасываем прогресс при возврате с оплаты. */
+/** Полная перезагрузка вкладки / pull-to-refresh / кнопка «Обновить». */
 export function isPageReload(): boolean {
   if (hasPaymentReturnInUrl()) return false;
+  if (consumeHardReloadFlag()) return true;
   if (typeof window === 'undefined' || typeof performance === 'undefined') return false;
   const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
   if (nav?.type === 'reload') return true;
   const legacy = (performance as Performance & { navigation?: { type?: number } }).navigation;
   return legacy?.type === 1;
 }
+
+export function isRestartBoot(): boolean {
+  return consumeRestartIntent();
+}
+
+/** После теста: перезагрузка страницы не должна сбрасывать на intro */
+const POST_TEST_STAGES = new Set<AppStage>(['result', 'full-report', 'consultation-request']);
 
 /** Этапы, с которых имеет смысл восстанавливать сессию после закрытия мини-приложения */
 const RESTORABLE_STAGES = new Set<AppStage>([
@@ -44,9 +54,50 @@ const RESTORABLE_STAGES = new Set<AppStage>([
 
 export function shouldRestoreProgress(s: SavedProgress | null | undefined): s is SavedProgress {
   if (!s?.stage) return false;
-  if (!RESTORABLE_STAGES.has(s.stage)) return false;
+  const okStage = RESTORABLE_STAGES.has(s.stage) || POST_TEST_STAGES.has(s.stage);
+  if (!okStage) return false;
   if (typeof s.savedAt === 'number' && Date.now() - s.savedAt > PROGRESS_MAX_AGE_MS) return false;
+  if (POST_TEST_STAGES.has(s.stage)) {
+    const history = loadHistory();
+    if (history.length > 0) return true;
+    const sid = s.latestSessionId ?? loadLastSessionId();
+    if (sid && history.some((h) => h.id === sid)) return true;
+    return Boolean(sid);
+  }
   return true;
+}
+
+export function saveLastSessionId(sessionId: string): void {
+  try {
+    localStorage.setItem(LAST_SESSION_ID_KEY, sessionId);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function loadLastSessionId(): string | null {
+  try {
+    return localStorage.getItem(LAST_SESSION_ID_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function loadSessionFromHistory(sessionId?: string | null): SessionResult | null {
+  const history = loadHistory();
+  if (!history.length) return null;
+  if (sessionId) {
+    return history.find((h) => h.id === sessionId) ?? history[0];
+  }
+  return history[0];
+}
+
+/** При F5 на экране результатов не стираем сохранённый этап */
+export function shouldClearProgressOnReload(saved: SavedProgress | null): boolean {
+  if (!saved?.stage) return false;
+  if (POST_TEST_STAGES.has(saved.stage)) return false;
+  if (hasPaymentReturnInUrl()) return false;
+  return RESTORABLE_STAGES.has(saved.stage);
 }
 
 export const loadHistory = (): SessionResult[] => {

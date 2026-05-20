@@ -5,6 +5,8 @@ export type PaymentProductMeta = {
   priceRub: number;
   subtitle: string;
   bullets: string[];
+  /** Подпись под суммой */
+  paymentNote: string;
 };
 
 export const PAYMENT_PRODUCTS: Record<TelegramInvoiceProduct, PaymentProductMeta> = {
@@ -17,6 +19,7 @@ export const PAYMENT_PRODUCTS: Record<TelegramInvoiceProduct, PaymentProductMeta
       'Персональные рекомендации',
       'Отчёт сохраняется в приложении',
     ],
+    paymentNote: 'Безопасная оплата · чек отправляется на email после оплаты',
   },
   consultation: {
     title: 'Сессия с экспертом',
@@ -27,5 +30,6 @@ export const PAYMENT_PRODUCTS: Record<TelegramInvoiceProduct, PaymentProductMeta
       'Ответы на вопросы по результатам',
       'После оплаты — запись на удобное время',
     ],
+    paymentNote: 'Безопасная оплата · чек отправляется на email, указанный при оплате',
   },
 };

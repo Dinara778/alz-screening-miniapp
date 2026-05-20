@@ -11,6 +11,7 @@ import { CortaIntroPage } from './pages/CortaIntroPage';
 import { ExpertIntroPage } from './pages/ExpertIntroPage';
 import { IntroTestOfferPage } from './pages/IntroTestOfferPage';
 import { WelcomePage } from './pages/WelcomePage';
+import { AppRefreshControls } from './components/AppRefreshControls';
 
 function App() {
   const app = useApp();
@@ -41,6 +42,7 @@ function App() {
         ref={scrollRef}
         className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] [overflow-anchor:none]"
       >
+        <AppRefreshControls />
         <div key={app.stage} className="flex min-h-0 min-w-0 flex-1 flex-col">
           {app.stage === 'corta-intro' && (
             <CortaIntroPage onContinue={() => app.setStage('expert-intro')} />

@@ -62,6 +62,60 @@ input:focus-visible {
     @apply text-xl font-bold leading-snug text-white/95 sm:text-2xl;
   }
 
+  /** Обводка заголовка — рамка по размеру всего текста, под слоем текста */
+  .sketch-highlight-title__box {
+    position: relative;
+    display: inline-block;
+    width: fit-content;
+    max-width: 100%;
+    isolation: isolate;
+  }
+
+  .sketch-highlight-title__box::before,
+  .sketch-highlight-title__box::after {
+    content: '';
+    position: absolute;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .sketch-highlight-title__box::before {
+    inset: -0.42em -0.52em;
+    border: 2px solid color-mix(in srgb, var(--sketch-accent) 88%, transparent);
+    border-radius: 42% 58% 55% 45% / 48% 42% 58% 52%;
+    background: color-mix(in srgb, var(--sketch-accent) 10%, transparent);
+    transform: rotate(-0.65deg);
+  }
+
+  .sketch-highlight-title__box::after {
+    inset: -0.3em -0.4em;
+    border: 1px solid color-mix(in srgb, var(--sketch-accent) 36%, transparent);
+    border-radius: 48% 52% 50% 46% / 46% 54% 48% 52%;
+    transform: rotate(0.55deg);
+  }
+
+  .sketch-highlight-title__text {
+    position: relative;
+    z-index: 1;
+    padding: 0.12em 0.08em;
+  }
+
+  .sketch-highlight-title--generous .sketch-highlight-title__box::before {
+    inset: -0.52em -0.68em;
+  }
+
+  .sketch-highlight-title--generous .sketch-highlight-title__box::after {
+    inset: -0.38em -0.52em;
+  }
+
+  .sketch-highlight-title--tuck-bottom .sketch-highlight-title__box::before {
+    bottom: -0.12em;
+  }
+
+  .sketch-highlight-title--tuck-bottom .sketch-highlight-title__box::after {
+    bottom: -0.06em;
+  }
+
   .results-body {
     @apply text-base leading-relaxed text-white/85 sm:text-lg;
   }

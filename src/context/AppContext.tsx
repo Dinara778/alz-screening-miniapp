@@ -4,12 +4,19 @@ import {
   clearProgress,
   hasPaymentReturnInUrl,
   isPageReload,
+  isRestartBoot,
   loadHistory,
+  loadLastSessionId,
+  loadSessionFromHistory,
+  saveLastSessionId,
   saveProgress,
   saveSession,
+  shouldClearProgressOnReload,
   shouldRestoreProgress,
   loadProgress,
 } from '../utils/storage';
+import { reloadApplication, restartApplicationToIntro, stripPaymentQueryFromUrl } from '../utils/appReload';
+import { isReportPaidUnlocked } from '../utils/telegramPayments';
 import { pickStudyWordList } from '../utils/generateStimuli';
 import {
   findPaidReportSessionId,
@@ -37,23 +44,64 @@ type BootState = {
 };
 
 function resolveInitialStage(): AppStage {
-  const paidSessionId = findPaidReportSessionId();
-  if (paidSessionId) return 'full-report';
   if (hasPaymentReturnInUrl()) return 'result';
   return 'corta-intro';
 }
 
+function resolveBootStage(r: ReturnType<typeof loadProgress>): AppStage {
+  if (hasPaymentReturnInUrl()) return 'result';
+  if (r && shouldRestoreProgress(r)) {
+    if (r.stage === 'full-report') {
+      const sid = r.latestSessionId ?? loadLastSessionId();
+      if (sid && isReportPaidUnlocked(sid)) return 'full-report';
+      return 'result';
+    }
+    return r.stage;
+  }
+  const lastId = loadLastSessionId();
+  if (lastId && loadSessionFromHistory(lastId)) return 'result';
+  return resolveInitialStage();
+}
+
+function resolveBootLatestResult(stage: AppStage): SessionResult | null {
+  if (stage === 'full-report') {
+    const paidId = findPaidReportSessionId();
+    if (paidId) return loadSessionFromHistory(paidId);
+  }
+  const prog = loadProgress();
+  const sid =
+    stage === 'result' || stage === 'full-report' || stage === 'consultation-request'
+      ? (prog?.latestSessionId ?? loadLastSessionId())
+      : loadLastSessionId();
+  return loadSessionFromHistory(sid);
+}
+
 function buildBootState(): BootState {
+  if (isRestartBoot()) {
+    clearProgress();
+    return {
+      stage: 'corta-intro',
+      sessionSeed: Date.now(),
+      interferenceStart: null,
+      immediateWords: [],
+      delayedWords: [],
+      flankerTrials: [],
+      reactionSuccessful: [],
+      reactionAnticipations: 0,
+      stroopTrials: [],
+      participant: null,
+      studyWordList: [],
+    };
+  }
+
   const reloaded = isPageReload();
-  if (reloaded) clearProgress();
-  const raw = reloaded ? null : loadProgress();
+  const rawBeforeClear = loadProgress();
+  if (reloaded && shouldClearProgressOnReload(rawBeforeClear)) {
+    clearProgress();
+  }
+  const raw = loadProgress();
   const r = shouldRestoreProgress(raw) ? raw : null;
-  const paidSessionId = findPaidReportSessionId();
-  const stage: AppStage = paidSessionId
-    ? 'full-report'
-    : hasPaymentReturnInUrl()
-      ? 'result'
-      : (r?.stage ?? resolveInitialStage());
+  const stage = resolveBootStage(r);
   return {
     stage,
     sessionSeed: typeof r?.sessionSeed === 'number' ? r.sessionSeed : Date.now(),
@@ -95,7 +143,13 @@ type AppState = {
   participant: ParticipantProfile | null;
   setParticipant: (v: ParticipantProfile | null) => void;
   resetSession: () => void;
+  /** Перезагрузить WebView, сохранив экран и данные сессии. */
+  refreshApp: () => void;
+  /** Сброс на вводный экран (история тестов и оплаты отчёта сохраняются). */
+  restartApp: () => void;
   beginNewAssessment: (profile: ParticipantProfile) => void;
+  /** Новое прохождение теста (профиль сохраняется; отчёт — для новой сессии). */
+  retakeTest: () => void;
   saveResult: (r: SessionResult) => void;
   consultationReturnTo: ConsultationReturnStage | null;
   setConsultationReturnTo: (v: ConsultationReturnStage | null) => void;
@@ -122,13 +176,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [stroopTrials, setStroopTrials] = useState<TrialResult[]>(b.stroopTrials);
   const [faceAnswers, setFaceAnswers] = useState<FaceAnswer[]>([]);
   const [history, setHistory] = useState<SessionResult[]>(() => loadHistory());
-  const [latestResult, setLatestResult] = useState<SessionResult | null>(() => {
-    const h = loadHistory();
-    const paidId = findPaidReportSessionId();
-    if (paidId) return h.find((s) => s.id === paidId) ?? h[0] ?? null;
-    if (hasPaymentReturnInUrl()) return h[0] ?? null;
-    return null;
-  });
+  const [latestResult, setLatestResult] = useState<SessionResult | null>(() =>
+    resolveBootLatestResult(b.stage),
+  );
   const [sessionSeed, setSessionSeed] = useState(b.sessionSeed);
   const [participant, setParticipant] = useState<ParticipantProfile | null>(b.participant);
   const [consultationReturnTo, setConsultationReturnTo] = useState<ConsultationReturnStage | null>(null);
@@ -155,19 +205,32 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
           return;
         }
       }
-      const recent = loadHistory()[0];
-      if (recent?.id && (await tryRecoverReportAccess(recent.id))) {
-        setLatestResult(recent);
-        setStage('full-report');
-      }
     };
     void run();
   }, []);
+
+  useEffect(() => {
+    const onVis = async () => {
+      if (document.visibilityState !== 'visible') return;
+      setHistory(loadHistory());
+      if (stage !== 'result' && stage !== 'full-report') return;
+      if (latestResult?.id) return;
+      const session = resolveBootLatestResult(stage);
+      if (session) setLatestResult(session);
+      if (stage === 'full-report' && session?.id) {
+        const ok = await tryRecoverReportAccess(session.id);
+        if (!ok && !isReportPaidUnlocked(session.id)) setStage('result');
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [stage, latestResult?.id]);
 
 
   useEffect(() => {
     saveProgress({
       stage,
+      latestSessionId: latestResult?.id,
       startedAt: interferenceStart,
       immediateWords,
       delayedWords,
@@ -181,6 +244,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     });
   }, [
     stage,
+    latestResult?.id,
     interferenceStart,
     immediateWords,
     delayedWords,
@@ -242,6 +306,47 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     setStudyWordList([]);
     setSessionSeed(Date.now());
     clearProgress();
+    try {
+      localStorage.removeItem('alz_last_session_id');
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const refreshApp = useCallback(() => {
+    saveProgress({
+      stage,
+      latestSessionId: latestResult?.id,
+      startedAt: interferenceStart,
+      immediateWords,
+      delayedWords,
+      flankerTrials,
+      reactionSuccessful,
+      reactionAnticipations,
+      stroopTrials,
+      sessionSeed,
+      participant,
+      studyWordList,
+    });
+    reloadApplication();
+  }, [
+    stage,
+    latestResult?.id,
+    interferenceStart,
+    immediateWords,
+    delayedWords,
+    flankerTrials,
+    reactionSuccessful,
+    reactionAnticipations,
+    stroopTrials,
+    sessionSeed,
+    participant,
+    studyWordList,
+  ]);
+
+  const restartApp = useCallback(() => {
+    clearProgress();
+    restartApplicationToIntro();
   }, []);
 
   const beginNewAssessment = useCallback((profile: ParticipantProfile) => {
@@ -263,8 +368,17 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     setStage('word-study');
   }, []);
 
+  const retakeTest = useCallback(() => {
+    if (participant) {
+      beginNewAssessment(participant);
+      return;
+    }
+    setStage('welcome');
+  }, [participant, beginNewAssessment]);
+
   const saveResultFn = useCallback((result: SessionResult) => {
     setLatestResult(result);
+    saveLastSessionId(result.id);
     saveSession(result);
     try {
       const prev = parseInt(localStorage.getItem('alz_completed_sessions') || '0', 10) || 0;
@@ -280,8 +394,21 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       // Ignore webhook errors to keep UX stable.
     });
     setHistory(loadHistory());
-    clearProgress();
-  }, []);
+    saveProgress({
+      stage: 'result',
+      latestSessionId: result.id,
+      startedAt: null,
+      immediateWords: [],
+      delayedWords: [],
+      flankerTrials: [],
+      reactionSuccessful: [],
+      reactionAnticipations: 0,
+      stroopTrials: [],
+      sessionSeed,
+      participant: result.participant,
+      studyWordList: [],
+    });
+  }, [sessionSeed]);
 
   const value = useMemo(
     () => ({
@@ -310,7 +437,10 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       participant,
       setParticipant,
       resetSession,
+      refreshApp,
+      restartApp,
       beginNewAssessment,
+      retakeTest,
       saveResult: saveResultFn,
       consultationReturnTo,
       setConsultationReturnTo,
@@ -334,10 +464,19 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       consultationReturnTo,
       studyWordList,
       resetSession,
+      refreshApp,
+      restartApp,
       beginNewAssessment,
+      retakeTest,
       saveResultFn,
     ],
   );
+
+  useEffect(() => {
+    if (!hasPaymentReturnInUrl()) return;
+    const t = window.setTimeout(() => stripPaymentQueryFromUrl(), 800);
+    return () => window.clearTimeout(t);
+  }, []);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };

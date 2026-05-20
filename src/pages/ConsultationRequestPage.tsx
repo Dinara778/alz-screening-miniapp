@@ -103,7 +103,9 @@ export const ConsultationRequestPage = () => {
     <div className="relative flex min-h-0 flex-1 flex-col pb-4">
       {!paidOk ? <ScreenBackHeader onBack={goBack} /> : null}
       <CalmCardShell className="space-y-4">
-        <SketchHighlightTitle accent={accent}>Запись на персональную сессию</SketchHighlightTitle>
+        <SketchHighlightTitle accent={accent} generousOutline>
+          Запись на персональную сессию
+        </SketchHighlightTitle>
         {!latestResult ? (
           <>
             <p className="mt-3 calm-body dark:text-slate-200">Нет данных прохождения. Вернитесь назад.</p>

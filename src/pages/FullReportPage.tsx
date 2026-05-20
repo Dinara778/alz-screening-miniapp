@@ -6,7 +6,9 @@ import { ReportFlowShell } from '../components/results/ReportFlowShell';
 import { SketchHighlightTitle } from '../components/results/SketchHighlightTitle';
 import { scoreAccentFromValue } from '../components/results/scoreAccent';
 import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
+import { RetakeTestButton } from '../components/RetakeTestButton';
 import { useApp } from '../context/AppContext';
+import { useHydrateLatestResult } from '../hooks/useHydrateLatestResult';
 import { formatDomainInterpretationPlain } from '../copy/cognitiveDomainInterpretationsMid52';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { downloadCognitiveReportPdf } from '../utils/pdfReport';
@@ -29,9 +31,21 @@ const upsellFeatures = [
   'План улучшения показателей',
 ] as const;
 
+const REPORT_UI_KEY = 'alz_report_ui_v1';
+
 export const FullReportPage = () => {
-  const { latestResult, participant, setStage, setConsultationReturnTo } = useApp();
-  const [step, setStep] = useState<ReportStep>('ready');
+  const { latestResult, participant, setStage, setConsultationReturnTo, retakeTest } = useApp();
+  useHydrateLatestResult();
+  const [step, setStep] = useState<ReportStep>(() => {
+    try {
+      const raw = sessionStorage.getItem(REPORT_UI_KEY);
+      if (!raw) return 'ready';
+      const p = JSON.parse(raw) as { step?: ReportStep };
+      return p.step === 'report' || p.step === 'learned' || p.step === 'upsell' ? p.step : 'ready';
+    } catch {
+      return 'ready';
+    }
+  });
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
@@ -40,6 +54,14 @@ export const FullReportPage = () => {
     if (!latestResult) return null;
     return buildCognitiveAnalytics(latestResult);
   }, [latestResult]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(REPORT_UI_KEY, JSON.stringify({ step }));
+    } catch {
+      /* ignore */
+    }
+  }, [step]);
 
   useEffect(() => {
     if (!latestResult) return;
@@ -55,13 +77,11 @@ export const FullReportPage = () => {
 
   if (!latestResult || !analytics) {
     return (
-      <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-4 text-white">
-        Нет данных о прохождении.
-        <div className="mt-3">
-          <Button variant="secondary" onClick={() => setStage('welcome')}>
-            На главную
-          </Button>
-        </div>
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 rounded-xl border border-amber-400/30 bg-amber-400/10 p-6 text-center text-white">
+        <p className="text-sm text-white/85">Загружаем отчёт…</p>
+        <Button variant="secondary" onClick={() => setStage('result')}>
+          К результатам
+        </Button>
       </div>
     );
   }
@@ -157,9 +177,12 @@ export const FullReportPage = () => {
     return (
       <ReportFlowShell
         footer={
-          <Button type="button" className={CTA_BUTTON_CLASS} onClick={() => setStep('report')}>
-            Далее
-          </Button>
+          <div className="flex flex-col gap-3">
+            <Button type="button" className={CTA_BUTTON_CLASS} onClick={() => setStep('report')}>
+              Далее
+            </Button>
+            <RetakeTestButton onClick={retakeTest} />
+          </div>
         }
       >
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5 py-6 text-center sm:text-left">
@@ -197,6 +220,7 @@ export const FullReportPage = () => {
               <Button type="button" variant="secondary" className="w-full" onClick={() => setStep('learned')}>
                 Далее
               </Button>
+              <RetakeTestButton onClick={retakeTest} />
             </div>
           }
         >
