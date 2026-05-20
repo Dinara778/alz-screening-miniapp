@@ -94,6 +94,14 @@ export function resolveWebhookUrl(env = process.env) {
   return '';
 }
 
+function fetchErrorMessage(err) {
+  if (!err) return 'unknown';
+  const cause = err.cause;
+  if (cause && typeof cause === 'object' && 'message' in cause) return String(cause.message);
+  return err instanceof Error ? err.message : String(err);
+}
+
+/** Регистрация вебхука при старте. Сбой fetch к api.telegram.org не ломает оплату Prodamus. */
 export async function ensureTelegramWebhook(tgApi, env = process.env) {
   const token = env.TELEGRAM_BOT_TOKEN?.trim();
   const url = resolveWebhookUrl(env);
@@ -107,15 +115,35 @@ export async function ensureTelegramWebhook(tgApi, env = process.env) {
     );
     return { ok: false, reason: 'no_webhook_url' };
   }
-  const result = await tgApi('setWebhook', {
+
+  const body = {
     url,
     allowed_updates: ['message', 'pre_checkout_query'],
     drop_pending_updates: false,
-  });
-  if (result.ok) {
-    console.info('[bot] webhook установлен:', url);
-  } else {
-    console.error('[bot] setWebhook failed:', result.description || result);
+  };
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const result = await tgApi('setWebhook', body);
+      if (result.ok) {
+        console.info('[bot] webhook установлен:', url);
+      } else {
+        console.warn('[bot] setWebhook:', result.description || result);
+      }
+      return result;
+    } catch (e) {
+      const msg = fetchErrorMessage(e);
+      if (attempt < 3) {
+        console.warn(`[bot] setWebhook попытка ${attempt}/3: ${msg}`);
+        await new Promise((r) => setTimeout(r, 1500 * attempt));
+        continue;
+      }
+      console.warn(
+        '[bot] setWebhook: нет связи с api.telegram.org (оплата Prodamus и /invoice работают; /start — если вебхук уже был зарегистрирован ранее):',
+        msg,
+      );
+      return { ok: false, reason: 'fetch_failed', error: msg };
+    }
   }
-  return result;
+  return { ok: false, reason: 'fetch_failed' };
 }

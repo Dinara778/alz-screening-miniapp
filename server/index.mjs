@@ -489,6 +489,6 @@ app.listen(PORT, () => {
     `Payments API: http://127.0.0.1:${PORT}  provider=${PAYMENT_PROVIDER}  (POST /invoice, /webhook, …)`,
   );
   if (BOT_TOKEN) {
-    void ensureTelegramWebhook(tgApi).catch((e) => console.error('[bot] ensureWebhook', e));
+    void ensureTelegramWebhook(tgApi, process.env);
   }
 });
