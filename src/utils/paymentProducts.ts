@@ -7,6 +7,10 @@ export type PaymentProductMeta = {
   bullets: string[];
   /** Подпись под суммой */
   paymentNote: string;
+  /** Текст на зелёной плашке в окне оплаты после открытия Payform */
+  awaitingReturnHint: string;
+  /** Подсказка на экране записи / в уведомлении после открытия оплаты */
+  redirectOpenedMessage: string;
 };
 
 export const PAYMENT_PRODUCTS: Record<TelegramInvoiceProduct, PaymentProductMeta> = {
@@ -20,6 +24,10 @@ export const PAYMENT_PRODUCTS: Record<TelegramInvoiceProduct, PaymentProductMeta
       'Отчёт сохраняется в приложении',
     ],
     paymentNote: 'Безопасная оплата · чек отправляется на email после оплаты',
+    awaitingReturnHint:
+      'После оплаты вернитесь в этот чат и нажмите зелёную кнопку ниже — отчёт откроется автоматически.',
+    redirectOpenedMessage:
+      'Страница оплаты открыта. После оплаты вернитесь в Corta и в окне оплаты нажмите «Я уже оплатил — открыть отчёт».',
   },
   consultation: {
     title: 'Сессия с экспертом',
@@ -31,5 +39,9 @@ export const PAYMENT_PRODUCTS: Record<TelegramInvoiceProduct, PaymentProductMeta
       'После оплаты — запись на удобное время',
     ],
     paymentNote: 'Безопасная оплата · чек отправляется на email, указанный при оплате',
+    awaitingReturnHint:
+      'После оплаты вернитесь в Corta и нажмите зелёную кнопку «Оплата открыта» — мы подтвердим оплату и напишем вам для записи на сессию.',
+    redirectOpenedMessage:
+      'Страница оплаты открыта. После оплаты вернитесь в Corta и снова нажмите «Записаться на персональную сессию — 5 490 ₽» — мы подтвердим оплату и свяжемся с вами для записи.',
   },
 };

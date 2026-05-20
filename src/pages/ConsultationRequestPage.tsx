@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { CalmCardShell } from '../components/CalmCardShell';
+import { ReportFlowShell } from '../components/results/ReportFlowShell';
 import { ScreenBackHeader } from '../components/ScreenBackHeader';
 import { Button } from '../components/Button';
 import { useApp } from '../context/AppContext';
 import { isDevPaymentBypass } from '../utils/paymentStub';
-import { SupportFooter } from '../components/SupportFooter';
 import { SketchHighlightTitle } from '../components/results/SketchHighlightTitle';
 import { scoreAccentFromValue } from '../components/results/scoreAccent';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
@@ -99,56 +99,50 @@ export const ConsultationRequestPage = () => {
     ? scoreAccentFromValue(buildCognitiveAnalytics(latestResult).index.value)
     : '#34d399';
 
+  const paymentFooter =
+    latestResult && !paidOk ? (
+      <div className="flex flex-col gap-3">
+        {notice ? (
+          <p className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2.5 text-center text-xs leading-relaxed text-emerald-100/95">
+            {notice}
+          </p>
+        ) : null}
+        <Button variant="sell" type="button" className={CTA_BUTTON_CLASS} onClick={openCheckout}>
+          Записаться на персональную сессию — 5 490 ₽
+        </Button>
+      </div>
+    ) : undefined;
+
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col pb-4">
+    <div className="flex min-h-0 flex-1 flex-col">
       {!paidOk ? <ScreenBackHeader onBack={goBack} /> : null}
-      <CalmCardShell className="space-y-4">
-        <SketchHighlightTitle accent={accent} generousOutline>
-          Запись на персональную сессию
-        </SketchHighlightTitle>
-        {!latestResult ? (
-          <>
+      <ReportFlowShell footer={paymentFooter}>
+        <CalmCardShell className="space-y-4">
+          <SketchHighlightTitle accent={accent} generousOutline>
+            Запись на персональную сессию
+          </SketchHighlightTitle>
+          {!latestResult ? (
             <p className="mt-3 calm-body dark:text-slate-200">Нет данных прохождения. Вернитесь назад.</p>
-          </>
-        ) : paidOk ? (
-          <>
-            <p className="mt-3 text-lg font-semibold text-emerald-200">Спасибо за оплату!</p>
-            <p className="mt-2 calm-body leading-relaxed">
-              Мы свяжемся с вами по указанной вами почте в течение 15 минут.
-            </p>
-            <div className="mt-5">
-              <Button type="button" className="w-full rounded-2xl py-4 font-bold sm:max-w-sm" onClick={goBack}>
-                Вернуться в приложение
-              </Button>
-            </div>
-          </>
-        ) : (
-          <div className="flex min-h-[42vh] flex-col">
+          ) : paidOk ? (
+            <>
+              <p className="mt-3 text-lg font-semibold text-emerald-200">Спасибо за оплату!</p>
+              <p className="mt-2 calm-body leading-relaxed">
+                Мы свяжемся с вами по указанной вами почте в течение 15 минут.
+              </p>
+              <div className="mt-5">
+                <Button type="button" className="w-full rounded-2xl py-4 font-bold sm:max-w-sm" onClick={goBack}>
+                  Вернуться в приложение
+                </Button>
+              </div>
+            </>
+          ) : (
             <p className="mt-3 calm-body leading-relaxed dark:text-slate-200">
               Сначала оформление в приложении Corta, затем безопасная оплата. После оплаты менеджер свяжется с вами по
               почте из платёжных данных.
             </p>
-            {notice ? (
-              <p className="mt-3 text-sm text-amber-900 dark:text-amber-100 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                {notice}
-              </p>
-            ) : null}
-            <div className="mt-auto flex flex-col gap-3 pt-5">
-              <Button
-                variant="sell"
-                type="button"
-                className={`${CTA_BUTTON_CLASS} mt-2`}
-                onClick={openCheckout}
-              >
-                Записаться на персональную сессию — 5 490 ₽
-              </Button>
-            </div>
-          </div>
-        )}
-      </CalmCardShell>
-      <div className="mt-auto">
-        <SupportFooter showDeveloperCredit={false} />
-      </div>
+          )}
+        </CalmCardShell>
+      </ReportFlowShell>
       {latestResult && !paidOk ? (
         <PaymentCheckoutSheet
           open={checkoutOpen}

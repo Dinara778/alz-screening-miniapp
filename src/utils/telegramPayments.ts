@@ -1,3 +1,5 @@
+import { PAYMENT_PRODUCTS } from './paymentProducts';
+
 export type TelegramInvoiceProduct = 'full_report' | 'consultation';
 
 export type OpenInvoiceResult =
@@ -288,8 +290,7 @@ export const openTelegramInvoiceForProduct = async (
     return {
       status: 'redirected',
       orderId,
-      message:
-        'Страница оплаты открыта. После оплаты вернитесь в этот чат с Corta и нажмите «Я уже оплатил — открыть отчёт».',
+      message: PAYMENT_PRODUCTS[product].redirectOpenedMessage,
     };
   }
 

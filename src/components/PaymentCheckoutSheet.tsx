@@ -3,8 +3,11 @@ import { Button } from './Button';
 import { CalmCardShell } from './CalmCardShell';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
 import {
+  consultationPaidStorageKey,
   isReportPaidUnlocked,
   openTelegramInvoiceForProduct,
+  pollProdamusOrderPaidQuick,
+  prodamusPendingOrderKey,
   recoverFullReportAccess,
   type TelegramInvoiceProduct,
 } from '../utils/telegramPayments';
@@ -66,16 +69,30 @@ export const PaymentCheckoutSheet = ({
     payInFlightRef.current = false;
   }, [open, product, sessionId]);
 
+  const tryConfirmConsultationPaid = useCallback(async (): Promise<boolean> => {
+    if (product !== 'consultation') return false;
+    const pending = sessionStorage.getItem(prodamusPendingOrderKey(sessionId));
+    if (!pending) return false;
+    const paid = await pollProdamusOrderPaidQuick(pending, sessionId);
+    if (!paid) return false;
+    localStorage.setItem(consultationPaidStorageKey(sessionId), '1');
+    window.dispatchEvent(new Event('consultation-paid'));
+    setAwaitingReturn(false);
+    onPaid();
+    onClose();
+    return true;
+  }, [product, sessionId, onPaid, onClose]);
+
   useEffect(() => {
-    if (!open || product !== 'full_report') return;
+    if (!open) return;
     const onVis = () => {
-      if (document.visibilityState === 'visible') {
-        void tryUnlock();
-      }
+      if (document.visibilityState !== 'visible') return;
+      if (product === 'full_report') void tryUnlock();
+      if (product === 'consultation') void tryConfirmConsultationPaid();
     };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
-  }, [open, product, tryUnlock]);
+  }, [open, product, tryUnlock, tryConfirmConsultationPaid]);
 
   if (!open) return null;
 
@@ -100,7 +117,7 @@ export const PaymentCheckoutSheet = ({
       }
       if (r.status === 'redirected') {
         setAwaitingReturn(true);
-        showNotice(r.message);
+        showNotice(meta.redirectOpenedMessage);
         return;
       }
       if (r.status === 'skipped') {
@@ -215,7 +232,7 @@ export const PaymentCheckoutSheet = ({
 
               {awaitingReturn ? (
                 <p className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2.5 text-xs leading-relaxed text-emerald-100/95">
-                  После оплаты вернитесь в этот чат и нажмите зелёную кнопку ниже — отчёт откроется автоматически.
+                  {meta.awaitingReturnHint}
                 </p>
               ) : null}
 
