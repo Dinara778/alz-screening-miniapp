@@ -30,8 +30,8 @@ export const IntroTestOfferPage = ({ onContinue }: Props) => {
 
   return (
     <IntroShell aria-label="Что мы анализируем" footer={footer} compact>
-      <div className="space-y-4 pb-2">
-        <SketchHighlightTitle accent={INTRO_TITLE_ACCENT} className="w-full">
+      <div className="space-y-4 overflow-visible pb-2">
+        <SketchHighlightTitle accent={INTRO_TITLE_ACCENT} className="w-full" generousOutline>
           Оценка когнитивного профиля
         </SketchHighlightTitle>
         <p className="calm-caption">Оценка займёт около {TEST_DURATION_LABEL}.</p>

@@ -29,7 +29,7 @@ export const CalmCardShell = ({
   >
     <div className="calm-glow" aria-hidden />
     <div
-      className={`relative z-10 flex flex-col ${fill ? 'min-h-0 flex-1' : ''} ${innerClassName}`.trim()}
+      className={`relative z-10 flex min-h-0 flex-col ${fill ? 'flex-1' : ''} ${innerClassName}`.trim()}
     >
       {children}
     </div>

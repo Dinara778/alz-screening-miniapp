@@ -24,6 +24,8 @@ const WORD_STUDY_MS = 30_000;
 const WORD_STUDY_SEC = WORD_STUDY_MS / 1000;
 
 const TEST_STAGES_CENTERED = new Set<AppStage>(['reaction', 'flanker', 'stroop', 'interference-wait']);
+/** Контент скроллится внутри, CTA закреплён внизу карточки */
+const TEST_STAGES_PIN_FOOTER = new Set<AppStage>(['stroop-confirm']);
 
 function wrapWithTestProgress(stage: AppStage, node: ReactNode, backButton?: ReactNode) {
   return (
@@ -33,7 +35,11 @@ function wrapWithTestProgress(stage: AppStage, node: ReactNode, backButton?: Rea
         <TestProgressBanner stage={stage} />
       </div>
       <div
-        className={`flex w-full flex-1 flex-col gap-4 ${TEST_STAGES_CENTERED.has(stage) ? 'justify-center' : 'justify-start pt-1'}`}
+        className={`flex min-h-0 w-full flex-1 flex-col gap-4 ${
+          TEST_STAGES_PIN_FOOTER.has(stage)
+            ? 'overflow-hidden'
+            : 'overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]'
+        } ${TEST_STAGES_CENTERED.has(stage) ? 'justify-center' : 'justify-start pt-1'}`}
       >
         {node}
       </div>
@@ -519,10 +525,6 @@ export const TestPage = () => {
     return wrapWithTestProgress(
       app.stage,
       <StroopConfirmStep onConfirm={() => app.setStage('stroop')} />,
-      <BackArrowButton
-        onClick={() => app.setStage('stroop-instruction')}
-        aria-label="Назад к инструкции"
-      />,
     );
   }
 
