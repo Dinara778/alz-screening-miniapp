@@ -10,6 +10,7 @@ import {
   loadProgress,
 } from '../utils/storage';
 import { pickStudyWordList } from '../utils/generateStimuli';
+import { recoverProdamusPaymentFromUrl } from '../utils/telegramPayments';
 import { sendAnalyticsEventToSheets, sendSessionToSheets } from '../utils/sheetsWebhook';
 
 type ConsultationReturnStage = 'result' | 'full-report';
@@ -113,6 +114,26 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     sentStageEventsRef.current = new Set();
   }, [sessionSeed]);
+
+  useEffect(() => {
+    const api = (import.meta.env.VITE_TELEGRAM_PAYMENTS_URL as string | undefined)?.trim();
+    if (!api) return;
+    void recoverProdamusPaymentFromUrl(api).then((recovery) => {
+      if (!recovery) return;
+      if (recovery.product === 'full_report') {
+        const session = loadHistory().find((h) => h.id === recovery.sessionId) ?? null;
+        if (session) setLatestResult(session);
+        setStage('full-report');
+        return;
+      }
+      if (recovery.product === 'consultation') {
+        const session = loadHistory().find((h) => h.id === recovery.sessionId) ?? null;
+        if (session) setLatestResult(session);
+        setConsultationReturnTo('full-report');
+        setStage('consultation-request');
+      }
+    });
+  }, []);
 
   useEffect(() => {
     saveProgress({

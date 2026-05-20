@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useScrollToTopOnStage } from './hooks/useScrollToTopOnStage';
 import { useApp } from './context/AppContext';
-import { recoverProdamusPaymentFromUrl } from './utils/telegramPayments';
 import { applyTelegramTheme, attachTelegramThemeListener } from './utils/telegramTheme';
 import { HistoryPage } from './pages/HistoryPage';
 import { FullReportPage } from './pages/FullReportPage';
@@ -34,12 +33,6 @@ function App() {
       window.clearTimeout(t);
       detachTheme();
     };
-  }, []);
-
-  useEffect(() => {
-    const api = (import.meta.env.VITE_TELEGRAM_PAYMENTS_URL as string | undefined)?.trim();
-    if (!api) return;
-    void recoverProdamusPaymentFromUrl(api);
   }, []);
 
   return (

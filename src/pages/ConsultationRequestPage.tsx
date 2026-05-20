@@ -128,10 +128,9 @@ export const ConsultationRequestPage = () => {
           </>
         ) : paidOk ? (
           <>
-            <p className="mt-3 text-lg font-semibold text-emerald-900 dark:text-emerald-200">Оплата прошла успешно</p>
-            <p className="mt-2 calm-body leading-relaxed dark:text-slate-200">
-              Наш менеджер свяжется с вами по почте, указанной при оплате, в течение 15 минут для согласования удобного
-              времени сессии.
+            <p className="mt-3 text-lg font-semibold text-emerald-200">Спасибо за оплату!</p>
+            <p className="mt-2 calm-body leading-relaxed">
+              Мы свяжемся с вами по указанной вами почте в течение 15 минут.
             </p>
             <div className="mt-5">
               <Button type="button" className="w-full rounded-2xl py-4 font-bold sm:max-w-sm" onClick={goBack}>

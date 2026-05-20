@@ -127,15 +127,27 @@ export const consultationPaidStorageKey = (sessionId: string) => `consultation_p
  * После возврата с payform (urlSuccess) мини-приложение перезагружается — подтверждаем заказ по order_id в URL
  * и выставляем флаги доступа (сервер проверяет initData и факт оплаты по вебхуку).
  */
-export async function recoverProdamusPaymentFromUrl(apiUrl: string): Promise<void> {
+export type ProdamusPaymentRecovery = {
+  paid: true;
+  product: 'full_report' | 'consultation';
+  sessionId: string;
+};
+
+/** Возврат с Payform: проверка order_id в URL и разблокировка доступа. */
+export async function recoverProdamusPaymentFromUrl(
+  apiUrl: string,
+): Promise<ProdamusPaymentRecovery | null> {
   const raw = typeof window !== 'undefined' ? window.location.search : '';
   const params = new URLSearchParams(raw);
   const orderId = params.get('prodamus_order');
-  if (!orderId?.trim()) return;
+  const status = params.get('prodamus_status');
+  if (!orderId?.trim() || status !== 'ok') return null;
 
   const tg = window.Telegram?.WebApp;
   const base = apiUrl.trim();
-  if (!tg?.initData || !base) return;
+  if (!tg?.initData || !base) return null;
+
+  let recovery: ProdamusPaymentRecovery | null = null;
 
   try {
     const res = await fetch(`${trimApi(base)}/payment-order-status`, {
@@ -147,9 +159,11 @@ export async function recoverProdamusPaymentFromUrl(apiUrl: string): Promise<voi
     if (res.ok && data.paid === true && data.sessionId) {
       if (data.product === 'full_report') {
         localStorage.setItem(reportPaidStorageKey(data.sessionId), '1');
+        recovery = { paid: true, product: 'full_report', sessionId: data.sessionId };
       } else if (data.product === 'consultation') {
         localStorage.setItem(consultationPaidStorageKey(data.sessionId), '1');
         window.dispatchEvent(new CustomEvent('consultation-paid'));
+        recovery = { paid: true, product: 'consultation', sessionId: data.sessionId };
       }
     }
   } catch {
@@ -166,6 +180,8 @@ export async function recoverProdamusPaymentFromUrl(apiUrl: string): Promise<voi
   } catch {
     /* ignore */
   }
+
+  return recovery;
 }
 
 /**
