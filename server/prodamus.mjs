@@ -74,6 +74,18 @@ export function prodamusGetOrder(orderId) {
   return orders.get(orderId) ?? null;
 }
 
+/** Уже оплаченный продукт для этой сессии (не создавать второй счёт). */
+export function prodamusFindPaidForUserSession(tgUserId, sessionId, product) {
+  if (tgUserId == null || !sessionId) return { paid: false };
+  const sid = String(sessionId).slice(0, 80);
+  for (const o of orders.values()) {
+    if (o.tgUserId === tgUserId && o.sessionId === sid && o.status === 'paid' && o.product === product) {
+      return { paid: true, product: o.product, sessionId: o.sessionId };
+    }
+  }
+  return { paid: false };
+}
+
 /** Оплачен ли заказ этим пользователем Telegram (без раскрытия чужих заказов). */
 export function prodamusOrderPaidForUser(orderId, tgUserId) {
   if (!orderId || tgUserId == null) return { paid: false };

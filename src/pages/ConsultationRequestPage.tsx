@@ -9,16 +9,18 @@ import { SketchHighlightTitle } from '../components/results/SketchHighlightTitle
 import { scoreAccentFromValue } from '../components/results/scoreAccent';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
+import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
 import {
   consultationPaidStorageKey,
   isPaymentsBackendConfigured,
-  openTelegramInvoiceForProduct,
+  pollProdamusOrderPaidQuick,
+  prodamusPendingOrderKey,
 } from '../utils/telegramPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
 export const ConsultationRequestPage = () => {
   const { setStage, consultationReturnTo, setConsultationReturnTo, participant, latestResult } = useApp();
-  const [busy, setBusy] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [paidOk, setPaidOk] = useState(false);
 
@@ -34,20 +36,53 @@ export const ConsultationRequestPage = () => {
     return () => window.removeEventListener('consultation-paid', sync);
   }, [latestResult?.id]);
 
+  useEffect(() => {
+    if (!latestResult?.id || isDevPaymentBypass()) return;
+    const pending = sessionStorage.getItem(prodamusPendingOrderKey(latestResult.id));
+    if (!pending) return;
+    void pollProdamusOrderPaidQuick(pending, latestResult.id).then((paid) => {
+      if (paid) {
+        localStorage.setItem(consultationPaidStorageKey(latestResult.id), '1');
+        setPaidOk(true);
+      }
+    });
+  }, [latestResult?.id]);
+
   const goBack = () => {
     const target = consultationReturnTo ?? 'welcome';
     setConsultationReturnTo(null);
     setStage(target);
   };
 
-  const handlePay = async () => {
+  const markConsultationPaid = () => {
+    if (!latestResult) return;
+    localStorage.setItem(consultationPaidStorageKey(latestResult.id), '1');
+    setPaidOk(true);
+    void sendAnalyticsEventToSheets({
+      eventType: 'consultation_paid',
+      sessionId: latestResult.id,
+      stage: 'consultation-request',
+      participant: participant
+        ? {
+            name: participant.name,
+            email: participant.email,
+            phone: participant.phone,
+            sex: participant.sex,
+            age: participant.age,
+            education: participant.education,
+            pcConfidence: participant.pcConfidence,
+          }
+        : undefined,
+    }).catch(() => {});
+  };
+
+  const openCheckout = () => {
     if (!latestResult) {
       setNotice('Нет данных сессии. Вернитесь к результатам и откройте запись снова.');
       return;
     }
     if (isDevPaymentBypass()) {
-      localStorage.setItem(consultationPaidStorageKey(latestResult.id), '1');
-      setPaidOk(true);
+      markConsultationPaid();
       return;
     }
     setNotice(null);
@@ -57,61 +92,7 @@ export const ConsultationRequestPage = () => {
       );
       return;
     }
-    setBusy(true);
-    try {
-      const r = await openTelegramInvoiceForProduct('consultation', latestResult.id);
-      if (r.status === 'paid') {
-        if (latestResult?.id) {
-          localStorage.setItem(consultationPaidStorageKey(latestResult.id), '1');
-        }
-        setPaidOk(true);
-        void sendAnalyticsEventToSheets({
-          eventType: 'consultation_paid',
-          sessionId: latestResult.id,
-          stage: 'consultation-request',
-          participant: participant
-            ? {
-                name: participant.name,
-                email: participant.email,
-                phone: participant.phone,
-                sex: participant.sex,
-                age: participant.age,
-                education: participant.education,
-                pcConfidence: participant.pcConfidence,
-              }
-            : undefined,
-        }).catch(() => {});
-        return;
-      }
-      if (r.status === 'skipped') {
-        const byReason: Record<(typeof r)['reason'], string> = {
-          not_telegram: 'Оплата доступна только в Telegram. Откройте мини-приложение из бота.',
-          no_api_url: 'Сервер оплаты не настроен.',
-          no_init_data: 'Откройте мини-приложение из Telegram (из бота), затем повторите.',
-          no_open_invoice: 'Обновите Telegram или откройте мини-приложение в актуальной версии клиента.',
-          no_open_link: 'Обновите Telegram: для оплаты картой нужна актуальная версия с открытием ссылки.',
-        };
-        setNotice(byReason[r.reason]);
-        return;
-      }
-      if (r.status === 'cancelled') {
-        setNotice('Оплата отменена.');
-        return;
-      }
-      if (r.status === 'failed') {
-        if (r.detail === 'prodamus_timeout') {
-          setNotice(
-            'Не удалось дождаться подтверждения оплаты. Если платёж прошёл, закройте мини-приложение и откройте его снова из бота.',
-          );
-          return;
-        }
-        setNotice(`Оплата не завершена (${r.detail}).`);
-        return;
-      }
-      setNotice(r.message);
-    } finally {
-      setBusy(false);
-    }
+    setCheckoutOpen(true);
   };
 
   const accent = latestResult
@@ -142,8 +123,8 @@ export const ConsultationRequestPage = () => {
         ) : (
           <div className="flex min-h-[42vh] flex-col">
             <p className="mt-3 calm-body leading-relaxed dark:text-slate-200">
-              Нажмите кнопку ниже — откроется оплата в Telegram. После успешной оплаты менеджер свяжется с вами по адресу
-              почты из платёжных данных.
+              Сначала оформление в приложении Corta, затем безопасная оплата. После оплаты менеджер свяжется с вами по
+              почте из платёжных данных.
             </p>
             {notice ? (
               <p className="mt-3 text-sm text-amber-900 dark:text-amber-100 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
@@ -155,10 +136,9 @@ export const ConsultationRequestPage = () => {
                 variant="sell"
                 type="button"
                 className={`${CTA_BUTTON_CLASS} mt-2`}
-                disabled={busy}
-                onClick={() => void handlePay()}
+                onClick={openCheckout}
               >
-                {busy ? 'Открываем оплату…' : 'Записаться на персональную сессию — 5 490 ₽'}
+                Записаться на персональную сессию — 5 490 ₽
               </Button>
             </div>
           </div>
@@ -167,6 +147,16 @@ export const ConsultationRequestPage = () => {
       <div className="mt-auto">
         <SupportFooter showDeveloperCredit={false} />
       </div>
+      {latestResult && !paidOk ? (
+        <PaymentCheckoutSheet
+          open={checkoutOpen}
+          product="consultation"
+          sessionId={latestResult.id}
+          onClose={() => setCheckoutOpen(false)}
+          onPaid={markConsultationPaid}
+          onNotice={setNotice}
+        />
+      ) : null}
     </div>
   );
 };

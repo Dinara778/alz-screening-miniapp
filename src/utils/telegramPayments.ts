@@ -185,6 +185,9 @@ export const openTelegramInvoiceForProduct = async (
     invoiceUrl?: string;
     paymentUrl?: string;
     orderId?: string;
+    alreadyPaid?: boolean;
+    sessionId?: string;
+    product?: string;
     error?: string;
   };
 
@@ -217,6 +220,10 @@ export const openTelegramInvoiceForProduct = async (
     }
     if (!res.ok) {
       return { status: 'error', message: data.error || `HTTP ${res.status}` };
+    }
+    if (data.alreadyPaid && data.sessionId) {
+      applyPaidOrder({ paid: true, product: data.product ?? product, sessionId: data.sessionId });
+      return { status: 'paid' };
     }
     paymentUrl = data.paymentUrl;
     orderId = data.orderId;
@@ -366,4 +373,34 @@ export function findPaidReportSessionId(): string | null {
 export const isReportPaidUnlocked = (sessionId: string): boolean => {
   if (import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true') return true;
   return localStorage.getItem(reportPaidStorageKey(sessionId)) === '1';
+};
+
+/** Не платить повторно: проверка на сервере + ожидающий заказ + localStorage. */
+export async function tryRecoverReportAccess(sessionId: string): Promise<boolean> {
+  if (isReportPaidUnlocked(sessionId)) return true;
+
+  const tg = window.Telegram?.WebApp;
+  const base = getPaymentsApiUrl();
+  if (tg?.initData && base) {
+    try {
+      const res = await fetch(`${trimApi(base)}/payment-recover-session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData: tg.initData, sessionId, product: 'full_report' }),
+      });
+      const data = (await res.json()) as PaidOrderPayload;
+      if (res.ok && applyPaidOrder(data)) return true;
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const fromUrl = await recoverProdamusPaymentFromUrl();
+  if (fromUrl?.product === 'full_report' && fromUrl.sessionId === sessionId) return true;
+
+  const pending = sessionStorage.getItem(prodamusPendingOrderKey(sessionId));
+  if (pending && (await pollProdamusOrderPaidQuick(pending, sessionId))) return true;
+
+  const anyPending = await recoverProdamusPaymentPending();
+  return anyPending?.product === 'full_report' && anyPending.sessionId === sessionId;
 };

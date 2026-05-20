@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '../components/Button';
 import { CalmScreen } from '../components/results/CalmScreen';
 import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
@@ -13,7 +13,14 @@ import { buildCognitiveAnalytics, type DomainScore } from '../utils/cognitiveAna
 import type { IndexInterpretation } from '../utils/indexInterpretationBands';
 import { buildResultShareText, getShareTestLink, shareOrCopyResultText } from '../utils/shareResult';
 import { shouldBypassReportPayment } from '../utils/paymentStub';
-import { openTelegramInvoiceForProduct, reportPaidStorageKey } from '../utils/telegramPayments';
+import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
+import {
+  isReportPaidUnlocked,
+  pollProdamusOrderPaidQuick,
+  prodamusPendingOrderKey,
+  reportPaidStorageKey,
+  tryRecoverReportAccess,
+} from '../utils/telegramPayments';
 
 type ResultStep = 'index' | 'index-detail' | 'domain-metric' | 'domain-detail' | 'hub';
 
@@ -83,7 +90,7 @@ export const ResultPage = ({ onRestart: _onRestart }: { onRestart: () => void })
   const [step, setStep] = useState<ResultStep>('index');
   const [domainIndex, setDomainIndex] = useState(0);
   const [shareNotice, setShareNotice] = useState<string | null>(null);
-  const [payBusy, setPayBusy] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [payNotice, setPayNotice] = useState<string | null>(null);
 
   if (!latestResult) return null;
@@ -114,44 +121,23 @@ export const ResultPage = ({ onRestart: _onRestart }: { onRestart: () => void })
     setStage('full-report');
   };
 
-  const handlePayFullReport = async () => {
+  useEffect(() => {
+    if (!latestResult?.id || skipNativePayment) return;
+    void tryRecoverReportAccess(latestResult.id).then((ok) => {
+      if (ok) setStage('full-report');
+    });
+  }, [latestResult?.id, skipNativePayment, setStage]);
+
+  const reportUnlocked = latestResult ? isReportPaidUnlocked(latestResult.id) : false;
+
+  const openCheckout = () => {
     if (!latestResult) return;
-    if (skipNativePayment) {
+    if (skipNativePayment || reportUnlocked) {
       unlockFullReport();
       return;
     }
     setPayNotice(null);
-    setPayBusy(true);
-    try {
-      const r = await openTelegramInvoiceForProduct('full_report', latestResult.id);
-      if (r.status === 'paid') {
-        localStorage.setItem(reportPaidStorageKey(latestResult.id), '1');
-        setStage('full-report');
-        return;
-      }
-      if (r.status === 'skipped') {
-        const byReason: Record<(typeof r)['reason'], string> = {
-          not_telegram: 'Оплата только в Telegram',
-          no_api_url: 'Сервер оплаты не настроен',
-          no_init_data: 'Откройте из бота в Telegram',
-          no_open_invoice: 'Обновите Telegram',
-          no_open_link: 'Обновите Telegram',
-        };
-        setPayNotice(byReason[r.reason]);
-        return;
-      }
-      if (r.status === 'cancelled') {
-        setPayNotice('Оплата отменена');
-        return;
-      }
-      if (r.status === 'failed') {
-        setPayNotice(r.detail === 'prodamus_timeout' ? 'Ждём подтверждение оплаты…' : `Оплата не завершена`);
-        return;
-      }
-      setPayNotice(r.message);
-    } finally {
-      setPayBusy(false);
-    }
+    setCheckoutOpen(true);
   };
 
 
@@ -272,6 +258,7 @@ export const ResultPage = ({ onRestart: _onRestart }: { onRestart: () => void })
   ] as const;
 
   return (
+    <>
     <CalmScreen
       contentAlign="readable"
       footer={
@@ -282,10 +269,9 @@ export const ResultPage = ({ onRestart: _onRestart }: { onRestart: () => void })
           <Button
             type="button"
             className={`cta-shimmer border-0 !bg-none !from-transparent !to-transparent hover:!from-transparent hover:!to-transparent ${calmBtnClass}`}
-            disabled={payBusy}
-            onClick={() => void handlePayFullReport()}
+            onClick={openCheckout}
           >
-            {payBusy ? 'Открываем оплату…' : 'Получить расширенный отчёт — 399 ₽'}
+            {reportUnlocked ? 'Открыть расширенный отчёт' : 'Получить расширенный отчёт — 399 ₽'}
           </Button>
           {shareNotice ? <p className="text-center text-xs text-white/50">{shareNotice}</p> : null}
           {payNotice ? <p className="text-center text-xs text-amber-200/90">{payNotice}</p> : null}
@@ -317,5 +303,19 @@ export const ResultPage = ({ onRestart: _onRestart }: { onRestart: () => void })
         </div>
       </div>
     </CalmScreen>
+    {latestResult ? (
+      <PaymentCheckoutSheet
+        open={checkoutOpen}
+        product="full_report"
+        sessionId={latestResult.id}
+        onClose={() => setCheckoutOpen(false)}
+        onPaid={() => {
+          localStorage.setItem(reportPaidStorageKey(latestResult.id), '1');
+          setStage('full-report');
+        }}
+        onNotice={setPayNotice}
+      />
+    ) : null}
+    </>
   );
 };

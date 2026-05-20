@@ -13,8 +13,8 @@ import {
 import { pickStudyWordList } from '../utils/generateStimuli';
 import {
   findPaidReportSessionId,
-  isReportPaidUnlocked,
   recoverProdamusPaymentFromUrl,
+  tryRecoverReportAccess,
 } from '../utils/telegramPayments';
 import { sendAnalyticsEventToSheets, sendSessionToSheets } from '../utils/sheetsWebhook';
 
@@ -140,19 +140,28 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   }, [sessionSeed]);
 
   useEffect(() => {
-    void recoverProdamusPaymentFromUrl().then((recovery) => {
-      if (!recovery) return;
-      const session = loadHistory().find((h) => h.id === recovery.sessionId) ?? null;
-      if (session) setLatestResult(session);
-      if (recovery.product === 'full_report') {
+    const run = async () => {
+      const recovery = await recoverProdamusPaymentFromUrl();
+      if (recovery) {
+        const session = loadHistory().find((h) => h.id === recovery.sessionId) ?? null;
+        if (session) setLatestResult(session);
+        if (recovery.product === 'full_report') {
+          setStage('full-report');
+          return;
+        }
+        if (recovery.product === 'consultation') {
+          setConsultationReturnTo('full-report');
+          setStage('consultation-request');
+          return;
+        }
+      }
+      const recent = loadHistory()[0];
+      if (recent?.id && (await tryRecoverReportAccess(recent.id))) {
+        setLatestResult(recent);
         setStage('full-report');
-        return;
       }
-      if (recovery.product === 'consultation') {
-        setConsultationReturnTo('full-report');
-        setStage('consultation-request');
-      }
-    });
+    };
+    void run();
   }, []);
 
 

@@ -30,6 +30,7 @@ import nodemailer from 'nodemailer';
 import {
   ensureTelegramWebhook,
   isStartCommand,
+  resolveWebhookUrl,
   sendStartMessage,
 } from './botStart.mjs';
 import {
@@ -38,6 +39,7 @@ import {
   prodamusMarkOrderPaid,
   prodamusOrderPaidForUser,
   prodamusConfirmReturnForUser,
+  prodamusFindPaidForUserSession,
 } from './prodamus.mjs';
 import { prodamusVerifySignature } from './prodamusHmac.mjs';
 
@@ -111,14 +113,26 @@ function validateInitData(initData, botToken) {
   }
 }
 
-async function tgApi(method, body) {
+async function tgApi(method, body = {}) {
+  if (!BOT_TOKEN) return { ok: false, description: 'TELEGRAM_BOT_TOKEN не задан' };
   const url = `https://api.telegram.org/bot${BOT_TOKEN}/${method}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  return res.json();
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(25_000),
+    });
+    const raw = await res.text();
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return { ok: false, description: raw.slice(0, 300) };
+    }
+  } catch (e) {
+    console.error('[tgApi]', method, e);
+    return { ok: false, description: e instanceof Error ? e.message : String(e) };
+  }
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -229,6 +243,24 @@ app.get('/health', (_req, res) => {
   res.json({ ok: true });
 });
 
+app.get('/health/bot', async (_req, res) => {
+  const miniAppUrl = process.env.TELEGRAM_MINI_APP_URL?.trim() || '';
+  const webhookUrl = resolveWebhookUrl({ ...process.env, TELEGRAM_BOT_TOKEN: BOT_TOKEN });
+  let webhookInfo = null;
+  if (BOT_TOKEN) {
+    const info = await tgApi('getWebhookInfo', {});
+    if (info?.ok) webhookInfo = info.result;
+  }
+  res.json({
+    ok: Boolean(BOT_TOKEN && miniAppUrl),
+    botToken: Boolean(BOT_TOKEN),
+    miniAppUrl: Boolean(miniAppUrl),
+    webhookUrl: webhookUrl || null,
+    webhookPending: webhookInfo?.pending_update_count ?? null,
+    webhookLastError: webhookInfo?.last_error_message ?? null,
+  });
+});
+
 app.post('/invoice', async (req, res) => {
   try {
     if (!BOT_TOKEN) {
@@ -273,6 +305,15 @@ app.post('/invoice', async (req, res) => {
       const tgUserId = tgUser?.id;
       if (tgUserId == null) {
         return res.status(400).json({ error: 'Не удалось определить пользователя Telegram' });
+      }
+      const existingPaid = prodamusFindPaidForUserSession(tgUserId, sessionId, product);
+      if (existingPaid.paid) {
+        return res.json({
+          provider: 'prodamus',
+          alreadyPaid: true,
+          product: existingPaid.product,
+          sessionId: existingPaid.sessionId,
+        });
       }
       const orderId = `c_${product}_${String(sessionId).slice(0, 24)}_${crypto.randomBytes(6).toString('hex')}`;
       const notifyUrl = `${publicBase}/prodamus/notify`;
@@ -357,6 +398,29 @@ app.post('/payment-order-status', async (req, res) => {
     }
     const user = parseTgUser(initData);
     const st = prodamusOrderPaidForUser(String(orderId), user?.id);
+    return res.json(st);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ paid: false });
+  }
+});
+
+/** Восстановить доступ: есть ли уже оплаченный заказ для этой сессии. */
+app.post('/payment-recover-session', async (req, res) => {
+  try {
+    if (PAYMENT_PROVIDER !== 'prodamus') {
+      return res.json({ paid: false });
+    }
+    if (!BOT_TOKEN) return res.status(500).json({ paid: false });
+    const { initData, sessionId, product = 'full_report' } = req.body ?? {};
+    if (!initData || typeof initData !== 'string' || !sessionId) {
+      return res.status(400).json({ paid: false });
+    }
+    if (!validateInitData(initData, BOT_TOKEN)) {
+      return res.status(401).json({ paid: false });
+    }
+    const user = parseTgUser(initData);
+    const st = prodamusFindPaidForUserSession(user?.id, String(sessionId), product);
     return res.json(st);
   } catch (e) {
     console.error(e);
@@ -478,31 +542,33 @@ app.post('/consultation-lead', async (req, res) => {
   }
 });
 
-app.post('/webhook', async (req, res) => {
-  const update = req.body;
-  try {
-    if (update?.pre_checkout_query) {
-      await tgApi('answerPreCheckoutQuery', {
-        pre_checkout_query_id: update.pre_checkout_query.id,
-        ok: true,
-      });
-    }
-    if (update?.message?.successful_payment) {
-      console.info('[paid]', update.message.successful_payment.invoice_payload);
-    }
+async function processTelegramUpdate(update) {
+  if (!update || !BOT_TOKEN) return;
 
-    const msg = update?.message;
-    const text = msg?.text ?? msg?.caption;
-    if (msg?.chat?.id != null && BOT_TOKEN && text && isStartCommand(text)) {
-      const sent = await sendStartMessage(tgApi, msg.chat.id);
-      if (!sent.ok) {
-        console.error('[webhook /start] sendMessage', sent.description || sent);
-      }
-    }
-  } catch (e) {
-    console.error('[webhook]', e);
+  if (update.pre_checkout_query) {
+    await tgApi('answerPreCheckoutQuery', {
+      pre_checkout_query_id: update.pre_checkout_query.id,
+      ok: true,
+    });
   }
+  if (update.message?.successful_payment) {
+    console.info('[paid]', update.message.successful_payment.invoice_payload);
+  }
+
+  const msg = update.message;
+  const text = msg?.text ?? msg?.caption;
+  if (msg?.chat?.id != null && text && isStartCommand(text)) {
+    console.info('[webhook /start] chat', msg.chat.id, text.slice(0, 40));
+    await sendStartMessage(tgApi, msg.chat.id, {
+      ...process.env,
+      TELEGRAM_BOT_TOKEN: BOT_TOKEN,
+    });
+  }
+}
+
+app.post('/webhook', (req, res) => {
   res.sendStatus(200);
+  void processTelegramUpdate(req.body).catch((e) => console.error('[webhook]', e));
 });
 
 /** SERVE_STATIC=true — раздача dist/ (мини-приложение + API на одном домене, вебхук /webhook). */
@@ -510,7 +576,7 @@ if (process.env.SERVE_STATIC === 'true') {
   const distDir = path.join(__dirname, '../dist');
   if (fs.existsSync(distDir)) {
     app.use(express.static(distDir));
-    app.get(/^(?!\/(webhook|invoice|health|prodamus|consultation-lead|payment-order-status|payment-return-confirm)).*$/, (_req, res) => {
+    app.get(/^(?!\/(webhook|invoice|health|prodamus|consultation-lead|payment-order-status|payment-return-confirm|payment-recover-session)).*$/, (_req, res) => {
       res.sendFile(path.join(distDir, 'index.html'));
     });
     console.info('[static] dist:', distDir);
@@ -524,6 +590,11 @@ app.listen(PORT, () => {
     `Payments API: http://127.0.0.1:${PORT}  provider=${PAYMENT_PROVIDER}  (POST /invoice, /webhook, …)`,
   );
   if (BOT_TOKEN) {
-    void ensureTelegramWebhook(tgApi, process.env);
+    void ensureTelegramWebhook(tgApi, { ...process.env, TELEGRAM_BOT_TOKEN: BOT_TOKEN });
+    void tgApi('setMyCommands', {
+      commands: [{ command: 'start', description: 'Открыть Corta' }],
+    });
+  } else {
+    console.warn('[bot] TELEGRAM_BOT_TOKEN не задан — /start не будет отвечать');
   }
 });
