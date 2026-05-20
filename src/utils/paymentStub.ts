@@ -7,3 +7,7 @@ export const isPaymentsEnabled = (): boolean =>
   import.meta.env.VITE_PAYMENTS_ENABLED === 'true';
 
 export const isPaymentsStubbed = (): boolean => !isPaymentsEnabled();
+
+/** Разблокировать полный отчёт без счёта (заглушка или VITE_DEV_BYPASS_REPORT_PAYMENT). */
+export const shouldBypassReportPayment = (): boolean =>
+  import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true' || isPaymentsStubbed();

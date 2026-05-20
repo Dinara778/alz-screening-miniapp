@@ -5,13 +5,14 @@ import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { OrganicMetricHalo } from '../components/results/OrganicMetricHalo';
 import { ScoreRing } from '../components/results/ScoreRing';
 import { SketchHighlightTitle } from '../components/results/SketchHighlightTitle';
+import { SupportFooter } from '../components/SupportFooter';
 import { scoreAccentFromValue } from '../components/results/scoreAccent';
 import { useApp } from '../context/AppContext';
 import type { DomainInterpretationCopy } from '../copy/cognitiveDomainInterpretationsMid52';
 import { buildCognitiveAnalytics, type DomainScore } from '../utils/cognitiveAnalytics';
 import type { IndexInterpretation } from '../utils/indexInterpretationBands';
 import { buildResultShareText, getShareTestLink, shareOrCopyResultText } from '../utils/shareResult';
-import { isPaymentsStubbed, PAYMENT_STUB_MESSAGE } from '../utils/paymentStub';
+import { shouldBypassReportPayment } from '../utils/paymentStub';
 import { openTelegramInvoiceForProduct, reportPaidStorageKey } from '../utils/telegramPayments';
 
 type ResultStep = 'index' | 'index-detail' | 'domain-metric' | 'domain-detail' | 'hub';
@@ -78,7 +79,7 @@ const IndexInterpretationBody = ({ index, accent }: { index: IndexInterpretation
 );
 
 export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
-  const { latestResult, setStage, setConsultationReturnTo } = useApp();
+  const { latestResult, setStage } = useApp();
   const [step, setStep] = useState<ResultStep>('index');
   const [domainIndex, setDomainIndex] = useState(0);
   const [shareNotice, setShareNotice] = useState<string | null>(null);
@@ -90,7 +91,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const domains = a.domains;
   const currentDomain: DomainScore | undefined = domains[domainIndex];
   const accent = scoreAccentFromValue(a.index.value);
-  const skipNativePayment = import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true';
+  const skipNativePayment = shouldBypassReportPayment();
 
   const handleShare = async () => {
     setShareNotice(null);
@@ -107,15 +108,16 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     }
   };
 
+  const unlockFullReport = () => {
+    if (!latestResult) return;
+    localStorage.setItem(reportPaidStorageKey(latestResult.id), '1');
+    setStage('full-report');
+  };
+
   const handlePayFullReport = async () => {
     if (!latestResult) return;
-    if (isPaymentsStubbed()) {
-      setPayNotice(PAYMENT_STUB_MESSAGE);
-      return;
-    }
     if (skipNativePayment) {
-      localStorage.setItem(reportPaidStorageKey(latestResult.id), '1');
-      setStage('full-report');
+      unlockFullReport();
       return;
     }
     setPayNotice(null);
@@ -152,14 +154,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     }
   };
 
-  const handlePayConsultation = () => {
-    if (isPaymentsStubbed()) {
-      setPayNotice(PAYMENT_STUB_MESSAGE);
-      return;
-    }
-    setConsultationReturnTo('result');
-    setStage('consultation-request');
-  };
 
   const startDomains = () => {
     setDomainIndex(0);
@@ -270,31 +264,57 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     );
   }
 
+  const reportFeatures = [
+    'Подробная карта когнитивной перегрузки',
+    'Расшифровка сильных и слабых зон',
+    'Адресные рекомендации именно под ваш профиль',
+    'PDF-отчёт на почту',
+  ] as const;
+
   return (
     <CalmScreen
-      kicker="Дальше"
+      contentAlign="readable"
       footer={
         <div className="space-y-3">
           <Button type="button" className={calmBtnClass} disabled={payBusy} onClick={() => void handlePayFullReport()}>
-            {payBusy ? 'Открываем оплату…' : 'Расширенный отчёт — 399 ₽'}
+            {payBusy ? 'Открываем оплату…' : 'Получить расширенный отчёт — 399 ₽'}
           </Button>
+          <p className="text-center text-sm leading-relaxed text-white/55">
+            На основе вашего индивидуального когнитивного профиля.
+          </p>
           <button type="button" className={calmBtnGhost} onClick={() => void handleShare()}>
-            Поделиться
-          </button>
-          <button type="button" className={calmBtnGhost} onClick={handlePayConsultation}>
-            Сессия с экспертом
+            Поделиться результатом
           </button>
           <button type="button" className={`${calmBtnGhost} !text-white/50`} onClick={onRestart}>
             Пройти снова
           </button>
           {shareNotice ? <p className="text-center text-xs text-white/50">{shareNotice}</p> : null}
           {payNotice ? <p className="text-center text-xs text-amber-200/90">{payNotice}</p> : null}
+          <SupportFooter showDeveloperCredit={false} />
         </div>
       }
     >
-      <p className="max-w-[20rem] text-center text-xl font-medium leading-snug text-white/85 sm:text-2xl">
-        Подробная карта перегрузки и рекомендации — в расширенном отчёте
-      </p>
+      <div className="mx-auto w-full max-w-md space-y-5 pb-4">
+        <SketchHighlightTitle accent={accent}>
+          Узнайте, что перегружает вашу когнитивную систему
+        </SketchHighlightTitle>
+        <p className="results-body text-center sm:text-left">
+          И как это исправить — с помощью расширенного отчёта.
+        </p>
+        <div className="calm-inset space-y-3">
+          <p className="text-sm font-semibold text-white/90 sm:text-base">Что входит в отчёт:</p>
+          <ul className="space-y-2.5 text-sm leading-relaxed text-white/88 sm:text-base">
+            {reportFeatures.map((line) => (
+              <li key={line} className="flex gap-2">
+                <span className="shrink-0 text-emerald-400" aria-hidden>
+                  ✓
+                </span>
+                <span>{line}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </CalmScreen>
   );
 };

@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react';
 import { ScreenBackHeader } from '../components/ScreenBackHeader';
 import { Button } from '../components/Button';
 import { useApp } from '../context/AppContext';
-import { isPaymentsStubbed, PAYMENT_STUB_MESSAGE } from '../utils/paymentStub';
+import { isPaymentsStubbed } from '../utils/paymentStub';
+import { SupportFooter } from '../components/SupportFooter';
+import { SketchHighlightTitle } from '../components/results/SketchHighlightTitle';
+import { scoreAccentFromValue } from '../components/results/scoreAccent';
+import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import {
   consultationPaidStorageKey,
   isPaymentsBackendConfigured,
@@ -40,7 +44,8 @@ export const ConsultationRequestPage = () => {
       return;
     }
     if (isPaymentsStubbed()) {
-      setNotice(PAYMENT_STUB_MESSAGE);
+      localStorage.setItem(consultationPaidStorageKey(latestResult.id), '1');
+      setPaidOk(true);
       return;
     }
     setNotice(null);
@@ -107,11 +112,15 @@ export const ConsultationRequestPage = () => {
     }
   };
 
+  const accent = latestResult
+    ? scoreAccentFromValue(buildCognitiveAnalytics(latestResult).index.value)
+    : '#34d399';
+
   return (
     <div className="relative min-h-0 flex-1 space-y-6 pb-4">
       {!paidOk ? <ScreenBackHeader onBack={goBack} /> : null}
-      <div className="calm-card">
-        <h1 className="app-heading">Запись на персональную сессию</h1>
+      <div className="calm-card space-y-4">
+        <SketchHighlightTitle accent={accent}>Запись на персональную сессию</SketchHighlightTitle>
         {!latestResult ? (
           <>
             <p className="mt-3 calm-body dark:text-slate-200">Нет данных прохождения. Вернитесь назад.</p>
@@ -154,6 +163,7 @@ export const ConsultationRequestPage = () => {
           </>
         )}
       </div>
+      <SupportFooter showDeveloperCredit={false} />
     </div>
   );
 };
