@@ -1,10 +1,10 @@
+# Docker: фронт + Node API на одном домене (оплата Prodamus).
+# Переменные VITE_* — этап «Сборка»; TELEGRAM_*, PRODAMUS_*, SERVE_STATIC — «Запуск».
 meta:
-  environment: static_web
+  environment: docker
   toolchain:
-    name: npm
-    version: "20"
+    name: docker
 build:
-  additionalCommands: null
-  artifacts:
-    dist/*: /
-run: {}
+  dockerfile: Dockerfile
+run:
+  containerPort: 8080

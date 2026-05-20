@@ -39,20 +39,21 @@ function resolvePaymentsApiUrl(raw: string): string | null {
   }
 }
 
-/** URL бэкенда оплат: из VITE_TELEGRAM_PAYMENTS_URL или тот же домен (Amvera SERVE_STATIC). */
+/** URL бэкенда оплат: тот же домен, что мини-приложение, или VITE_TELEGRAM_PAYMENTS_URL при сборке. */
 export function getPaymentsApiUrl(): string | null {
+  if (typeof window !== 'undefined') {
+    try {
+      const origin = new URL(window.location.href).origin;
+      if (/^https?:\/\//i.test(origin)) return trimApi(origin);
+    } catch {
+      /* ignore */
+    }
+  }
+
   const envRaw = stripEnvQuotes(
     (import.meta.env.VITE_TELEGRAM_PAYMENTS_URL as string | undefined) ?? '',
   );
-  const fromEnv = envRaw ? resolvePaymentsApiUrl(envRaw) : null;
-  if (fromEnv) return fromEnv;
-
-  if (!import.meta.env.PROD || typeof window === 'undefined') return null;
-  try {
-    return trimApi(new URL(window.location.href).origin);
-  } catch {
-    return null;
-  }
+  return envRaw ? resolvePaymentsApiUrl(envRaw) : null;
 }
 
 function resolvePaymentLink(raw: string): string | null {
@@ -130,7 +131,23 @@ export const openTelegramInvoiceForProduct = async (
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ initData: tg.initData, product, sessionId }),
     });
-    const data = (await res.json()) as InvoiceResponse;
+    const raw = await res.text();
+    let data: InvoiceResponse = {};
+    try {
+      data = raw ? (JSON.parse(raw) as InvoiceResponse) : {};
+    } catch {
+      if (res.status === 405) {
+        return {
+          status: 'error',
+          message:
+            'На домене нет API оплаты (только статика). В Amvera: сборка Docker + Dockerfile, SERVE_STATIC=true, затем пересоберите.',
+        };
+      }
+      return {
+        status: 'error',
+        message: `Сервер вернул ${res.status}. Проверьте деплой Node API (не static_web).`,
+      };
+    }
     if (!res.ok) {
       return { status: 'error', message: data.error || `HTTP ${res.status}` };
     }
@@ -146,7 +163,7 @@ export const openTelegramInvoiceForProduct = async (
       return {
         status: 'error',
         message:
-          'Не удалось обратиться к серверу оплаты. В Amvera → Сборка: VITE_TELEGRAM_PAYMENTS_URL=https://corta-ns-1234dinara.amvera.io (с https://), затем пересоберите проект.',
+          'Неверный адрес API. Пересоберите проект в Amvera с VITE_TELEGRAM_PAYMENTS_URL=https://corta-ns-1234dinara.amvera.io',
       };
     }
     return { status: 'error', message: msg };
