@@ -17,9 +17,35 @@ export type OpenInvoiceResult =
 
 const trimApi = (url: string) => url.replace(/\/$/, '');
 
+/** Абсолютный HTTPS-URL API; без схемы Safari даёт «did not match the expected pattern». */
+function resolvePaymentsApiUrl(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const u = new URL(withScheme);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    return trimApi(u.toString());
+  } catch {
+    return null;
+  }
+}
+
+function resolvePaymentLink(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed || !/^https?:\/\//i.test(trimmed)) return null;
+  try {
+    return new URL(trimmed).toString();
+  } catch {
+    return null;
+  }
+}
+
 /** Задан URL бэкенда счетов (POST /invoice). Если нет — оплата недоступна. */
 export const isPaymentsBackendConfigured = (): boolean => {
-  return Boolean((import.meta.env.VITE_TELEGRAM_PAYMENTS_URL as string | undefined)?.trim());
+  return Boolean(
+    resolvePaymentsApiUrl((import.meta.env.VITE_TELEGRAM_PAYMENTS_URL as string | undefined) ?? ''),
+  );
 };
 
 /** Mini App открыт в Telegram и есть initData (не просто браузер). */
@@ -95,14 +121,31 @@ export const openTelegramInvoiceForProduct = async (
       return { status: 'error', message: 'Сервер не вернул ссылку на оплату' };
     }
   } catch (e) {
-    return { status: 'error', message: e instanceof Error ? e.message : String(e) };
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/did not match the expected pattern/i.test(msg)) {
+      return {
+        status: 'error',
+        message:
+          'Неверный адрес сервера оплаты. В Amvera (Сборка) задайте VITE_TELEGRAM_PAYMENTS_URL=https://ваш-домен.amvera.io',
+      };
+    }
+    return { status: 'error', message: msg };
   }
 
   if (paymentUrl && orderId) {
     if (typeof tg.openLink !== 'function') {
       return { status: 'skipped', reason: 'no_open_link' };
     }
-    tg.openLink(paymentUrl);
+    const link = resolvePaymentLink(paymentUrl);
+    if (!link) {
+      return { status: 'error', message: 'Сервер вернул некорректную ссылку на оплату. Проверьте TELEGRAM_MINI_APP_URL на сервере.' };
+    }
+    try {
+      tg.openLink(link);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { status: 'error', message: msg };
+    }
     const paid = await pollProdamusOrderPaid(trimApi(apiUrl), tg.initData, orderId);
     if (paid) return { status: 'paid' };
     return { status: 'failed', detail: 'prodamus_timeout' };
@@ -144,7 +187,7 @@ export async function recoverProdamusPaymentFromUrl(
   if (!orderId?.trim() || status !== 'ok') return null;
 
   const tg = window.Telegram?.WebApp;
-  const base = apiUrl.trim();
+  const base = resolvePaymentsApiUrl(apiUrl);
   if (!tg?.initData || !base) return null;
 
   let recovery: ProdamusPaymentRecovery | null = null;

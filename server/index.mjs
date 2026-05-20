@@ -62,6 +62,13 @@ const PRODUCTS = {
   },
 };
 
+function normalizeHttpsUrl(raw, label) {
+  const trimmed = String(raw ?? '').trim();
+  if (!trimmed) throw new Error(`${label}: пустой URL`);
+  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  return new URL(withScheme).toString().replace(/\/$/, '');
+}
+
 function miniAppUrlWithQuery(miniAppUrl, params) {
   const u = new URL(miniAppUrl);
   for (const [k, v] of Object.entries(params)) {
@@ -223,13 +230,23 @@ app.post('/invoice', async (req, res) => {
     if (PAYMENT_PROVIDER === 'prodamus') {
       const formUrl = process.env.PRODAMUS_FORM_URL?.trim();
       const secretKey = process.env.PRODAMUS_SECRET_KEY?.trim();
-      const miniAppUrl = process.env.TELEGRAM_MINI_APP_URL?.trim();
-      const publicBase = process.env.PAYMENTS_PUBLIC_BASE_URL?.trim();
+      const miniAppUrlRaw = process.env.TELEGRAM_MINI_APP_URL?.trim();
+      const publicBaseRaw = process.env.PAYMENTS_PUBLIC_BASE_URL?.trim();
       const sys = process.env.PRODAMUS_SYS?.trim();
-      if (!formUrl || !secretKey || !miniAppUrl || !publicBase) {
+      if (!formUrl || !secretKey || !miniAppUrlRaw || !publicBaseRaw) {
         return res.status(500).json({
           error:
             'Prodamus: задайте PRODAMUS_FORM_URL, PRODAMUS_SECRET_KEY, TELEGRAM_MINI_APP_URL, PAYMENTS_PUBLIC_BASE_URL',
+        });
+      }
+      let miniAppUrl;
+      let publicBase;
+      try {
+        miniAppUrl = normalizeHttpsUrl(miniAppUrlRaw, 'TELEGRAM_MINI_APP_URL');
+        publicBase = normalizeHttpsUrl(publicBaseRaw, 'PAYMENTS_PUBLIC_BASE_URL');
+      } catch (e) {
+        return res.status(500).json({
+          error: e instanceof Error ? e.message : 'Некорректный URL мини-приложения или сервера',
         });
       }
       const tgUser = parseTgUser(initData);
@@ -238,7 +255,7 @@ app.post('/invoice', async (req, res) => {
         return res.status(400).json({ error: 'Не удалось определить пользователя Telegram' });
       }
       const orderId = `c_${product}_${String(sessionId).slice(0, 24)}_${crypto.randomBytes(6).toString('hex')}`;
-      const notifyUrl = `${publicBase.replace(/\/$/, '')}/prodamus/notify`;
+      const notifyUrl = `${publicBase}/prodamus/notify`;
       const urlSuccess = miniAppUrlWithQuery(miniAppUrl, {
         prodamus_order: orderId,
         prodamus_status: 'ok',
