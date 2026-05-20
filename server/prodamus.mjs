@@ -1,15 +1,52 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { prodamusCreateSignature } from './prodamusHmac.mjs';
 
-/** order_id -> { product, sessionId, tgUserId, status, createdAt } */
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ORDERS_FILE = path.join(__dirname, 'data', 'prodamus-orders.json');
+
+/** order_id -> { product, sessionId, tgUserId, status, createdAt, paidAt? } */
 const orders = new Map();
 
 const ORDER_TTL_MS = 48 * 60 * 60 * 1000;
 
+function loadOrdersFromDisk() {
+  try {
+    if (!fs.existsSync(ORDERS_FILE)) return;
+    const raw = JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf8'));
+    if (!raw || typeof raw !== 'object') return;
+    for (const [id, o] of Object.entries(raw)) {
+      if (o && typeof o === 'object') orders.set(id, o);
+    }
+    console.info('[prodamus] загружено заказов:', orders.size);
+  } catch (e) {
+    console.warn('[prodamus] не удалось загрузить заказы', e);
+  }
+}
+
+function persistOrders() {
+  try {
+    fs.mkdirSync(path.dirname(ORDERS_FILE), { recursive: true });
+    const obj = Object.fromEntries(orders);
+    fs.writeFileSync(ORDERS_FILE, JSON.stringify(obj));
+  } catch (e) {
+    console.warn('[prodamus] не удалось сохранить заказы', e);
+  }
+}
+
+loadOrdersFromDisk();
+
 setInterval(() => {
   const now = Date.now();
+  let changed = false;
   for (const [id, o] of orders) {
-    if (now - o.createdAt > ORDER_TTL_MS) orders.delete(id);
+    if (now - o.createdAt > ORDER_TTL_MS) {
+      orders.delete(id);
+      changed = true;
+    }
   }
+  if (changed) persistOrders();
 }, 60 * 60 * 1000).unref?.();
 
 export function prodamusRegisterPendingOrder(orderId, { product, sessionId, tgUserId }) {
@@ -20,6 +57,7 @@ export function prodamusRegisterPendingOrder(orderId, { product, sessionId, tgUs
     status: 'pending',
     createdAt: Date.now(),
   });
+  persistOrders();
 }
 
 export function prodamusMarkOrderPaid(orderId) {
@@ -28,7 +66,12 @@ export function prodamusMarkOrderPaid(orderId) {
   o.status = 'paid';
   o.paidAt = Date.now();
   orders.set(orderId, o);
+  persistOrders();
   return true;
+}
+
+export function prodamusGetOrder(orderId) {
+  return orders.get(orderId) ?? null;
 }
 
 /** Оплачен ли заказ этим пользователем Telegram (без раскрытия чужих заказов). */
@@ -37,6 +80,17 @@ export function prodamusOrderPaidForUser(orderId, tgUserId) {
   const o = orders.get(orderId);
   if (!o || o.tgUserId !== tgUserId) return { paid: false };
   if (o.status !== 'paid') return { paid: false };
+  return { paid: true, product: o.product, sessionId: o.sessionId };
+}
+
+/**
+ * Успешный return URL с Payform — помечаем оплаченным, если вебхук ещё не успел.
+ */
+export function prodamusConfirmReturnForUser(orderId, tgUserId) {
+  if (!orderId || tgUserId == null) return { paid: false };
+  const o = orders.get(orderId);
+  if (!o || o.tgUserId !== tgUserId) return { paid: false };
+  if (o.status !== 'paid') prodamusMarkOrderPaid(orderId);
   return { paid: true, product: o.product, sessionId: o.sessionId };
 }
 

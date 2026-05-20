@@ -5,6 +5,11 @@ export type OpenInvoiceResult =
   | { status: 'cancelled' }
   | { status: 'failed'; detail: string }
   | {
+      status: 'redirected';
+      orderId: string;
+      message: string;
+    }
+  | {
       status: 'skipped';
       reason:
         | 'not_telegram'
@@ -14,6 +19,8 @@ export type OpenInvoiceResult =
         | 'no_open_link';
     }
   | { status: 'error'; message: string };
+
+export const prodamusPendingOrderKey = (sessionId: string) => `prodamus_pending_${sessionId}`;
 
 const trimApi = (url: string) => url.replace(/\/$/, '');
 
@@ -75,24 +82,84 @@ export const isTelegramMiniApp = (): boolean => {
   return Boolean(tg?.initData && tg?.version);
 };
 
-const POLL_INTERVAL_MS = 2500;
-const POLL_TIMEOUT_MS = 15 * 60 * 1000;
+export const reportPaidStorageKey = (sessionId: string) => `report_paid_${sessionId}`;
 
-async function pollProdamusOrderPaid(
-  apiUrl: string,
-  initData: string,
+export const consultationPaidStorageKey = (sessionId: string) => `consultation_paid_${sessionId}`;
+
+type PaidOrderPayload = { paid?: boolean; product?: string; sessionId?: string };
+
+function applyPaidOrder(data: PaidOrderPayload): ProdamusPaymentRecovery | null {
+  if (!data.paid || !data.sessionId) return null;
+  sessionStorage.removeItem(prodamusPendingOrderKey(data.sessionId));
+  if (data.product === 'full_report') {
+    localStorage.setItem(reportPaidStorageKey(data.sessionId), '1');
+    return { paid: true, product: 'full_report', sessionId: data.sessionId };
+  }
+  if (data.product === 'consultation') {
+    localStorage.setItem(consultationPaidStorageKey(data.sessionId), '1');
+    window.dispatchEvent(new CustomEvent('consultation-paid'));
+    return { paid: true, product: 'consultation', sessionId: data.sessionId };
+  }
+  return null;
+}
+
+async function fetchPaidOrder(
   orderId: string,
+  endpoint: 'payment-order-status' | 'payment-return-confirm',
+): Promise<PaidOrderPayload | null> {
+  const tg = window.Telegram?.WebApp;
+  const base = getPaymentsApiUrl();
+  if (!tg?.initData || !base) return null;
+  try {
+    const res = await fetch(`${trimApi(base)}/${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData: tg.initData, orderId }),
+    });
+    return (await res.json()) as PaidOrderPayload;
+  } catch {
+    return null;
+  }
+}
+
+export type ProdamusPaymentRecovery = {
+  paid: true;
+  product: 'full_report' | 'consultation';
+  sessionId: string;
+};
+
+const POLL_INTERVAL_MS = 2000;
+const POLL_QUICK_MS = 45_000;
+
+/** Короткий опрос после возврата в Mini App (основной сценарий — URL ?prodamus_order=). */
+export async function pollProdamusOrderPaidQuick(
+  orderId: string,
+  sessionId: string,
 ): Promise<boolean> {
-  const deadline = Date.now() + POLL_TIMEOUT_MS;
+  const tg = window.Telegram?.WebApp;
+  const apiUrl = getPaymentsApiUrl();
+  if (!tg?.initData || !apiUrl) return false;
+
+  const deadline = Date.now() + POLL_QUICK_MS;
   while (Date.now() < deadline) {
     try {
       const res = await fetch(`${trimApi(apiUrl)}/payment-order-status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData, orderId }),
+        body: JSON.stringify({ initData: tg.initData, orderId }),
       });
-      const data = (await res.json()) as { paid?: boolean };
-      if (res.ok && data.paid === true) return true;
+      let data = (await res.json()) as { paid?: boolean; sessionId?: string };
+      if (res.ok && data.paid === true && data.sessionId === sessionId) {
+        sessionStorage.removeItem(prodamusPendingOrderKey(sessionId));
+        return true;
+      }
+      if (!data.paid) {
+        data = (await fetchPaidOrder(orderId, 'payment-return-confirm')) ?? data;
+        if (data.paid && data.sessionId === sessionId) {
+          applyPaidOrder(data);
+          return true;
+        }
+      }
     } catch {
       /* сеть */
     }
@@ -183,9 +250,12 @@ export const openTelegramInvoiceForProduct = async (
       const msg = e instanceof Error ? e.message : String(e);
       return { status: 'error', message: msg };
     }
-    const paid = await pollProdamusOrderPaid(apiUrl, tg.initData, orderId);
-    if (paid) return { status: 'paid' };
-    return { status: 'failed', detail: 'prodamus_timeout' };
+    return {
+      status: 'redirected',
+      orderId,
+      message:
+        'Открыли безопасную оплату. После оплаты закройте её и вернитесь в Corta в Telegram — доступ откроется автоматически.',
+    };
   }
 
   if (!tg.openInvoice) return { status: 'skipped', reason: 'no_open_invoice' };
@@ -199,67 +269,94 @@ export const openTelegramInvoiceForProduct = async (
   });
 };
 
-export const reportPaidStorageKey = (sessionId: string) => `report_paid_${sessionId}`;
+export function parsePaymentReturnOrderId(): string | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('prodamus_order') || params.get('order_id');
+  return id?.trim() || null;
+}
 
-export const consultationPaidStorageKey = (sessionId: string) => `consultation_paid_${sessionId}`;
+function isPaymentReturnSuccess(): boolean {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  if (!parsePaymentReturnOrderId()) return false;
+  const status = (params.get('prodamus_status') || params.get('payment_status') || '').toLowerCase();
+  if (!status) return true;
+  return status === 'ok' || status === 'success' || status === 'paid';
+}
 
-/**
- * После возврата с payform (urlSuccess) мини-приложение перезагружается — подтверждаем заказ по order_id в URL
- * и выставляем флаги доступа (сервер проверяет initData и факт оплаты по вебхуку).
- */
-export type ProdamusPaymentRecovery = {
-  paid: true;
-  product: 'full_report' | 'consultation';
-  sessionId: string;
-};
-
-/** Возврат с Payform: проверка order_id в URL и разблокировка доступа. */
-export async function recoverProdamusPaymentFromUrl(): Promise<ProdamusPaymentRecovery | null> {
-  const raw = typeof window !== 'undefined' ? window.location.search : '';
-  const params = new URLSearchParams(raw);
-  const orderId = params.get('prodamus_order');
-  const status = params.get('prodamus_status');
-  if (!orderId?.trim() || status !== 'ok') return null;
-
-  const tg = window.Telegram?.WebApp;
-  const base = getPaymentsApiUrl();
-  if (!tg?.initData || !base) return null;
-
-  let recovery: ProdamusPaymentRecovery | null = null;
-
-  try {
-    const res = await fetch(`${base}/payment-order-status`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData: tg.initData, orderId }),
-    });
-    const data = (await res.json()) as { paid?: boolean; product?: string; sessionId?: string };
-    if (res.ok && data.paid === true && data.sessionId) {
-      if (data.product === 'full_report') {
-        localStorage.setItem(reportPaidStorageKey(data.sessionId), '1');
-        recovery = { paid: true, product: 'full_report', sessionId: data.sessionId };
-      } else if (data.product === 'consultation') {
-        localStorage.setItem(consultationPaidStorageKey(data.sessionId), '1');
-        window.dispatchEvent(new CustomEvent('consultation-paid'));
-        recovery = { paid: true, product: 'consultation', sessionId: data.sessionId };
-      }
-    }
-  } catch {
-    /* ignore */
-  }
-
+function stripPaymentReturnParamsFromUrl(): void {
   try {
     const u = new URL(window.location.href);
     u.searchParams.delete('prodamus_order');
     u.searchParams.delete('prodamus_status');
+    u.searchParams.delete('order_id');
+    u.searchParams.delete('payment_status');
     const qs = u.searchParams.toString();
     const path = u.pathname + (qs ? `?${qs}` : '') + u.hash;
     window.history.replaceState({}, '', path);
   } catch {
     /* ignore */
   }
+}
 
+async function confirmOrderPaid(orderId: string): Promise<ProdamusPaymentRecovery | null> {
+  let data = await fetchPaidOrder(orderId, 'payment-return-confirm');
+  let recovery = data ? applyPaidOrder(data) : null;
+  if (recovery) return recovery;
+  for (let i = 0; i < 8; i++) {
+    await new Promise((r) => setTimeout(r, 1500));
+    data = await fetchPaidOrder(orderId, 'payment-order-status');
+    recovery = data ? applyPaidOrder(data) : null;
+    if (recovery) return recovery;
+  }
+  return null;
+}
+
+/** Ожидающий заказ в sessionStorage (если вернулись в бот без параметров в URL). */
+export async function recoverProdamusPaymentPending(): Promise<ProdamusPaymentRecovery | null> {
+  if (typeof window === 'undefined') return null;
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const key = sessionStorage.key(i);
+    if (!key?.startsWith('prodamus_pending_')) continue;
+    const orderId = sessionStorage.getItem(key);
+    if (!orderId) continue;
+    const recovery = await confirmOrderPaid(orderId);
+    if (recovery) return recovery;
+  }
+  return null;
+}
+
+/** Возврат с Payform: подтверждение заказа и разблокировка отчёта. */
+export async function recoverProdamusPaymentFromUrl(): Promise<ProdamusPaymentRecovery | null> {
+  const orderId = parsePaymentReturnOrderId();
+  let recovery: ProdamusPaymentRecovery | null = null;
+
+  if (orderId && isPaymentReturnSuccess()) {
+    recovery = await confirmOrderPaid(orderId);
+    stripPaymentReturnParamsFromUrl();
+    if (recovery) return recovery;
+  }
+
+  recovery = await recoverProdamusPaymentPending();
   return recovery;
+}
+
+/** Последнее прохождение в истории, за которое оплачен отчёт. */
+export function findPaidReportSessionId(): string | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem('alz_history_v1');
+    if (!raw) return null;
+    const history = JSON.parse(raw) as { id: string }[];
+    const newest = history[0]?.id;
+    if (newest && localStorage.getItem(reportPaidStorageKey(newest)) === '1') {
+      return newest;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
 }
 
 /**

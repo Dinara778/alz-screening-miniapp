@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { AppStage, ParticipantProfile, SessionResult, TrialResult } from '../types';
 import {
   clearProgress,
+  hasPaymentReturnInUrl,
   isPageReload,
   loadHistory,
   saveProgress,
@@ -10,7 +11,11 @@ import {
   loadProgress,
 } from '../utils/storage';
 import { pickStudyWordList } from '../utils/generateStimuli';
-import { recoverProdamusPaymentFromUrl } from '../utils/telegramPayments';
+import {
+  findPaidReportSessionId,
+  isReportPaidUnlocked,
+  recoverProdamusPaymentFromUrl,
+} from '../utils/telegramPayments';
 import { sendAnalyticsEventToSheets, sendSessionToSheets } from '../utils/sheetsWebhook';
 
 type ConsultationReturnStage = 'result' | 'full-report';
@@ -31,13 +36,26 @@ type BootState = {
   studyWordList: string[];
 };
 
+function resolveInitialStage(): AppStage {
+  const paidSessionId = findPaidReportSessionId();
+  if (paidSessionId) return 'full-report';
+  if (hasPaymentReturnInUrl()) return 'result';
+  return 'corta-intro';
+}
+
 function buildBootState(): BootState {
   const reloaded = isPageReload();
   if (reloaded) clearProgress();
   const raw = reloaded ? null : loadProgress();
   const r = shouldRestoreProgress(raw) ? raw : null;
+  const paidSessionId = findPaidReportSessionId();
+  const stage: AppStage = paidSessionId
+    ? 'full-report'
+    : hasPaymentReturnInUrl()
+      ? 'result'
+      : (r?.stage ?? resolveInitialStage());
   return {
-    stage: r?.stage ?? 'corta-intro',
+    stage,
     sessionSeed: typeof r?.sessionSeed === 'number' ? r.sessionSeed : Date.now(),
     interferenceStart: r?.startedAt ?? null,
     immediateWords: r?.immediateWords ?? [],
@@ -103,8 +121,14 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [reactionAnticipations, setReactionAnticipations] = useState(b.reactionAnticipations);
   const [stroopTrials, setStroopTrials] = useState<TrialResult[]>(b.stroopTrials);
   const [faceAnswers, setFaceAnswers] = useState<FaceAnswer[]>([]);
-  const [latestResult, setLatestResult] = useState<SessionResult | null>(null);
   const [history, setHistory] = useState<SessionResult[]>(() => loadHistory());
+  const [latestResult, setLatestResult] = useState<SessionResult | null>(() => {
+    const h = loadHistory();
+    const paidId = findPaidReportSessionId();
+    if (paidId) return h.find((s) => s.id === paidId) ?? h[0] ?? null;
+    if (hasPaymentReturnInUrl()) return h[0] ?? null;
+    return null;
+  });
   const [sessionSeed, setSessionSeed] = useState(b.sessionSeed);
   const [participant, setParticipant] = useState<ParticipantProfile | null>(b.participant);
   const [consultationReturnTo, setConsultationReturnTo] = useState<ConsultationReturnStage | null>(null);
@@ -118,20 +142,19 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     void recoverProdamusPaymentFromUrl().then((recovery) => {
       if (!recovery) return;
+      const session = loadHistory().find((h) => h.id === recovery.sessionId) ?? null;
+      if (session) setLatestResult(session);
       if (recovery.product === 'full_report') {
-        const session = loadHistory().find((h) => h.id === recovery.sessionId) ?? null;
-        if (session) setLatestResult(session);
         setStage('full-report');
         return;
       }
       if (recovery.product === 'consultation') {
-        const session = loadHistory().find((h) => h.id === recovery.sessionId) ?? null;
-        if (session) setLatestResult(session);
         setConsultationReturnTo('full-report');
         setStage('consultation-request');
       }
     });
   }, []);
+
 
   useEffect(() => {
     saveProgress({

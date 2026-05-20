@@ -5,8 +5,18 @@ const PROGRESS_KEY = 'alz_progress_v1';
 
 const PROGRESS_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
-/** Полная перезагрузка вкладки (F5, pull-to-refresh) — не восстанавливаем незавершённый тест. */
+/** Параметры возврата с Payform / Prodamus в URL мини-приложения. */
+export function hasPaymentReturnInUrl(): boolean {
+  if (typeof window === 'undefined') return false;
+  const q = new URLSearchParams(window.location.search);
+  if (q.has('prodamus_order') || q.has('order_id')) return true;
+  const status = (q.get('prodamus_status') || q.get('payment_status') || '').toLowerCase();
+  return status === 'ok' || status === 'success' || status === 'paid';
+}
+
+/** Полная перезагрузка вкладки (F5) — не сбрасываем прогресс при возврате с оплаты. */
 export function isPageReload(): boolean {
+  if (hasPaymentReturnInUrl()) return false;
   if (typeof window === 'undefined' || typeof performance === 'undefined') return false;
   const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
   if (nav?.type === 'reload') return true;

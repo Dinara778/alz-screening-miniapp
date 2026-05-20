@@ -37,6 +37,7 @@ import {
   prodamusCreatePaymentLink,
   prodamusMarkOrderPaid,
   prodamusOrderPaidForUser,
+  prodamusConfirmReturnForUser,
 } from './prodamus.mjs';
 import { prodamusVerifySignature } from './prodamusHmac.mjs';
 
@@ -51,7 +52,15 @@ function normalizeBotToken(raw) {
 const BOT_TOKEN = normalizeBotToken(process.env.TELEGRAM_BOT_TOKEN);
 const PROVIDER_TOKEN = process.env.TELEGRAM_PAYMENT_PROVIDER_TOKEN;
 const PORT = Number(process.env.PORT) || 8787;
-const PAYMENT_PROVIDER = (process.env.PAYMENT_PROVIDER || 'telegram').toLowerCase();
+function resolvePaymentProvider() {
+  const raw = (process.env.PAYMENT_PROVIDER || 'telegram').toLowerCase();
+  if (raw === 'auto') {
+    return process.env.TELEGRAM_PAYMENT_PROVIDER_TOKEN?.trim() ? 'telegram' : 'prodamus';
+  }
+  return raw;
+}
+
+const PAYMENT_PROVIDER = resolvePaymentProvider();
 
 /** Названия для чека (Telegram title ≤ 32 символа). amount — копейки для Telegram; priceRub — для Prodamus. */
 const PRODUCTS = {
@@ -355,6 +364,32 @@ app.post('/payment-order-status', async (req, res) => {
   }
 });
 
+/** Возврат с urlSuccess Payform — подтверждаем оплату, если вебхук задержался. */
+app.post('/payment-return-confirm', async (req, res) => {
+  try {
+    if (PAYMENT_PROVIDER !== 'prodamus') {
+      return res.json({ paid: false });
+    }
+    if (!BOT_TOKEN) return res.status(500).json({ paid: false });
+    const { initData, orderId } = req.body ?? {};
+    if (!initData || typeof initData !== 'string' || !orderId || typeof orderId !== 'string') {
+      return res.status(400).json({ paid: false });
+    }
+    if (!validateInitData(initData, BOT_TOKEN)) {
+      return res.status(401).json({ paid: false });
+    }
+    const user = parseTgUser(initData);
+    const st = prodamusConfirmReturnForUser(String(orderId), user?.id);
+    if (st.paid) {
+      console.info('[prodamus] return confirm', String(orderId), st.product);
+    }
+    return res.json(st);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ paid: false });
+  }
+});
+
 app.post(
   '/prodamus/notify',
   express.urlencoded({ extended: true, limit: '512kb' }),
@@ -475,7 +510,7 @@ if (process.env.SERVE_STATIC === 'true') {
   const distDir = path.join(__dirname, '../dist');
   if (fs.existsSync(distDir)) {
     app.use(express.static(distDir));
-    app.get(/^(?!\/(webhook|invoice|health|prodamus|consultation-lead|payment-order-status)).*$/, (_req, res) => {
+    app.get(/^(?!\/(webhook|invoice|health|prodamus|consultation-lead|payment-order-status|payment-return-confirm)).*$/, (_req, res) => {
       res.sendFile(path.join(distDir, 'index.html'));
     });
     console.info('[static] dist:', distDir);
