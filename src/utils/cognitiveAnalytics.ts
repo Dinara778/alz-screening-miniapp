@@ -1,5 +1,5 @@
 import type { CognitiveDomainKey, SessionResult } from '../types';
-import { getDomainInterpretationMid52, type DomainInterpretationCopy } from '../copy/cognitiveDomainInterpretationsMid52';
+import { getDomainInterpretation, type DomainInterpretationCopy } from '../copy/cognitiveDomainInterpretations';
 import { avg, cv, median } from './metrics';
 import {
   getGranularIndexInterpretation,
@@ -15,6 +15,52 @@ import {
 export type { IndexBandKey, IndexInterpretation, OverloadVisualTier } from './indexInterpretationBands';
 
 const clampScore = (n: number): number => Math.max(0, Math.min(100, Math.round(n)));
+
+const NEUTRAL_DOMAIN_SCORE = 50;
+
+const safeMetric = (v: unknown, fallback = 0): number =>
+  typeof v === 'number' && Number.isFinite(v) ? v : fallback;
+
+const safeDomainScore = (score: number): number =>
+  Number.isFinite(score) && !Number.isNaN(score) ? clampScore(score) : NEUTRAL_DOMAIN_SCORE;
+
+/** Устойчивость внимания: базовая формула + штрафы за CV>40 и точность<70%. */
+export const attentionStabilityDomainScore = (metrics: {
+  flankerIncongruentAccuracy: number;
+  flankerIncongruentCv: number;
+}): number => {
+  const accuracy = safeMetric(metrics.flankerIncongruentAccuracy);
+  const cv = safeMetric(metrics.flankerIncongruentCv);
+  let score = clampScore(accuracy * 0.65 + (40 - Math.min(cv, 40)) * 0.9);
+  if (cv > 40) score -= 20;
+  if (accuracy < 70) score -= 15;
+  return clampScore(score);
+};
+
+/** Когнитивная гибкость: база 100, штрафы за интерференцию, ошибки и CV. */
+export const cognitiveFlexibilityDomainScore = (metrics: {
+  stroopInterferenceMs: number;
+  stroopIncongruentErrorRate: number;
+  stroopIncongruentCv: number;
+}): number => {
+  let score = 100;
+  score -= safeMetric(metrics.stroopInterferenceMs) > 180 ? 20 : 10;
+  if (safeMetric(metrics.stroopIncongruentErrorRate) > 25) score -= 15;
+  if (safeMetric(metrics.stroopIncongruentCv) > 45) score -= 15;
+  return clampScore(score);
+};
+
+/** Удержание информации: нормировка слов, лиц и штраф за wordDelta. */
+export const informationRetentionDomainScore = (metrics: {
+  wordDelayedScore: number;
+  faceNameScore: number;
+  wordDelta: number;
+}): number => {
+  const wordScore = (safeMetric(metrics.wordDelayedScore) / 5) * 60;
+  const faceScore = (safeMetric(metrics.faceNameScore) / 3) * 30;
+  const deltaPenalty = Math.min(20, safeMetric(metrics.wordDelta) * 4);
+  return clampScore(Math.max(0, Math.min(100, wordScore + faceScore - deltaPenalty)));
+};
 
 /** Балл домена «скорость реакции» по медиане RT (мс): медленный, но валидный ответ не обнуляет шкалу. */
 export const reactionSpeedDomainScoreFromMedian = (medianRtMs: number): number => {
@@ -173,19 +219,23 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
 
   const stroopInterferenceMs = stroopInterferenceSafe(session);
 
+  const wm = session.wordMemory;
+  const immediateScore = safeMetric(wm?.immediateScore);
+  const delayedScore = safeMetric(wm?.delayedScore);
+
   const m = {
     reactionMedianRt,
     reactionCv,
-    reactionAnticipations: session.reaction.anticipations,
-    flankerIncongruentAccuracy: session.flanker.incongruentAccuracy,
-    flankerIncongruentCv: session.flanker.incongruentCv,
+    reactionAnticipations: safeMetric(session.reaction?.anticipations),
+    flankerIncongruentAccuracy: safeMetric(session.flanker?.incongruentAccuracy),
+    flankerIncongruentCv: safeMetric(session.flanker?.incongruentCv),
     stroopInterferenceMs,
-    stroopIncongruentErrorRate: session.stroop.incongruentErrorRate,
-    stroopIncongruentCv: session.stroop.incongruentCv,
-    wordDelayedScore: session.wordMemory.delayedScore,
-    wordImmediateScore: session.wordMemory.immediateScore,
-    wordDelta: session.wordMemory.immediateScore - session.wordMemory.delayedScore,
-    faceNameScore: session.faceName.score,
+    stroopIncongruentErrorRate: safeMetric(session.stroop?.incongruentErrorRate),
+    stroopIncongruentCv: safeMetric(session.stroop?.incongruentCv),
+    wordDelayedScore: delayedScore,
+    wordImmediateScore: immediateScore,
+    wordDelta: immediateScore - delayedScore,
+    faceNameScore: safeMetric(session.faceName?.score),
   };
 
   for (const [key, val] of Object.entries(m) as [keyof typeof m, number][]) {
@@ -217,13 +267,16 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
     (reactionTrusted && m.reactionAnticipations > 3);
 
   const switchingOverload =
-    m.flankerIncongruentAccuracy < 72 || m.stroopInterferenceMs > 185;
+    m.flankerIncongruentAccuracy < 70 || m.stroopInterferenceMs > 185;
 
-  const retentionDrop = session.wordMemory.redFlag;
+  const retentionDrop =
+    session.wordMemory?.redFlag === true ||
+    m.wordDelayedScore < 3 ||
+    m.wordDelta >= 3;
 
   const highReactivity =
     (reactionTrusted && m.reactionAnticipations >= 3) ||
-    m.stroopIncongruentErrorRate > 18 ||
+    m.stroopIncongruentErrorRate > 25 ||
     m.flankerIncongruentAccuracy < 65;
 
   const patterns: CognitivePattern[] = [
@@ -294,32 +347,23 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
     },
   ];
 
-  const attentionScore = clampScore(
-    m.flankerIncongruentAccuracy * 0.65 + (40 - Math.min(m.flankerIncongruentCv, 40)) * 0.9,
-  );
+  const attentionScore = attentionStabilityDomainScore(m);
 
   const reactionSpeedScore = reactionTrusted
     ? reactionSpeedDomainScoreFromMedian(m.reactionMedianRt)
-    : 50;
+    : NEUTRAL_DOMAIN_SCORE;
   const reactionStabilityScore = reactionTrusted
-    ? reactionStabilityDomainScore(robustReactionCvPercent(reactionRtsClean), m.reactionAnticipations)
-    : 50;
+    ? reactionStabilityDomainScore(
+        robustReactionCvPercent(reactionRtsClean),
+        m.reactionAnticipations,
+      )
+    : NEUTRAL_DOMAIN_SCORE;
 
-  const flexibilityScore = clampScore(
-    100 -
-      Math.min(m.stroopInterferenceMs / 4.5, 45) -
-      m.stroopIncongruentErrorRate * 0.9 -
-      Math.min(m.stroopIncongruentCv, 50) * 0.35,
-  );
-  const retentionScore = clampScore(
-    m.wordDelayedScore * 16 +
-      (5 - m.wordDelta) * 8 +
-      m.faceNameScore * 10 -
-      Math.max(0, m.wordDelta - 2) * 12,
-  );
+  const flexibilityScore = cognitiveFlexibilityDomainScore(m);
+  const retentionScore = informationRetentionDomainScore(m);
 
   const mkDomain = (key: CognitiveDomainKey, title: string, score: number): DomainScore => {
-    const interpretation = getDomainInterpretationMid52(key);
+    const interpretation = getDomainInterpretation(key);
     return {
       key,
       title,
@@ -330,15 +374,15 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
   };
 
   const domains: DomainScore[] = [
-    mkDomain('attentionStability', 'Устойчивость внимания', attentionScore),
-    mkDomain('reactionSpeed', 'Скорость реакции', reactionSpeedScore),
-    mkDomain('reactionStability', 'Стабильность реакции', reactionStabilityScore),
-    mkDomain('cognitiveFlexibility', 'Когнитивная гибкость', flexibilityScore),
-    mkDomain('informationRetention', 'Удержание информации', retentionScore),
+    mkDomain('attentionStability', 'Устойчивость внимания', safeDomainScore(attentionScore)),
+    mkDomain('reactionSpeed', 'Скорость реакции', safeDomainScore(reactionSpeedScore)),
+    mkDomain('reactionStability', 'Стабильность реакции', safeDomainScore(reactionStabilityScore)),
+    mkDomain('cognitiveFlexibility', 'Когнитивная гибкость', safeDomainScore(flexibilityScore)),
+    mkDomain('informationRetention', 'Удержание информации', safeDomainScore(retentionScore)),
   ];
 
-  const rawIndex = avg(domains.map((d) => d.score));
-  const indexValue = Number.isFinite(rawIndex) ? clampScore(rawIndex) : 50;
+  const rawIndex = avg(domains.map((d) => safeDomainScore(d.score)));
+  const indexValue = Number.isFinite(rawIndex) ? clampScore(rawIndex) : NEUTRAL_DOMAIN_SCORE;
   const index = interpretationTrusted ? getGranularIndexInterpretation(indexValue) : degradedIndex(indexValue);
 
   const cognitiveExhaustion =

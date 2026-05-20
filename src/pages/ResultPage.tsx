@@ -9,10 +9,12 @@ import { SketchHighlightTitle } from '../components/results/SketchHighlightTitle
 import { SupportFooter } from '../components/SupportFooter';
 import { scoreAccentFromValue } from '../components/results/scoreAccent';
 import { useApp } from '../context/AppContext';
-import type { DomainInterpretationCopy } from '../copy/cognitiveDomainInterpretationsMid52';
+import type { DomainInterpretationCopy } from '../copy/cognitiveDomainInterpretations';
 import { buildCognitiveAnalytics, type DomainScore } from '../utils/cognitiveAnalytics';
 import type { IndexInterpretation } from '../utils/indexInterpretationBands';
 import { shareResultWithCard } from '../utils/shareResult';
+import { getPaidReportData } from '../utils/paidReport';
+import { PaidReportModal } from '../components/PaidReportModal';
 import { isPaymentsEnabled, shouldBypassReportPayment } from '../utils/paymentStub';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
 import { hasPaymentReturnInUrl } from '../utils/storage';
@@ -96,7 +98,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const [shareBusy, setShareBusy] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [payNotice, setPayNotice] = useState<string | null>(null);
-
+  const [paidModalOpen, setPaidModalOpen] = useState(false);
   if (!latestResult) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-10 text-center text-white/80">
@@ -149,6 +151,18 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
 
   const reportUnlocked = latestResult ? isReportPaidUnlocked(latestResult.id) : false;
 
+  const paidReportData = getPaidReportData(
+    a.index.value,
+    a.domains,
+    a.patterns,
+    null,
+    a.overloadMap,
+  );
+
+  const openPaidReportModal = () => {
+    setPaidModalOpen(true);
+  };
+
   const openCheckout = () => {
     if (!latestResult) return;
     if (skipNativePayment || reportUnlocked) {
@@ -159,7 +173,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     setPayNotice(null);
     setCheckoutOpen(true);
   };
-
 
   const startDomains = () => {
     setDomainIndex(0);
@@ -296,6 +309,14 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           </button>
           <Button
             type="button"
+            variant="secondary"
+            className="w-full rounded-full border border-white/20 bg-white/5 py-3.5 text-[0.9375rem] font-semibold text-white/90"
+            onClick={openPaidReportModal}
+          >
+            Полный отчёт — 399 ₽
+          </Button>
+          <Button
+            type="button"
             className={`cta-shimmer border-0 !bg-none !from-transparent !to-transparent hover:!from-transparent hover:!to-transparent ${calmBtnClass}`}
             onClick={openCheckout}
           >
@@ -329,6 +350,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         </div>
       </div>
     </CalmScreen>
+    <PaidReportModal open={paidModalOpen} data={paidReportData} onClose={() => setPaidModalOpen(false)} />
     {latestResult ? (
       <PaymentCheckoutSheet
         open={checkoutOpen}

@@ -11,13 +11,18 @@ import {
 } from './syntheticSessions';
 
 describe('reactionStabilityDomainScore', () => {
-  it('does not return 0 for high but valid variability', () => {
-    expect(reactionStabilityDomainScore(58, 1)).toBeGreaterThanOrEqual(12);
-    expect(reactionStabilityDomainScore(58, 1)).toBeLessThan(50);
+  it('uses base 60 when CV > 35%', () => {
+    expect(reactionStabilityDomainScore(40, 0)).toBe(60);
+    expect(reactionStabilityDomainScore(58, 1)).toBe(60);
+  });
+
+  it('uses base 100 when CV <= 35% and subtracts for anticipations > 3', () => {
+    expect(reactionStabilityDomainScore(30, 0)).toBe(100);
+    expect(reactionStabilityDomainScore(30, 4)).toBe(90);
   });
 
   it('floors at 12 for extreme CV and many anticipations', () => {
-    expect(reactionStabilityDomainScore(95, 15)).toBe(12);
+    expect(reactionStabilityDomainScore(95, 15)).toBe(50);
   });
 });
 
@@ -94,8 +99,7 @@ describe('cognitive self-validation cases', () => {
     expect(a3.patterns.find((p) => p.id === 'attention_instability')?.active).toBe(true);
     expect(a3.metrics.reactionCv).toBeGreaterThan(35);
     const stab = a3.domains.find((d) => d.key === 'reactionStability')?.score ?? 0;
-    expect(stab).toBeGreaterThanOrEqual(12);
-    expect(stab).toBeLessThan(55);
+    expect(stab).toBe(60);
   });
 
   it('empty valid reaction RT: warnings and degraded interpretation', () => {

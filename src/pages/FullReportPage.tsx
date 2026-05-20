@@ -8,7 +8,7 @@ import { scoreAccentFromValue } from '../components/results/scoreAccent';
 import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { useApp } from '../context/AppContext';
 import { useHydrateLatestResult } from '../hooks/useHydrateLatestResult';
-import { formatDomainInterpretationPlain } from '../copy/cognitiveDomainInterpretationsMid52';
+import { formatDomainInterpretationPlain } from '../copy/cognitiveDomainInterpretations';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { downloadCognitiveReportPdf } from '../utils/pdfReport';
 import { isReportPaidUnlocked, isPaymentsBackendConfigured } from '../utils/telegramPayments';

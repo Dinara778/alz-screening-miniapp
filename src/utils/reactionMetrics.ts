@@ -23,14 +23,10 @@ export const robustReactionCvPercent = (cleaned: number[]): number => {
   return cv(sorted.slice(trim, sorted.length - trim));
 };
 
-/**
- * Балл домена «стабильность реакции» (0–100).
- * Линейная формула 100 − CV×1.1 − anticipations×6 слишком часто давала 0 при валидных данных.
- */
+/** Балл домена «стабильность реакции» (0–100): база 60 при CV>35%, −10 при anticipations>3. */
 export const reactionStabilityDomainScore = (cvPercent: number, anticipations: number): number => {
   if (!Number.isFinite(cvPercent) || cvPercent < 0) return 50;
-  const cvPenalty = Math.min(70, Math.max(0, (cvPercent - 15) * 1.15));
-  const antPenalty = Math.min(24, Math.max(0, anticipations) * 2);
-  const raw = 100 - cvPenalty - antPenalty;
-  return Math.max(12, Math.min(96, Math.round(raw)));
+  let base = cvPercent > 35 ? 60 : 100;
+  if (anticipations > 3) base -= 10;
+  return Math.max(12, Math.min(100, Math.round(base)));
 };
