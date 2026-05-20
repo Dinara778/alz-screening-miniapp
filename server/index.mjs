@@ -40,7 +40,15 @@ import {
 } from './prodamus.mjs';
 import { prodamusVerifySignature } from './prodamusHmac.mjs';
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+function normalizeBotToken(raw) {
+  const t = String(raw ?? '').trim();
+  if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
+    return t.slice(1, -1).trim();
+  }
+  return t;
+}
+
+const BOT_TOKEN = normalizeBotToken(process.env.TELEGRAM_BOT_TOKEN);
 const PROVIDER_TOKEN = process.env.TELEGRAM_PAYMENT_PROVIDER_TOKEN;
 const PORT = Number(process.env.PORT) || 8787;
 const PAYMENT_PROVIDER = (process.env.PAYMENT_PROVIDER || 'telegram').toLowerCase();
@@ -85,7 +93,7 @@ function validateInitData(initData, botToken) {
   params.delete('hash');
   const keys = Array.from(params.keys()).sort();
   const dataCheckString = keys.map((k) => `${k}=${params.get(k)}`).join('\n');
-  const secretKey = crypto.createHmac('sha256', botToken).update('WebAppData').digest();
+  const secretKey = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
   const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
   try {
     return crypto.timingSafeEqual(Buffer.from(hmac, 'hex'), Buffer.from(hash, 'hex'));
@@ -222,7 +230,10 @@ app.post('/invoice', async (req, res) => {
       return res.status(400).json({ error: 'initData обязателен' });
     }
     if (!validateInitData(initData, BOT_TOKEN)) {
-      return res.status(401).json({ error: 'Неверная подпись initData' });
+      return res.status(401).json({
+        error:
+          'Неверная подпись initData. В Amvera → Переменные запуска TELEGRAM_BOT_TOKEN должен быть токеном того же бота @BotFather, через который открыто мини-приложение Corta (без кавычек и пробелов).',
+      });
     }
     const spec = PRODUCTS[product];
     if (!spec) return res.status(400).json({ error: 'Неизвестный product' });
