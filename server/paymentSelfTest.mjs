@@ -62,7 +62,7 @@ if (!validateInitData(expired, BOT_TOKEN)) {
 }
 
 // 2) Prodamus HMAC
-const sample = { order_id: 'c_test_1', currency: 'rub', products: [{ name: 'Test', price: 399, quantity: 1 }] };
+const sample = { order_id: 'c_test_1', currency: 'rub', products: [{ name: 'Test', price: 199, quantity: 1 }] };
 const sig = prodamusCreateSignature(sample, 'secret');
 if (prodamusVerifySignature({ ...sample, signature: sig }, 'secret', sig)) {
   ok('Prodamus: подпись запроса/вебхука');

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Button } from './Button';
 import { CalmCardShell } from './CalmCardShell';
+import { TELEGRAM_SUPPORT_URL } from './SupportFooter';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
 import {
   consultationPaidStorageKey,
@@ -9,7 +10,6 @@ import {
   openTelegramInvoiceForProduct,
   pollProdamusOrderPaidQuick,
   prodamusPendingOrderKey,
-  recoverFullReportAccess,
   type TelegramInvoiceProduct,
 } from '../utils/telegramPayments';
 
@@ -32,9 +32,10 @@ export const PaymentCheckoutSheet = ({
 }: Props) => {
   const { serverPaymentsReady } = useApp();
   const meta = PAYMENT_PRODUCTS[product];
+  const reportPriceRub = PAYMENT_PRODUCTS.full_report.priceRub;
   const [payBusy, setPayBusy] = useState(false);
-  const [recoverBusy, setRecoverBusy] = useState(false);
   const [awaitingReturn, setAwaitingReturn] = useState(false);
+  const [alreadyPaidHelpOpen, setAlreadyPaidHelpOpen] = useState(false);
   const [alreadyPaid, setAlreadyPaid] = useState(() =>
     product === 'full_report' ? isReportPaidUnlocked(sessionId, false) : false,
   );
@@ -49,23 +50,10 @@ export const PaymentCheckoutSheet = ({
     [onNotice],
   );
 
-  const tryUnlock = useCallback(async (): Promise<boolean> => {
-    if (product !== 'full_report') return false;
-    const r = await recoverFullReportAccess(sessionId);
-    if (r.ok) {
-      setAlreadyPaid(true);
-      setAwaitingReturn(false);
-      onPaid();
-      onClose();
-      return true;
-    }
-    setAwaitingReturn(false);
-    showNotice(r.message);
-    return false;
-  }, [product, sessionId, onPaid, onClose, showNotice]);
-
   useEffect(() => {
-    if (!open || product !== 'full_report') return;
+    if (!open) return;
+    setAlreadyPaidHelpOpen(false);
+    if (product !== 'full_report') return;
     setAlreadyPaid(isReportPaidUnlocked(sessionId, serverPaymentsReady));
     setAwaitingReturn(false);
     setSheetNotice(null);
@@ -87,22 +75,21 @@ export const PaymentCheckoutSheet = ({
   }, [product, sessionId, onPaid, onClose]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || product !== 'consultation') return;
     const onVis = () => {
       if (document.visibilityState !== 'visible' || !awaitingReturn) return;
-      if (product === 'full_report') void tryUnlock();
-      if (product === 'consultation') void tryConfirmConsultationPaid();
+      void tryConfirmConsultationPaid();
     };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
-  }, [open, product, awaitingReturn, tryUnlock, tryConfirmConsultationPaid]);
+  }, [open, product, awaitingReturn, tryConfirmConsultationPaid]);
 
   if (!open) return null;
 
-  const anyBusy = payBusy || recoverBusy;
+  const payBusyOnly = payBusy;
 
   const handlePay = async () => {
-    if (anyBusy || payInFlightRef.current) return;
+    if (payBusyOnly || payInFlightRef.current) return;
     if (product === 'full_report' && isReportPaidUnlocked(sessionId, serverPaymentsReady)) {
       onPaid();
       onClose();
@@ -149,7 +136,7 @@ export const PaymentCheckoutSheet = ({
       if (r.status === 'failed') {
         showNotice(
           product === 'full_report'
-            ? 'Оплата не завершена. Нажмите «Я уже оплатил», если деньги списались.'
+            ? 'Оплата не завершена. Попробуйте ещё раз или напишите в техподдержку.'
             : 'Оплата не завершена. Попробуйте ещё раз.',
         );
         return;
@@ -163,16 +150,13 @@ export const PaymentCheckoutSheet = ({
     }
   };
 
-  const handleAlreadyPaid = async () => {
-    if (product !== 'full_report' || anyBusy) return;
-    setRecoverBusy(true);
+  const handleAlreadyPaidHelp = () => {
+    if (product !== 'full_report' || payBusyOnly) return;
     showNotice(null);
-    try {
-      await tryUnlock();
-    } finally {
-      setRecoverBusy(false);
-    }
+    setAlreadyPaidHelpOpen(true);
   };
+
+  const reportAlreadyPaidHelp = alreadyPaidHelpOpen && product === 'full_report';
 
   return (
     <div
@@ -196,7 +180,11 @@ export const PaymentCheckoutSheet = ({
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-emerald-300/90">Оплата</p>
               <h2 id="payment-checkout-title" className="app-heading mt-1 text-xl">
-                {alreadyPaid && product === 'full_report' ? 'Доступ уже есть' : meta.title}
+                {reportAlreadyPaidHelp
+                  ? 'Я уже оплатил'
+                  : alreadyPaid && product === 'full_report'
+                    ? 'Доступ уже есть'
+                    : meta.title}
               </h2>
             </div>
             <button
@@ -209,7 +197,34 @@ export const PaymentCheckoutSheet = ({
             </button>
           </div>
 
-          {alreadyPaid && product === 'full_report' ? (
+          {reportAlreadyPaidHelp ? (
+            <div className="mt-4 space-y-4">
+              <p className="calm-body text-sm leading-relaxed text-white/90">
+                Если вы оплатили {reportPriceRub} руб. за один расширенный отчёт, а он вам не открылся,
+                пожалуйста, напишите нам в{' '}
+                <a
+                  href={TELEGRAM_SUPPORT_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-teal-300 underline underline-offset-2"
+                >
+                  Техподдержку Corta в Telegram
+                </a>{' '}
+                или по почте{' '}
+                <a
+                  href="mailto:hello@bookvolon.ru"
+                  className="font-medium text-teal-300 underline underline-offset-2"
+                >
+                  hello@bookvolon.ru
+                </a>
+                .
+              </p>
+              <p className="text-xs leading-relaxed text-white/55">
+                Одна сессия оценки когнитивного профиля стоит {reportPriceRub} руб. Это разовый платёж за
+                расширенный отчёт, не подписка.
+              </p>
+            </div>
+          ) : alreadyPaid && product === 'full_report' ? (
             <div className="mt-4 space-y-4">
               <p className="calm-body text-sm text-emerald-100/95">
                 Оплата учтена. Откройте расширенный отчёт.
@@ -259,12 +274,23 @@ export const PaymentCheckoutSheet = ({
           )}
         </div>
 
-        {!alreadyPaid || product !== 'full_report' ? (
+        {reportAlreadyPaidHelp ? (
+          <div className="shrink-0 border-t border-white/10 px-5 py-4 sm:px-6">
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full shrink-0 rounded-2xl py-3.5 text-sm font-semibold"
+              onClick={() => setAlreadyPaidHelpOpen(false)}
+            >
+              Назад
+            </Button>
+          </div>
+        ) : !alreadyPaid || product !== 'full_report' ? (
           <div className="shrink-0 space-y-3 border-t border-white/10 px-5 py-4 sm:px-6">
             <Button
               type="button"
               variant="sell"
-              disabled={anyBusy || awaitingReturn}
+              disabled={payBusyOnly || awaitingReturn}
               className="w-full shrink-0 rounded-2xl py-4 text-[1.0625rem] font-bold sm:text-lg"
               onClick={() => void handlePay()}
             >
@@ -275,11 +301,11 @@ export const PaymentCheckoutSheet = ({
               <Button
                 type="button"
                 variant="secondary"
-                disabled={anyBusy}
+                disabled={payBusyOnly}
                 className="w-full shrink-0 rounded-2xl py-3.5 text-sm font-semibold"
-                onClick={() => void handleAlreadyPaid()}
+                onClick={handleAlreadyPaidHelp}
               >
-                {recoverBusy ? 'Проверяем оплату…' : 'Я уже оплатил — открыть отчёт'}
+                Я уже оплатил
               </Button>
             ) : null}
 

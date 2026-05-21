@@ -16,7 +16,7 @@ export type PaymentProductMeta = {
 export const PAYMENT_PRODUCTS: Record<TelegramInvoiceProduct, PaymentProductMeta> = {
   full_report: {
     title: 'Расширенный отчёт',
-    priceRub: 399,
+    priceRub: 199,
     subtitle: 'PDF для скачивания на основе вашего когнитивного профиля',
     bullets: [
       'Карта перегрузки и расшифровка зон',
@@ -25,9 +25,9 @@ export const PAYMENT_PRODUCTS: Record<TelegramInvoiceProduct, PaymentProductMeta
     ],
     paymentNote: 'Безопасная оплата · чек отправляется на email после оплаты',
     awaitingReturnHint:
-      'После оплаты вернитесь в этот чат и нажмите зелёную кнопку ниже — отчёт откроется автоматически.',
+      'После успешной оплаты отчёт откроется автоматически. Если этого не произошло — напишите в техподдержку.',
     redirectOpenedMessage:
-      'Страница оплаты открыта. После оплаты вернитесь в Corta и в окне оплаты нажмите «Я уже оплатил — открыть отчёт».',
+      'Страница оплаты открыта. После успешной оплаты отчёт откроется автоматически. Если этого не произошло — напишите в техподдержку.',
   },
   consultation: {
     title: 'Сессия с экспертом',

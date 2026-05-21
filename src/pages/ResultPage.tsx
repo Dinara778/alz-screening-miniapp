@@ -14,6 +14,7 @@ import { buildCognitiveAnalytics, type DomainScore } from '../utils/cognitiveAna
 import type { IndexInterpretation } from '../utils/indexInterpretationBands';
 import { shareResultWithCard } from '../utils/shareResult';
 import { shouldBypassReportPayment } from '../utils/paymentStub';
+import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
 import { hasPaymentReturnInUrl } from '../utils/storage';
 import {
@@ -422,7 +423,9 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
             className={`cta-shimmer border-0 !bg-none !from-transparent !to-transparent hover:!from-transparent hover:!to-transparent ${calmBtnClass}`}
             onClick={openCheckout}
           >
-            {reportUnlocked ? 'Открыть расширенный отчёт' : 'Получить расширенный отчёт — 399 ₽'}
+            {reportUnlocked
+              ? 'Открыть расширенный отчёт'
+              : `Получить расширенный отчёт — ${PAYMENT_PRODUCTS.full_report.priceRub} ₽`}
           </Button>
           <SupportFooter showDeveloperCredit={false} />
         </div>

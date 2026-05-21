@@ -80,8 +80,8 @@ const PRODUCTS = {
     title: 'Расширенный отчёт Corta',
     description:
       'Аналитический отчёт в PDF для скачивания: интерпретация метрик и персональные рекомендации',
-    amount: 39900,
-    priceRub: 399,
+    amount: 19900,
+    priceRub: 199,
   },
   consultation: {
     title: 'Сессия с экспертом Corta',
