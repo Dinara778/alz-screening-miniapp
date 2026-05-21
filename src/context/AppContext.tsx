@@ -18,8 +18,12 @@ import { goToIntroFresh, stripPaymentQueryFromUrl } from '../utils/appReload';
 import { MID_TEST_STAGES } from '../utils/storage';
 import { isReportPaidUnlocked } from '../utils/telegramPayments';
 import { pickStudyWordList } from '../utils/generateStimuli';
-import { isPaymentsEnabled } from '../utils/paymentStub';
-import { recoverProdamusPaymentFromUrl, tryRecoverReportAccess } from '../utils/telegramPayments';
+import { arePaymentsActive, isPaymentsEnabled } from '../utils/paymentStub';
+import {
+  getPaymentsApiUrl,
+  recoverProdamusPaymentFromUrl,
+  tryRecoverReportAccess,
+} from '../utils/telegramPayments';
 import { sendAnalyticsEventToSheets, sendSessionToSheets } from '../utils/sheetsWebhook';
 
 type ConsultationReturnStage = 'result' | 'full-report';
@@ -161,6 +165,8 @@ type AppState = {
   clearResultEntryStep: () => void;
   studyWordList: string[];
   setStudyWordList: (v: string[]) => void;
+  /** true после GET /health, если на сервере ЮKassa/Telegram оплата включена */
+  serverPaymentsReady: boolean;
 };
 
 const Ctx = createContext<AppState | null>(null);
@@ -185,6 +191,18 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [consultationReturnTo, setConsultationReturnTo] = useState<ConsultationReturnStage | null>(null);
   const [resultEntryStep, setResultEntryStep] = useState<ResultEntryStep | null>(null);
   const [studyWordList, setStudyWordList] = useState<string[]>(b.studyWordList);
+  const [serverPaymentsReady, setServerPaymentsReady] = useState(false);
+
+  useEffect(() => {
+    const base = getPaymentsApiUrl();
+    if (!base) return;
+    void fetch(`${base.replace(/\/$/, '')}/health`)
+      .then((r) => r.json())
+      .then((j: { payments?: { ready?: boolean } }) => {
+        setServerPaymentsReady(j?.payments?.ready === true);
+      })
+      .catch(() => setServerPaymentsReady(false));
+  }, []);
 
   const openResultAtStep = useCallback((step: ResultEntryStep) => {
     setResultEntryStep(step);
@@ -220,7 +238,25 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   }, [stage, latestResult]);
 
   useEffect(() => {
-    if (!hasPaymentReturnInUrl() || !isPaymentsEnabled()) return;
+    const onVis = async () => {
+      if (document.visibilityState !== 'visible') return;
+      setHistory(loadHistory());
+      if (stage !== 'result' && stage !== 'full-report') return;
+      if (latestResult?.id) return;
+      const session = loadSessionFromHistory(loadProgress()?.latestSessionId ?? loadLastSessionId());
+      if (session) setLatestResult(session);
+      if (stage === 'full-report' && session?.id) {
+        const ok = await tryRecoverReportAccess(session.id);
+        if (!ok && !isReportPaidUnlocked(session.id, serverPaymentsReady)) setStage('result');
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [stage, latestResult?.id, serverPaymentsReady]);
+
+  useEffect(() => {
+    if (!hasPaymentReturnInUrl()) return;
+    if (!arePaymentsActive(serverPaymentsReady)) return;
     const run = async () => {
       const recovery = await recoverProdamusPaymentFromUrl();
       if (!recovery) return;
@@ -235,25 +271,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
     void run();
-  }, []);
-
-  useEffect(() => {
-    const onVis = async () => {
-      if (document.visibilityState !== 'visible') return;
-      setHistory(loadHistory());
-      if (stage !== 'result' && stage !== 'full-report') return;
-      if (latestResult?.id) return;
-      const session = loadSessionFromHistory(loadProgress()?.latestSessionId ?? loadLastSessionId());
-      if (session) setLatestResult(session);
-      if (stage === 'full-report' && session?.id) {
-        const ok = await tryRecoverReportAccess(session.id);
-        if (!ok && !isReportPaidUnlocked(session.id)) setStage('result');
-      }
-    };
-    document.addEventListener('visibilitychange', onVis);
-    return () => document.removeEventListener('visibilitychange', onVis);
-  }, [stage, latestResult?.id]);
-
+  }, [serverPaymentsReady, openResultAtStep]);
 
   useEffect(() => {
     if (!MID_TEST_STAGES.has(stage)) return;
@@ -437,6 +455,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       clearResultEntryStep,
       studyWordList,
       setStudyWordList,
+      serverPaymentsReady,
     }),
     [
       stage,
@@ -457,6 +476,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       openResultAtStep,
       clearResultEntryStep,
       studyWordList,
+      serverPaymentsReady,
       resetSession,
       refreshApp,
       restartApp,

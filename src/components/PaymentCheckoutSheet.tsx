@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useApp } from '../context/AppContext';
 import { Button } from './Button';
 import { CalmCardShell } from './CalmCardShell';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
@@ -29,12 +30,13 @@ export const PaymentCheckoutSheet = ({
   onPaid,
   onNotice,
 }: Props) => {
+  const { serverPaymentsReady } = useApp();
   const meta = PAYMENT_PRODUCTS[product];
   const [payBusy, setPayBusy] = useState(false);
   const [recoverBusy, setRecoverBusy] = useState(false);
   const [awaitingReturn, setAwaitingReturn] = useState(false);
   const [alreadyPaid, setAlreadyPaid] = useState(() =>
-    product === 'full_report' ? isReportPaidUnlocked(sessionId) : false,
+    product === 'full_report' ? isReportPaidUnlocked(sessionId, false) : false,
   );
   const [sheetNotice, setSheetNotice] = useState<string | null>(null);
   const payInFlightRef = useRef(false);
@@ -64,11 +66,11 @@ export const PaymentCheckoutSheet = ({
 
   useEffect(() => {
     if (!open || product !== 'full_report') return;
-    setAlreadyPaid(isReportPaidUnlocked(sessionId));
+    setAlreadyPaid(isReportPaidUnlocked(sessionId, serverPaymentsReady));
     setAwaitingReturn(false);
     setSheetNotice(null);
     payInFlightRef.current = false;
-  }, [open, product, sessionId]);
+  }, [open, product, sessionId, serverPaymentsReady]);
 
   const tryConfirmConsultationPaid = useCallback(async (): Promise<boolean> => {
     if (product !== 'consultation') return false;
@@ -101,9 +103,14 @@ export const PaymentCheckoutSheet = ({
 
   const handlePay = async () => {
     if (anyBusy || payInFlightRef.current) return;
-    if (product === 'full_report' && isReportPaidUnlocked(sessionId)) {
+    if (product === 'full_report' && isReportPaidUnlocked(sessionId, serverPaymentsReady)) {
       onPaid();
       onClose();
+      return;
+    }
+    const tg = window.Telegram?.WebApp;
+    if (!tg?.initData) {
+      showNotice('Откройте Corta из Telegram (кнопка у бота), не во внешнем браузере');
       return;
     }
     payInFlightRef.current = true;

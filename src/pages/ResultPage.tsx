@@ -96,7 +96,8 @@ const IndexInterpretationBody = ({ index, accent }: { index: IndexInterpretation
 );
 
 export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
-  const { latestResult, setStage, resultEntryStep, clearResultEntryStep } = useApp();
+  const { latestResult, setStage, resultEntryStep, clearResultEntryStep, serverPaymentsReady } =
+    useApp();
   useHydrateLatestResult();
   const [step, setStep] = useState<ResultStep>('index');
   const [domainIndex, setDomainIndex] = useState(0);
@@ -135,7 +136,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const domains = a.domains;
   const currentDomain: DomainScore | undefined = domains[domainIndex];
   const accent = scoreAccentFromValue(a.index.value);
-  const skipNativePayment = shouldBypassReportPayment();
+  const skipNativePayment = shouldBypassReportPayment(serverPaymentsReady);
 
   const handleShare = async () => {
     setShareNotice(null);
@@ -171,7 +172,9 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     });
   }, [latestResult?.id, skipNativePayment, setStage]);
 
-  const reportUnlocked = latestResult ? isReportPaidUnlocked(latestResult.id) : false;
+  const reportUnlocked = latestResult
+    ? isReportPaidUnlocked(latestResult.id, serverPaymentsReady)
+    : false;
 
   const openCheckout = () => {
     if (!latestResult) return;

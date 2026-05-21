@@ -270,9 +270,46 @@ const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: '256kb' }));
 
-function sendHealthJson(res) {
+function readFrontendBuildInfo() {
+  try {
+    const p = path.join(__dirname, '../dist/build-info.json');
+    if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+async function sendHealthJson(res) {
   const paymentsReady =
     PAYMENT_PROVIDER !== 'none' && Boolean(BOT_TOKEN) && Boolean(PROVIDER_TOKEN?.trim());
+  const webhookUrl = resolveWebhookUrl({ ...process.env, TELEGRAM_BOT_TOKEN: BOT_TOKEN });
+  let webhookActive = false;
+  let webhookLastError = null;
+  if (BOT_TOKEN && webhookUrl) {
+    const info = await tgApi('getWebhookInfo', {});
+    if (info?.ok) {
+      webhookActive = info.result?.url === webhookUrl;
+      webhookLastError = info.result?.last_error_message ?? null;
+    }
+  }
+  const buildInfo = readFrontendBuildInfo();
+  const frontendPaymentsOn = buildInfo?.paymentsEnabled !== false;
+  const hints = [];
+  if (!paymentsReady) {
+    hints.push('Сервер: PAYMENT_PROVIDER=telegram и TELEGRAM_PAYMENT_PROVIDER_TOKEN');
+  }
+  if (!webhookUrl) {
+    hints.push('Задайте TELEGRAM_WEBHOOK_URL или TELEGRAM_MINI_APP_URL (для /webhook)');
+  } else if (!webhookActive) {
+    hints.push(`Вебхук не на ${webhookUrl} — оплата в Telegram может отменяться`);
+  }
+  if (buildInfo && !frontendPaymentsOn) {
+    hints.push('Фронт собран с VITE_PAYMENTS_ENABLED=false — отчёт открывается без оплаты');
+  }
+  if (!buildInfo) {
+    hints.push('Нет dist/build-info.json — пересоберите Docker после git push');
+  }
   res.json({
     ok: true,
     payments: {
@@ -282,20 +319,23 @@ function sendHealthJson(res) {
       providerToken: Boolean(PROVIDER_TOKEN?.trim()),
       serveStatic: process.env.SERVE_STATIC === 'true',
       miniAppUrl: Boolean(process.env.TELEGRAM_MINI_APP_URL?.trim()),
-      hint:
-        PAYMENT_PROVIDER === 'none'
-          ? 'Задайте PAYMENT_PROVIDER=telegram и TELEGRAM_PAYMENT_PROVIDER_TOKEN (BotFather → Payments)'
-          : PAYMENT_PROVIDER === 'telegram' && !PROVIDER_TOKEN?.trim()
-            ? 'TELEGRAM_PAYMENT_PROVIDER_TOKEN пустой в переменных Amvera'
-            : paymentsReady
-              ? 'Сервер готов. На сборке: VITE_PAYMENTS_ENABLED=true'
-              : 'Проверьте TELEGRAM_BOT_TOKEN',
+      webhookUrl: webhookUrl || null,
+      webhookActive,
+      webhookLastError,
+      frontend: buildInfo
+        ? { paymentsEnabled: frontendPaymentsOn, builtAt: buildInfo.builtAt }
+        : { paymentsEnabled: null, note: 'пересоберите проект' },
+      hint: hints.length ? hints.join(' · ') : 'Сервер и вебхук в порядке. Тестируйте оплату только из Telegram.',
     },
   });
 }
 
-app.get('/health', (_req, res) => sendHealthJson(res));
-app.get('/health/payments', (_req, res) => sendHealthJson(res));
+app.get('/health', (req, res) => {
+  void sendHealthJson(res);
+});
+app.get('/health/payments', (req, res) => {
+  void sendHealthJson(res);
+});
 
 app.get('/health/bot', async (_req, res) => {
   const miniAppUrl = process.env.TELEGRAM_MINI_APP_URL?.trim() || '';
@@ -606,12 +646,6 @@ app.post('/consultation-lead', async (req, res) => {
 async function processTelegramUpdate(update) {
   if (!update || !BOT_TOKEN) return;
 
-  if (update.pre_checkout_query) {
-    await tgApi('answerPreCheckoutQuery', {
-      pre_checkout_query_id: update.pre_checkout_query.id,
-      ok: true,
-    });
-  }
   if (update.message?.successful_payment) {
     console.info('[paid]', update.message.successful_payment.invoice_payload);
   }
@@ -627,9 +661,23 @@ async function processTelegramUpdate(update) {
   }
 }
 
-app.post('/webhook', (req, res) => {
+app.post('/webhook', async (req, res) => {
+  const update = req.body;
+  if (update?.pre_checkout_query && BOT_TOKEN) {
+    try {
+      const ans = await tgApi('answerPreCheckoutQuery', {
+        pre_checkout_query_id: update.pre_checkout_query.id,
+        ok: true,
+      });
+      if (!ans?.ok) {
+        console.error('[pre_checkout] answer failed', ans?.description || ans);
+      }
+    } catch (e) {
+      console.error('[pre_checkout]', e);
+    }
+  }
   res.sendStatus(200);
-  void processTelegramUpdate(req.body).catch((e) => console.error('[webhook]', e));
+  void processTelegramUpdate(update).catch((e) => console.error('[webhook]', e));
 });
 
 /** SERVE_STATIC=true — раздача dist/ (мини-приложение + API на одном домене, вебхук /webhook). */

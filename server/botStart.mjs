@@ -309,8 +309,10 @@ export function resolveWebhookUrl(env = process.env) {
   if (explicit) {
     return explicit.includes('/webhook') ? explicit : `${explicit.replace(/\/$/, '')}/webhook`;
   }
-  const base = env.PAYMENTS_PUBLIC_BASE_URL?.trim();
-  if (base) return `${base.replace(/\/$/, '')}/webhook`;
+  for (const key of ['PAYMENTS_PUBLIC_BASE_URL', 'TELEGRAM_MINI_APP_URL']) {
+    const base = env[key]?.trim();
+    if (base) return `${base.replace(/\/$/, '')}/webhook`;
+  }
   return '';
 }
 
@@ -331,7 +333,7 @@ export async function ensureTelegramWebhook(tgApi, env = process.env) {
   }
   if (!url) {
     console.warn(
-      '[bot] Задайте TELEGRAM_WEBHOOK_URL или PAYMENTS_PUBLIC_BASE_URL — иначе /start не придёт на сервер',
+      '[bot] Задайте TELEGRAM_WEBHOOK_URL, PAYMENTS_PUBLIC_BASE_URL или TELEGRAM_MINI_APP_URL — иначе /start и оплата (pre_checkout) не придут на сервер',
     );
     return { ok: false, reason: 'no_webhook_url' };
   }

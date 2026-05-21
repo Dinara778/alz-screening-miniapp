@@ -23,7 +23,8 @@ const learnedItems = [
 ] as const;
 
 export const FullReportPage = () => {
-  const { latestResult, participant, setStage, openResultAtStep, setConsultationReturnTo } = useApp();
+  const { latestResult, participant, setStage, openResultAtStep, setConsultationReturnTo, serverPaymentsReady } =
+    useApp();
   useHydrateLatestResult();
   const [step, setStep] = useState<ReportStep>('ready');
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -37,15 +38,15 @@ export const FullReportPage = () => {
 
   useEffect(() => {
     if (!latestResult) return;
-    if (!isPaymentsBackendConfigured()) return;
-    if (!isReportPaidUnlocked(latestResult.id)) return;
+    if (!isPaymentsBackendConfigured(serverPaymentsReady)) return;
+    if (!isReportPaidUnlocked(latestResult.id, serverPaymentsReady)) return;
     void sendAnalyticsEventToSheets({
       eventType: 'full_report_opened',
       sessionId: latestResult.id,
       stage: 'full-report',
       participant: participant ?? undefined,
     }).catch(() => {});
-  }, [latestResult, participant]);
+  }, [latestResult, participant, serverPaymentsReady]);
 
   if (!latestResult || !analytics) {
     return (
@@ -58,7 +59,7 @@ export const FullReportPage = () => {
     );
   }
 
-  if (!isReportPaidUnlocked(latestResult.id)) {
+  if (!isReportPaidUnlocked(latestResult.id, serverPaymentsReady)) {
     return (
       <div className="space-y-4 rounded-xl border border-amber-400/30 bg-amber-400/10 p-5 text-white">
         <p className="font-medium">Расширенный отчёт доступен после оплаты.</p>
@@ -196,7 +197,10 @@ export const FullReportPage = () => {
         >
           <div className="mx-auto w-full max-w-md space-y-6">
             <div className="calm-inset space-y-3">
-              <SketchHighlightTitle accent={accent}>Индекс когнитивной устойчивости</SketchHighlightTitle>
+              <SketchHighlightTitle accent={accent}>
+                Ваш индекс когнитивной устойчивости{' '}
+                <strong className="font-bold">прямо сейчас</strong>:
+              </SketchHighlightTitle>
               <div className="text-4xl font-bold tabular-nums">{analytics.index.value}</div>
               <p className="results-body">{analytics.index.description}</p>
               {analytics.index.recommendations.length > 0 ? (

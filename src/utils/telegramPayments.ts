@@ -1,5 +1,5 @@
 import { PAYMENT_PRODUCTS } from './paymentProducts';
-import { isPaymentsEnabled } from './paymentStub';
+import { arePaymentsActive, isDevPaymentBypass, isPaymentsEnabled } from './paymentStub';
 
 export type TelegramInvoiceProduct = 'full_report' | 'consultation';
 
@@ -119,8 +119,8 @@ function resolvePaymentLink(raw: string): string | null {
 }
 
 /** Задан URL бэкенда и оплата не выключена на сборке (VITE_PAYMENTS_ENABLED). */
-export const isPaymentsBackendConfigured = (): boolean =>
-  isPaymentsEnabled() && Boolean(getPaymentsApiUrl());
+export const isPaymentsBackendConfigured = (serverPaymentsReady = false): boolean =>
+  arePaymentsActive(serverPaymentsReady) && Boolean(getPaymentsApiUrl());
 
 /** Mini App открыт в Telegram и есть initData (не просто браузер). */
 export const isTelegramMiniApp = (): boolean => {
@@ -414,9 +414,9 @@ export function findPaidReportSessionId(): string | null {
 /**
  * Доступ к полному отчёту: оплачено в localStorage, оплата выключена на сборке или dev-обход.
  */
-export const isReportPaidUnlocked = (sessionId: string): boolean => {
-  if (import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true') return true;
-  if (!isPaymentsEnabled()) return true;
+export const isReportPaidUnlocked = (sessionId: string, serverPaymentsReady = false): boolean => {
+  if (isDevPaymentBypass()) return true;
+  if (!arePaymentsActive(serverPaymentsReady)) return true;
   return localStorage.getItem(reportPaidStorageKey(sessionId)) === '1';
 };
 
