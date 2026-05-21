@@ -6,9 +6,10 @@ import { publicAsset } from '../utils/publicAsset';
 
 type Props = {
   onContinue: () => void;
+  onOpenUserAgreement: () => void;
 };
 
-export const CortaIntroPage = ({ onContinue }: Props) => {
+export const CortaIntroPage = ({ onContinue, onOpenUserAgreement }: Props) => {
   const footer = (
     <div className="mx-auto flex w-full max-w-md flex-col items-stretch gap-3">
       <Button
@@ -19,9 +20,18 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
         <span>Начать бесплатно</span>
         <IconArrowRight className="h-5 w-5 shrink-0" />
       </Button>
-      <div className="flex shrink-0 flex-row flex-nowrap items-center justify-center gap-2 text-sm leading-snug text-emerald-200/90">
-        <IconShield className="block h-5 w-5 shrink-0 text-emerald-400" aria-hidden />
-        <span>Ваши данные под защитой</span>
+      <div className="flex shrink-0 flex-col items-center gap-2 text-center">
+        <div className="flex flex-row flex-nowrap items-center justify-center gap-2 text-sm leading-snug text-emerald-200/90">
+          <IconShield className="block h-5 w-5 shrink-0 text-emerald-400" aria-hidden />
+          <span>Ваши данные под защитой</span>
+        </div>
+        <button
+          type="button"
+          onClick={onOpenUserAgreement}
+          className="text-xs font-medium text-emerald-300/90 underline decoration-emerald-400/40 underline-offset-2 transition hover:text-emerald-200 sm:text-sm"
+        >
+          Пользовательское соглашение
+        </button>
       </div>
     </div>
   );

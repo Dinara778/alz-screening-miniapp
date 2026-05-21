@@ -84,6 +84,9 @@ export type SessionResult = {
 
 export type AppStage =
   | 'corta-intro'
+  | 'legal-consent'
+  | 'personal-data-consent-doc'
+  | 'user-agreement-doc'
   | 'expert-intro'
   | 'intro-test-offer'
   | 'welcome'

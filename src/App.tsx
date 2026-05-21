@@ -1,21 +1,55 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useScrollToTopOnStage } from './hooks/useScrollToTopOnStage';
 import { useApp } from './context/AppContext';
 import { applyTelegramTheme, attachTelegramThemeListener } from './utils/telegramTheme';
+import { hasLegalConsent } from './utils/legalConsent';
 import { HistoryPage } from './pages/HistoryPage';
 import { FullReportPage } from './pages/FullReportPage';
 import { ResultPage } from './pages/ResultPage';
 import { TestPage } from './pages/TestPage';
 import { ConsultationRequestPage } from './pages/ConsultationRequestPage';
 import { CortaIntroPage } from './pages/CortaIntroPage';
+import { LegalConsentPage } from './pages/LegalConsentPage';
+import { PersonalDataConsentDocPage } from './pages/PersonalDataConsentDocPage';
+import { UserAgreementDocPage } from './pages/UserAgreementDocPage';
 import { ExpertIntroPage } from './pages/ExpertIntroPage';
 import { IntroTestOfferPage } from './pages/IntroTestOfferPage';
 import { WelcomePage } from './pages/WelcomePage';
 import { AppRefreshControls } from './components/AppRefreshControls';
+import type { AppStage } from './types';
+import { MID_TEST_STAGES } from './utils/storage';
+
+const STAGES_REQUIRING_LEGAL_CONSENT = new Set<AppStage>([
+  'expert-intro',
+  'intro-test-offer',
+  'welcome',
+  ...MID_TEST_STAGES,
+]);
 
 function App() {
   const app = useApp();
+  const [legalDocReturn, setLegalDocReturn] = useState<AppStage>('corta-intro');
   const scrollRef = useScrollToTopOnStage(app.stage);
+
+  const openUserAgreement = (returnTo: AppStage) => {
+    setLegalDocReturn(returnTo);
+    app.setStage('user-agreement-doc');
+  };
+
+  const openPersonalDataConsent = (returnTo: AppStage) => {
+    setLegalDocReturn(returnTo);
+    app.setStage('personal-data-consent-doc');
+  };
+
+  const afterIntroContinue = () => {
+    app.setStage(hasLegalConsent() ? 'expert-intro' : 'legal-consent');
+  };
+
+  useEffect(() => {
+    if (STAGES_REQUIRING_LEGAL_CONSENT.has(app.stage) && !hasLegalConsent()) {
+      app.setStage('legal-consent');
+    }
+  }, [app.stage]);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -45,7 +79,23 @@ function App() {
         <AppRefreshControls />
         <div key={app.stage} className="flex min-h-0 min-w-0 flex-1 flex-col">
           {app.stage === 'corta-intro' && (
-            <CortaIntroPage onContinue={() => app.setStage('expert-intro')} />
+            <CortaIntroPage
+              onContinue={afterIntroContinue}
+              onOpenUserAgreement={() => openUserAgreement('corta-intro')}
+            />
+          )}
+          {app.stage === 'legal-consent' && (
+            <LegalConsentPage
+              onContinue={() => app.setStage('expert-intro')}
+              onOpenPersonalDataConsent={() => openPersonalDataConsent('legal-consent')}
+              onOpenUserAgreement={() => openUserAgreement('legal-consent')}
+            />
+          )}
+          {app.stage === 'personal-data-consent-doc' && (
+            <PersonalDataConsentDocPage onBack={() => app.setStage(legalDocReturn)} />
+          )}
+          {app.stage === 'user-agreement-doc' && (
+            <UserAgreementDocPage onBack={() => app.setStage(legalDocReturn)} />
           )}
           {app.stage === 'expert-intro' && (
             <ExpertIntroPage onContinue={() => app.setStage('intro-test-offer')} />

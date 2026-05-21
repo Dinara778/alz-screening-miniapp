@@ -356,7 +356,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
               </>
             ) : (
               <>
-                <SketchHighlightTitle accent={accent} tuckBottomOutline className="mb-3">
+                <SketchHighlightTitle accent={accent} generousOutline tuckBottomOutline className="mb-3">
                   Разобрать результаты с экспертом
                 </SketchHighlightTitle>
                 <p className="results-body">

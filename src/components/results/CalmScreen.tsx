@@ -39,7 +39,7 @@ export const CalmScreen = ({
     <div
       className={
         contentAlign === 'readable'
-          ? 'flex min-h-0 flex-1 flex-col items-stretch justify-start overflow-y-auto px-4 py-6 text-left'
+          ? 'flex min-h-0 flex-1 flex-col items-stretch justify-start overflow-y-auto px-5 py-6 text-left sm:px-6'
           : 'flex min-h-0 flex-1 flex-col items-center justify-center px-3 py-8 text-center'
       }
     >
