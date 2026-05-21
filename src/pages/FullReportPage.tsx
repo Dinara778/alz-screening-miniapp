@@ -11,6 +11,7 @@ import { useHydrateLatestResult } from '../hooks/useHydrateLatestResult';
 import { formatDomainInterpretationPlain } from '../copy/cognitiveDomainInterpretations';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { downloadCognitiveReportPdf } from '../utils/pdfReport';
+import { isPaymentsEnabled } from '../utils/paymentStub';
 import { isReportPaidUnlocked, isPaymentsBackendConfigured } from '../utils/telegramPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 type ReportStep = 'ready' | 'report' | 'learned' | 'upsell';
@@ -284,7 +285,7 @@ export const FullReportPage = () => {
             После оформления заказа мы с вами свяжемся в течение 15 минут.
           </p>
           <Button type="button" variant="sell" className={CTA_BUTTON_CLASS} onClick={handleConsultation}>
-            Записаться на сессию — 5 490 ₽
+            {isPaymentsEnabled() ? 'Записаться на сессию — 5 490 ₽' : 'Оставить заявку на сессию'}
           </Button>
         </div>
       }

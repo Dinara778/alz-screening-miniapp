@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { CalmCardShell } from '../components/CalmCardShell';
 import { ReportFlowShell } from '../components/results/ReportFlowShell';
 import { ScreenBackHeader } from '../components/ScreenBackHeader';
@@ -10,6 +10,7 @@ import { scoreAccentFromValue } from '../components/results/scoreAccent';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
+import { notifyConsultationLeadServer } from '../utils/consultationLeadNotify';
 import {
   consultationPaidStorageKey,
   pollProdamusOrderPaidQuick,
@@ -19,9 +20,17 @@ import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
 export const ConsultationRequestPage = () => {
   const { setStage, consultationReturnTo, setConsultationReturnTo, participant, latestResult } = useApp();
+  const paymentsOn = isPaymentsEnabled();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [paidOk, setPaidOk] = useState(false);
+  const [leadEmail, setLeadEmail] = useState(participant?.email ?? '');
+  const [leadBusy, setLeadBusy] = useState(false);
+  const [leadSent, setLeadSent] = useState(false);
+
+  useEffect(() => {
+    setLeadEmail(participant?.email ?? '');
+  }, [participant?.email]);
 
   useEffect(() => {
     if (!latestResult?.id) return;
@@ -36,7 +45,7 @@ export const ConsultationRequestPage = () => {
   }, [latestResult?.id]);
 
   useEffect(() => {
-    if (!latestResult?.id || isDevPaymentBypass()) return;
+    if (!paymentsOn || !latestResult?.id || isDevPaymentBypass()) return;
     const pending = sessionStorage.getItem(prodamusPendingOrderKey(latestResult.id));
     if (!pending) return;
     void pollProdamusOrderPaidQuick(pending, latestResult.id).then((paid) => {
@@ -45,7 +54,7 @@ export const ConsultationRequestPage = () => {
         setPaidOk(true);
       }
     });
-  }, [latestResult?.id]);
+  }, [latestResult?.id, paymentsOn]);
 
   const goBack = () => {
     const target = consultationReturnTo ?? 'welcome';
@@ -81,25 +90,77 @@ export const ConsultationRequestPage = () => {
       markConsultationPaid();
       return;
     }
-    if (!isPaymentsEnabled()) return;
+    if (!paymentsOn) return;
     setNotice(null);
     setCheckoutOpen(true);
+  };
+
+  const submitLead = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!latestResult) return;
+    const trimmed = leadEmail.trim();
+    if (!trimmed.includes('@')) {
+      setNotice('Укажите корректный адрес электронной почты');
+      return;
+    }
+    setNotice(null);
+    setLeadBusy(true);
+    try {
+      const r = await notifyConsultationLeadServer(trimmed, latestResult.id, participant ?? undefined);
+      if (!r.ok) {
+        setNotice(r.message ?? 'Не удалось отправить заявку. Попробуйте позже.');
+        return;
+      }
+      if (r.skipped) {
+        setNotice('Откройте приложение из Telegram и повторите отправку.');
+        return;
+      }
+      setLeadSent(true);
+      void sendAnalyticsEventToSheets({
+        eventType: 'consultation_manager_request',
+        sessionId: latestResult.id,
+        stage: 'consultation-request',
+        consultationEmail: trimmed,
+        participant: participant ?? undefined,
+      }).catch(() => {});
+    } finally {
+      setLeadBusy(false);
+    }
   };
 
   const accent = latestResult
     ? scoreAccentFromValue(buildCognitiveAnalytics(latestResult).index.value)
     : '#34d399';
 
+  const requestDone = paidOk || leadSent;
+
   const paymentFooter =
-    latestResult && !paidOk ? (
-      <Button variant="sell" type="button" className={CTA_BUTTON_CLASS} onClick={openCheckout}>
-        Записаться на персональную сессию — 5 490 ₽
-      </Button>
+    latestResult && !requestDone ? (
+      paymentsOn ? (
+        <Button variant="sell" type="button" className={CTA_BUTTON_CLASS} onClick={openCheckout}>
+          Записаться на персональную сессию — 5 490 ₽
+        </Button>
+      ) : (
+        <form className="flex w-full flex-col gap-3" onSubmit={(e) => void submitLead(e)}>
+          <input
+            className="w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3.5 text-base text-white placeholder:text-white/35"
+            type="email"
+            autoComplete="email"
+            placeholder="Электронная почта"
+            value={leadEmail}
+            onChange={(ev) => setLeadEmail(ev.target.value)}
+            required
+          />
+          <Button variant="sell" type="submit" className={CTA_BUTTON_CLASS} disabled={leadBusy}>
+            {leadBusy ? 'Отправка…' : 'Оставить заявку на сессию'}
+          </Button>
+        </form>
+      )
     ) : undefined;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {!paidOk ? <ScreenBackHeader onBack={goBack} /> : null}
+      {!requestDone ? <ScreenBackHeader onBack={goBack} /> : null}
       <ReportFlowShell footer={paymentFooter}>
         <CalmCardShell className="space-y-4">
           <SketchHighlightTitle accent={accent} generousOutline>
@@ -119,15 +180,34 @@ export const ConsultationRequestPage = () => {
                 </Button>
               </div>
             </>
-          ) : (
+          ) : leadSent ? (
+            <>
+              <p className="mt-3 text-lg font-semibold text-emerald-200">Заявка отправлена</p>
+              <p className="mt-2 calm-body leading-relaxed">
+                Менеджер свяжется с вами по почте <span className="text-white/90">{leadEmail.trim()}</span> в
+                течение 15 минут для записи на сессию.
+              </p>
+              <div className="mt-5">
+                <Button type="button" className="w-full rounded-2xl py-4 font-bold sm:max-w-sm" onClick={goBack}>
+                  Вернуться в приложение
+                </Button>
+              </div>
+            </>
+          ) : paymentsOn ? (
             <p className="mt-3 calm-body leading-relaxed dark:text-slate-200">
               Сначала оформление в приложении Corta, затем безопасная оплата. После оплаты менеджер свяжется с вами по
               почте из платёжных данных.
             </p>
+          ) : (
+            <p className="mt-3 calm-body leading-relaxed dark:text-slate-200">
+              Онлайн-оплата картой временно недоступна — мы подключаем новый платёжный сервис. Оставьте почту: менеджер
+              свяжется с вами для записи на сессию (5 490 ₽).
+            </p>
           )}
+          {notice ? <p className="text-sm text-amber-200/90">{notice}</p> : null}
         </CalmCardShell>
       </ReportFlowShell>
-      {latestResult && !paidOk ? (
+      {latestResult && !requestDone && paymentsOn ? (
         <PaymentCheckoutSheet
           open={checkoutOpen}
           product="consultation"

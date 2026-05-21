@@ -1,6 +1,6 @@
 /**
- * Реальная оплата включена, если не выключено явно.
- * На Amvera: VITE_PAYMENTS_ENABLED=false в сборке, чтобы CTA не открывали Payform.
+ * Реальная оплата (отчёт 399 ₽ и сессия 5 490 ₽) включена, если не выключено явно.
+ * На Amvera: VITE_PAYMENTS_ENABLED=false — CTA не открывают Payform / Prodamus (до ЮKassa и т.п.).
  */
 export const isPaymentsEnabled = (): boolean =>
   import.meta.env.VITE_PAYMENTS_ENABLED !== 'false';

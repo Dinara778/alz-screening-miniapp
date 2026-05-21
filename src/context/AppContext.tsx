@@ -18,6 +18,7 @@ import { goToIntroFresh, stripPaymentQueryFromUrl } from '../utils/appReload';
 import { MID_TEST_STAGES } from '../utils/storage';
 import { isReportPaidUnlocked } from '../utils/telegramPayments';
 import { pickStudyWordList } from '../utils/generateStimuli';
+import { isPaymentsEnabled } from '../utils/paymentStub';
 import { recoverProdamusPaymentFromUrl, tryRecoverReportAccess } from '../utils/telegramPayments';
 import { sendAnalyticsEventToSheets, sendSessionToSheets } from '../utils/sheetsWebhook';
 
@@ -203,7 +204,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   }, [stage, latestResult]);
 
   useEffect(() => {
-    if (!hasPaymentReturnInUrl()) return;
+    if (!hasPaymentReturnInUrl() || !isPaymentsEnabled()) return;
     const run = async () => {
       const recovery = await recoverProdamusPaymentFromUrl();
       if (!recovery) return;

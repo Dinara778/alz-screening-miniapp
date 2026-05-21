@@ -26,7 +26,14 @@ import {
   recoverProdamusPaymentFromUrl,
 } from '../utils/telegramPayments';
 
-type ResultStep = 'index' | 'index-detail' | 'domain-metric' | 'domain-detail' | 'hub';
+type ResultStep = 'index' | 'index-detail' | 'domain-metric' | 'domain-detail' | 'hub' | 'session-offer';
+
+const sessionUpsellFeatures = [
+  'Онлайн-расшифровку результатов простым языком с опытным экспертом по когнитивной устойчивости (созвон)',
+  'Персональные рекомендации под вашу ситуацию',
+  'Понимание, что больше всего мешает вашему ресурсу',
+  'План улучшения показателей',
+] as const;
 
 const calmBtnClass = CTA_BUTTON_CLASS;
 const calmBtnGhost =
@@ -90,7 +97,7 @@ const IndexInterpretationBody = ({ index, accent }: { index: IndexInterpretation
 );
 
 export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
-  const { latestResult, setStage } = useApp();
+  const { latestResult, setStage, setConsultationReturnTo } = useApp();
   useHydrateLatestResult();
   const [step, setStep] = useState<ResultStep>('index');
   const [domainIndex, setDomainIndex] = useState(0);
@@ -172,6 +179,15 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     if (!isPaymentsEnabled()) return;
     setPayNotice(null);
     setCheckoutOpen(true);
+  };
+
+  const openSessionOffer = () => {
+    setStep('session-offer');
+  };
+
+  const goToConsultationPayment = () => {
+    setConsultationReturnTo('result');
+    setStage('consultation-request');
   };
 
   const startDomains = () => {
@@ -283,6 +299,49 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     );
   }
 
+  if (step === 'session-offer') {
+    return (
+      <CalmScreen
+        contentAlign="readable"
+        footer={
+          <div className="flex flex-col gap-3">
+            <p className="text-center text-sm leading-relaxed text-white/55">
+              После оформления заказа мы с вами свяжемся в течение 15 минут.
+            </p>
+            <Button type="button" variant="sell" className={calmBtnClass} onClick={goToConsultationPayment}>
+              {isPaymentsEnabled() ? 'Записаться на сессию — 5 490 ₽' : 'Оставить заявку на сессию'}
+            </Button>
+            <button type="button" className={calmBtnGhost} onClick={() => setStep('hub')}>
+              Назад к результатам
+            </button>
+          </div>
+        }
+      >
+        <div className="mx-auto w-full max-w-md space-y-5">
+          <SketchHighlightTitle accent={accent} tuckBottomOutline className="mb-3">
+            Разобрать результаты с экспертом
+          </SketchHighlightTitle>
+          <p className="results-body">
+            30-минутная сессия по вашему когнитивному профилю с экспертом по когнитивной устойчивости.
+          </p>
+          <div className="calm-inset space-y-3">
+            <p className="text-sm font-semibold text-white/90 sm:text-base">Что вы получите:</p>
+            <ul className="space-y-2.5 text-sm leading-relaxed text-white/88 sm:text-base">
+              {sessionUpsellFeatures.map((line) => (
+                <li key={line} className="flex gap-2">
+                  <span className="shrink-0 text-emerald-400" aria-hidden>
+                    ✓
+                  </span>
+                  <span>{line}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </CalmScreen>
+    );
+  }
+
   const reportFeatures = [
     'Подробная карта когнитивной перегрузки',
     'Расшифровка сильных и слабых зон',
@@ -322,6 +381,9 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           >
             {reportUnlocked ? 'Открыть расширенный отчёт' : 'Получить расширенный отчёт — 399 ₽'}
           </Button>
+          <Button type="button" variant="sell" className={calmBtnClass} onClick={openSessionOffer}>
+            {isPaymentsEnabled() ? 'Записаться на сессию — 5 490 ₽' : 'Оставить заявку на сессию'}
+          </Button>
           <SupportFooter showDeveloperCredit={false} />
         </div>
       }
@@ -347,6 +409,19 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
               </li>
             ))}
           </ul>
+        </div>
+        <div className="calm-inset space-y-2 border border-emerald-400/25">
+          <p className="text-sm font-semibold text-white/90 sm:text-base">Персональная сессия с экспертом</p>
+          <p className="text-sm leading-relaxed text-white/75">
+            Разбор вашего профиля онлайн, 30 минут — 5 490 ₽
+          </p>
+          <button
+            type="button"
+            className="text-left text-sm font-medium text-emerald-300/95 underline decoration-emerald-400/40 underline-offset-2 hover:text-emerald-200"
+            onClick={openSessionOffer}
+          >
+            Подробнее о сессии
+          </button>
         </div>
       </div>
     </CalmScreen>

@@ -138,11 +138,11 @@ export async function renderShareResultCard({ indexValue, accent }: ShareCardOpt
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 168px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  ctx.font = 'bold 170px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
   ctx.fillText(String(score), haloCx, haloCy - 12);
   const scoreW = ctx.measureText(String(score)).width;
   ctx.fillStyle = 'rgba(255,255,255,0.45)';
-  ctx.font = '500 44px system-ui, -apple-system, sans-serif';
+  ctx.font = '500 46px system-ui, -apple-system, sans-serif';
   ctx.fillText('/100', haloCx + scoreW / 2 + 36, haloCy + 28);
 
   const pad = 72;
@@ -151,20 +151,20 @@ export async function renderShareResultCard({ indexValue, accent }: ShareCardOpt
   const maxW = CARD_W - pad * 2;
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 38px system-ui, -apple-system, sans-serif';
+  ctx.font = 'bold 40px system-ui, -apple-system, sans-serif';
   y = wrapText(
     ctx,
     'ВАУ! Я только что получил отчёт о том, как реально работает мой мозг 🧠',
     textX,
     y,
     maxW,
-    52,
+    54,
   );
 
   y += 20;
-  ctx.font = '500 34px system-ui, -apple-system, sans-serif';
+  ctx.font = '500 36px system-ui, -apple-system, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.88)';
-  y = wrapText(ctx, 'Это удивительно — понимать себя стало так легко!', textX, y, maxW, 48);
+  y = wrapText(ctx, 'Это удивительно — понимать себя стало так легко!', textX, y, maxW, 50);
 
   y += 48;
   const btnW = 520;
@@ -178,11 +178,11 @@ export async function renderShareResultCard({ indexValue, accent }: ShareCardOpt
   roundRect(ctx, btnX, btnY, btnW, btnH, 44);
   ctx.fill();
   ctx.fillStyle = '#042f1a';
-  ctx.font = 'bold 34px system-ui, -apple-system, sans-serif';
+  ctx.font = 'bold 36px system-ui, -apple-system, sans-serif';
   ctx.fillText('Попробуй бесплатно!', CARD_W / 2, btnY + btnH / 2 + 2);
 
   ctx.fillStyle = 'rgba(255,255,255,0.35)';
-  ctx.font = '500 26px system-ui, -apple-system, sans-serif';
+  ctx.font = '500 28px system-ui, -apple-system, sans-serif';
   ctx.fillText('Corta', CARD_W / 2, CARD_H - 56);
 
   return new Promise((resolve, reject) => {
