@@ -217,7 +217,11 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   if (step === 'index') {
     return (
       <CalmScreen
-        kicker="Ваш когнитивный профиль"
+        kicker={
+          <>
+            Ваш когнитивный профиль <strong className="font-bold">прямо сейчас</strong>:
+          </>
+        }
         kickerProfile
         footer={
           <>
@@ -232,6 +236,9 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           </>
         }
       >
+        <p className="mb-5 max-w-[min(22rem,92vw)] text-center text-xs leading-relaxed text-white/50 sm:mb-6 sm:text-sm">
+          * профиль меняется в течение дня
+        </p>
         <OrganicMetricHalo accent={accent} emphasis>
           <span className="inline-flex items-baseline justify-center gap-0.5 tabular-nums leading-none">
             <span className="text-[clamp(3.25rem,16vw,4.75rem)] font-bold tracking-tight text-white">
@@ -451,10 +458,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         product="full_report"
         sessionId={latestResult.id}
         onClose={() => setCheckoutOpen(false)}
-        onPaid={() => {
-          localStorage.setItem(reportPaidStorageKey(latestResult.id), '1');
-          setStage('full-report');
-        }}
+        onPaid={unlockFullReport}
         onNotice={setPayNotice}
       />
     ) : null}

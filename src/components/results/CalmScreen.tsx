@@ -4,7 +4,7 @@ type Props = {
   children: ReactNode;
   footer?: ReactNode;
   /** Верхняя подпись (опционально) */
-  kicker?: string;
+  kicker?: ReactNode;
   /** Крупный заголовок секции (экран индекса) */
   kickerProminent?: boolean;
   /** Заголовок профиля: «Ваш когнитивный профиль» */

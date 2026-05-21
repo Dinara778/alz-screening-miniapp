@@ -415,9 +415,10 @@ export function findPaidReportSessionId(): string | null {
  * Доступ к полному отчёту: оплачено в localStorage, оплата выключена на сборке или dev-обход.
  */
 export const isReportPaidUnlocked = (sessionId: string, serverPaymentsReady = false): boolean => {
+  if (localStorage.getItem(reportPaidStorageKey(sessionId)) === '1') return true;
   if (isDevPaymentBypass()) return true;
   if (!arePaymentsActive(serverPaymentsReady)) return true;
-  return localStorage.getItem(reportPaidStorageKey(sessionId)) === '1';
+  return false;
 };
 
 /** Быстрая проверка оплаты (кнопка «Я уже оплатил», без долгого ожидания). */
