@@ -42,6 +42,7 @@ import {
   prodamusFindPaidForUserSession,
 } from './prodamus.mjs';
 import { prodamusVerifySignature } from './prodamusHmac.mjs';
+import { buildTelegramYookassaInvoiceParams } from './yookassaReceipt.mjs';
 
 function normalizeBotToken(raw) {
   const t = String(raw ?? '').trim();
@@ -465,6 +466,7 @@ app.post('/invoice', async (req, res) => {
     }
 
     const payload = `${product}:${String(sessionId).slice(0, 40)}:${Date.now()}`.slice(0, 128);
+    const receiptParams = buildTelegramYookassaInvoiceParams(spec);
     const result = await tgApi('createInvoiceLink', {
       title: spec.title.slice(0, 32),
       description: spec.description.slice(0, 255),
@@ -472,6 +474,7 @@ app.post('/invoice', async (req, res) => {
       provider_token: PROVIDER_TOKEN,
       currency: 'RUB',
       prices: [{ label: 'Услуга', amount: spec.amount }],
+      ...receiptParams,
     });
 
     if (!result.ok) {
