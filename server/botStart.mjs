@@ -31,17 +31,23 @@ const START_PHOTO_BLOCKS = [
 ];
 
 const BULLET = '•';
+const START_PHOTO_HEADING = 'Что умеет этот бот?';
 
 /**
  * Список в стиле Telegram: системный шрифт, маркер •, подзаголовок bold через entities
  * (надёжнее, чем parse_mode HTML в подписях к фото).
  */
-export function buildTelegramListCaption(blocks, { bullet = BULLET } = {}) {
+export function buildTelegramListCaption(blocks, { bullet = BULLET, heading = '' } = {}) {
   let caption = '';
   const caption_entities = [];
 
+  if (heading) {
+    caption_entities.push({ type: 'bold', offset: 0, length: heading.length });
+    caption = heading;
+  }
+
   for (let i = 0; i < blocks.length; i++) {
-    if (i > 0) caption += '\n\n';
+    if (caption.length) caption += '\n\n';
     const titleLine = `${bullet} ${blocks[i].title}`;
     caption_entities.push({ type: 'bold', offset: caption.length, length: titleLine.length });
     caption += titleLine;
@@ -51,9 +57,11 @@ export function buildTelegramListCaption(blocks, { bullet = BULLET } = {}) {
   return { caption, caption_entities };
 }
 
-const DEFAULT_START_PHOTO = buildTelegramListCaption(START_PHOTO_BLOCKS);
+const DEFAULT_START_PHOTO = buildTelegramListCaption(START_PHOTO_BLOCKS, {
+  heading: START_PHOTO_HEADING,
+});
 
-const DEFAULT_START_MESSAGE = [
+const DEFAULT_START_MESSAGE_TEXT = [
   'Привет! 👋',
   '',
   'Иногда мы пытаемся собраться усилием, не понимая, что ресурс уже снижен.',
@@ -62,6 +70,8 @@ const DEFAULT_START_MESSAGE = [
   '',
   'Нажмите кнопку ниже, чтобы открыть приложение, оценка состояния мозга займёт всего 5 минут 👇',
 ].join('\n');
+
+const DEFAULT_START_MESSAGE_ENTITIES = [{ type: 'bold', offset: 0, length: 'Привет'.length }];
 
 let cachedBotUsername = null;
 
@@ -147,17 +157,25 @@ function resolveStartPhotoCaption(env = process.env) {
   };
 }
 
-function startMessageText(env = process.env) {
-  return env.TELEGRAM_START_MESSAGE?.trim() || DEFAULT_START_MESSAGE;
+function resolveStartMessageOptions(env = process.env) {
+  const custom = env.TELEGRAM_START_MESSAGE?.trim();
+  const text = custom || DEFAULT_START_MESSAGE_TEXT;
+  if (custom && hasHtmlMarkup(custom)) {
+    return { text, entities: null, parse_mode: 'HTML' };
+  }
+  if (!custom) {
+    return { text, entities: DEFAULT_START_MESSAGE_ENTITIES, parse_mode: null };
+  }
+  return { text, entities: null, parse_mode: null };
 }
 
-function resolveStartMessageOptions(env = process.env) {
-  const text = startMessageText(env);
-  const custom = env.TELEGRAM_START_MESSAGE?.trim();
-  if (custom && hasHtmlMarkup(custom)) {
-    return { text, parse_mode: 'HTML' };
+function applyMessageFields(target, resolved) {
+  target.text = resolved.text;
+  if (resolved.entities?.length) {
+    target.entities = resolved.entities;
+  } else if (resolved.parse_mode) {
+    target.parse_mode = resolved.parse_mode;
   }
-  return { text, parse_mode: null };
 }
 
 function applyCaptionFields(target, resolved) {
@@ -225,15 +243,14 @@ export async function buildStartMessagePayload(chatId, tgApi, env = process.env)
   const tmeLink = env.TELEGRAM_MINI_APP_TME_LINK?.trim();
   const botUser = await fetchBotUsername(tgApi);
   const openUrl = resolveAppOpenUrl(miniAppUrl, tmeLink) || buildTmeBotLink(env, botUser);
-  const { text: welcomeText, parse_mode } = resolveStartMessageOptions(env);
+  const message = resolveStartMessageOptions(env);
   const buttonLabel = env.TELEGRAM_START_BUTTON_TEXT?.trim() || 'Открыть приложение';
 
   const payload = {
     chat_id: chatId,
-    text: welcomeText,
     disable_web_page_preview: true,
   };
-  if (parse_mode) payload.parse_mode = parse_mode;
+  applyMessageFields(payload, message);
 
   if (miniAppUrl) {
     payload.reply_markup = {
@@ -252,17 +269,16 @@ export async function buildStartMessagePayload(chatId, tgApi, env = process.env)
 }
 
 export function buildStartMessagePayloadUrlFallback(chatId, openUrl, env = process.env) {
-  const { text: welcomeText, parse_mode } = resolveStartMessageOptions(env);
+  const message = resolveStartMessageOptions(env);
   const buttonLabel = env.TELEGRAM_START_BUTTON_TEXT?.trim() || 'Открыть приложение';
   const payload = {
     chat_id: chatId,
-    text: welcomeText,
     disable_web_page_preview: true,
     reply_markup: {
       inline_keyboard: [[{ text: buttonLabel, url: openUrl }]],
     },
   };
-  if (parse_mode) payload.parse_mode = parse_mode;
+  applyMessageFields(payload, message);
   return payload;
 }
 
