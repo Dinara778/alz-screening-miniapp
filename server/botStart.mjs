@@ -1,4 +1,67 @@
-/** Ответ бота на /start: приветствие и кнопка открытия мини-приложения. */
+/** Ответ бота на /start: фото + текст с кнопкой открытия мини-приложения. */
+
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const BOT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const START_PHOTO_CANDIDATES = [
+  path.join(BOT_DIR, '../public/corta-logo.png'),
+  path.join(BOT_DIR, '../dist/corta-logo.png'),
+  path.join(BOT_DIR, '../public/dinara-isaeva.png'),
+  path.join(BOT_DIR, '../dist/dinara-isaeva.png'),
+];
+
+/** Пункты подписи к фото: жирный заголовок (как в сервисных списках Telegram), обычный текст ниже. */
+const START_PHOTO_BLOCKS = [
+  {
+    title: 'Показывает уровень когнитивного ресурса сейчас',
+    body: 'Насколько ваш мозг готов к нагрузке, концентрации и принятию решений.',
+  },
+  {
+    title: 'Переводит состояние в понятную картину',
+    body: 'Не просто показатели, а ответ: что это значит для вас сегодня.',
+  },
+  { title: 'Помогает замечать перегрузку до того, как она срывает день' },
+  {
+    title: 'Показывает личные закономерности',
+    body: 'Что усиливает ваш ресурс, а что незаметно его снижает.',
+  },
+  { title: 'Помогает точнее планировать день под своё состояние' },
+];
+
+const BULLET = '•';
+
+/**
+ * Список в стиле Telegram: системный шрифт, маркер •, подзаголовок bold через entities
+ * (надёжнее, чем parse_mode HTML в подписях к фото).
+ */
+export function buildTelegramListCaption(blocks, { bullet = BULLET } = {}) {
+  let caption = '';
+  const caption_entities = [];
+
+  for (let i = 0; i < blocks.length; i++) {
+    if (i > 0) caption += '\n\n';
+    const titleLine = `${bullet} ${blocks[i].title}`;
+    caption_entities.push({ type: 'bold', offset: caption.length, length: titleLine.length });
+    caption += titleLine;
+    if (blocks[i].body) caption += `\n${blocks[i].body}`;
+  }
+
+  return { caption, caption_entities };
+}
+
+const DEFAULT_START_PHOTO = buildTelegramListCaption(START_PHOTO_BLOCKS);
+
+const DEFAULT_START_MESSAGE = [
+  'Привет! 👋',
+  '',
+  'Иногда мы пытаемся собраться усилием, не понимая, что ресурс уже снижен.',
+  '',
+  'Corta помогает увидеть состояние вашего мозга прямо сейчас и лучше понять, как распределять нагрузку в течение дня.',
+  '',
+  'Нажмите кнопку ниже, чтобы открыть приложение, оценка состояния мозга займёт всего 5 минут 👇',
+].join('\n');
 
 let cachedBotUsername = null;
 
@@ -26,11 +89,6 @@ export function resolveAppOpenUrl(miniAppUrl, directTmeLink) {
   return normalizeMiniAppUrl(miniAppUrl);
 }
 
-function appendAppLinkToText(text, link) {
-  if (!link) return text;
-  return `${text}\n\nОткрыть Corta:\n${link}`;
-}
-
 export async function fetchBotUsername(tgApi) {
   if (cachedBotUsername) return cachedBotUsername;
   try {
@@ -42,6 +100,115 @@ export async function fetchBotUsername(tgApi) {
     /* ignore */
   }
   return cachedBotUsername;
+}
+
+/** HTTPS-картинка для sendPhoto (по умолчанию {miniApp}/corta-logo.png). */
+export function resolveStartPhotoUrl(env = process.env) {
+  const custom = env.TELEGRAM_START_PHOTO_URL?.trim();
+  if (custom && /^https:\/\//i.test(custom)) return custom;
+  const mini = normalizeMiniAppUrl(env.TELEGRAM_MINI_APP_URL);
+  if (mini) return `${mini}/corta-logo.png`;
+  return '';
+}
+
+export function resolveStartPhotoFile(env = process.env) {
+  if (env.TELEGRAM_START_PHOTO_DISABLED === 'true') return null;
+  const custom = env.TELEGRAM_START_PHOTO_PATH?.trim();
+  const candidates = custom
+    ? [path.isAbsolute(custom) ? custom : path.join(BOT_DIR, custom)]
+    : START_PHOTO_CANDIDATES;
+  for (const filePath of candidates) {
+    try {
+      if (fs.existsSync(filePath)) return filePath;
+    } catch {
+      /* ignore */
+    }
+  }
+  return null;
+}
+
+function hasHtmlMarkup(text) {
+  return /<[a-z][\s\S]*?>/i.test(text);
+}
+
+/** Подпись к фото: entities (по умолчанию) или HTML из TELEGRAM_START_PHOTO_CAPTION. */
+function resolveStartPhotoCaption(env = process.env) {
+  const custom = env.TELEGRAM_START_PHOTO_CAPTION?.trim();
+  if (custom) {
+    if (hasHtmlMarkup(custom)) {
+      return { caption: custom, caption_entities: null, parse_mode: 'HTML' };
+    }
+    return { caption: custom, caption_entities: null, parse_mode: null };
+  }
+  return {
+    caption: DEFAULT_START_PHOTO.caption,
+    caption_entities: DEFAULT_START_PHOTO.caption_entities,
+    parse_mode: null,
+  };
+}
+
+function startMessageText(env = process.env) {
+  return env.TELEGRAM_START_MESSAGE?.trim() || DEFAULT_START_MESSAGE;
+}
+
+function resolveStartMessageOptions(env = process.env) {
+  const text = startMessageText(env);
+  const custom = env.TELEGRAM_START_MESSAGE?.trim();
+  if (custom && hasHtmlMarkup(custom)) {
+    return { text, parse_mode: 'HTML' };
+  }
+  return { text, parse_mode: null };
+}
+
+function applyCaptionFields(target, resolved) {
+  target.caption = resolved.caption;
+  if (resolved.caption_entities?.length) {
+    target.caption_entities = resolved.caption_entities;
+  } else if (resolved.parse_mode) {
+    target.parse_mode = resolved.parse_mode;
+  }
+}
+
+/** Первое сообщение на /start — с фото (как на макете). */
+export async function sendStartWelcomePhoto(tgApi, tgApiForm, chatId, env = process.env) {
+  const resolvedCaption = resolveStartPhotoCaption(env);
+  const photoUrl = resolveStartPhotoUrl(env);
+
+  if (photoUrl) {
+    const body = { chat_id: chatId, photo: photoUrl };
+    applyCaptionFields(body, resolvedCaption);
+    const sent = await tgApi('sendPhoto', body);
+    if (sent?.ok) {
+      console.info('[bot /start] фото (URL) отправлено', chatId);
+      return sent;
+    }
+    console.warn('[bot /start] sendPhoto URL:', sent?.description || sent);
+  }
+
+  const filePath = resolveStartPhotoFile(env);
+  if (!filePath || !tgApiForm) return null;
+
+  try {
+    const blob = await fs.openAsBlob(filePath);
+    const form = new FormData();
+    form.append('chat_id', String(chatId));
+    form.append('caption', resolvedCaption.caption);
+    if (resolvedCaption.caption_entities?.length) {
+      form.append('caption_entities', JSON.stringify(resolvedCaption.caption_entities));
+    } else if (resolvedCaption.parse_mode) {
+      form.append('parse_mode', resolvedCaption.parse_mode);
+    }
+    form.append('photo', blob, path.basename(filePath));
+    const sent = await tgApiForm('sendPhoto', form);
+    if (sent?.ok) {
+      console.info('[bot /start] фото (файл) отправлено', chatId);
+      return sent;
+    }
+    console.warn('[bot /start] sendPhoto file:', sent?.description || sent);
+  } catch (e) {
+    console.warn('[bot /start] sendPhoto file error:', e instanceof Error ? e.message : e);
+  }
+  return null;
 }
 
 /** Ссылка t.me на бота (если нет short name Mini App в BotFather). */
@@ -57,28 +224,25 @@ export async function buildStartMessagePayload(chatId, tgApi, env = process.env)
   const miniAppUrl = normalizeMiniAppUrl(env.TELEGRAM_MINI_APP_URL);
   const tmeLink = env.TELEGRAM_MINI_APP_TME_LINK?.trim();
   const botUser = await fetchBotUsername(tgApi);
-  let openUrl = resolveAppOpenUrl(miniAppUrl, tmeLink) || buildTmeBotLink(env, botUser);
-  const welcomeText =
-    env.TELEGRAM_START_MESSAGE?.trim() ||
-    'Здравствуйте! Нажмите кнопку ниже, чтобы открыть мини-приложение Corta и пройти скрининг.';
+  const openUrl = resolveAppOpenUrl(miniAppUrl, tmeLink) || buildTmeBotLink(env, botUser);
+  const { text: welcomeText, parse_mode } = resolveStartMessageOptions(env);
   const buttonLabel = env.TELEGRAM_START_BUTTON_TEXT?.trim() || 'Открыть приложение';
 
-  const linkForText = openUrl || miniAppUrl;
   const payload = {
     chat_id: chatId,
-    text: appendAppLinkToText(welcomeText, linkForText),
-    disable_web_page_preview: false,
+    text: welcomeText,
+    disable_web_page_preview: true,
   };
+  if (parse_mode) payload.parse_mode = parse_mode;
 
-  const rows = [];
   if (miniAppUrl) {
-    rows.push([{ text: buttonLabel, web_app: { url: miniAppUrl } }]);
-  }
-  if (openUrl) {
-    rows.push([{ text: miniAppUrl ? 'Открыть по ссылке' : buttonLabel, url: openUrl }]);
-  }
-  if (rows.length) {
-    payload.reply_markup = { inline_keyboard: rows };
+    payload.reply_markup = {
+      inline_keyboard: [[{ text: buttonLabel, web_app: { url: miniAppUrl } }]],
+    };
+  } else if (openUrl) {
+    payload.reply_markup = {
+      inline_keyboard: [[{ text: buttonLabel, url: openUrl }]],
+    };
   } else {
     payload.text +=
       '\n\n⚠️ Администратору: задайте TELEGRAM_MINI_APP_URL и TELEGRAM_BOT_TOKEN на сервере (Amvera → Запуск).';
@@ -88,11 +252,9 @@ export async function buildStartMessagePayload(chatId, tgApi, env = process.env)
 }
 
 export function buildStartMessagePayloadUrlFallback(chatId, openUrl, env = process.env) {
-  const welcomeText =
-    env.TELEGRAM_START_MESSAGE?.trim() ||
-    'Здравствуйте! Нажмите кнопку ниже, чтобы открыть мини-приложение Corta и пройти скрининг.';
+  const { text: welcomeText, parse_mode } = resolveStartMessageOptions(env);
   const buttonLabel = env.TELEGRAM_START_BUTTON_TEXT?.trim() || 'Открыть приложение';
-  return {
+  const payload = {
     chat_id: chatId,
     text: welcomeText,
     disable_web_page_preview: true,
@@ -100,9 +262,13 @@ export function buildStartMessagePayloadUrlFallback(chatId, openUrl, env = proce
       inline_keyboard: [[{ text: buttonLabel, url: openUrl }]],
     },
   };
+  if (parse_mode) payload.parse_mode = parse_mode;
+  return payload;
 }
 
-export async function sendStartMessage(tgApi, chatId, env = process.env) {
+export async function sendStartMessage(tgApi, tgApiForm, chatId, env = process.env) {
+  await sendStartWelcomePhoto(tgApi, tgApiForm, chatId, env);
+
   const { payload, miniAppUrl, openUrl } = await buildStartMessagePayload(chatId, tgApi, env);
   let sent = await tgApi('sendMessage', payload);
   if (sent?.ok) {
@@ -113,13 +279,7 @@ export async function sendStartMessage(tgApi, chatId, env = process.env) {
   const fallbackUrl = openUrl || miniAppUrl;
   if (fallbackUrl) {
     console.warn('[bot /start] повтор с кнопкой-ссылкой:', sent?.description || sent);
-    const welcomeText =
-      env.TELEGRAM_START_MESSAGE?.trim() ||
-      'Здравствуйте! Нажмите кнопку ниже, чтобы открыть мини-приложение Corta.';
-    sent = await tgApi('sendMessage', {
-      ...buildStartMessagePayloadUrlFallback(chatId, fallbackUrl, env),
-      text: appendAppLinkToText(welcomeText, fallbackUrl),
-    });
+    sent = await tgApi('sendMessage', buildStartMessagePayloadUrlFallback(chatId, fallbackUrl, env));
   }
 
   if (!sent?.ok) {

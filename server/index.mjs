@@ -144,6 +144,28 @@ async function tgApi(method, body = {}) {
   }
 }
 
+/** sendPhoto с файлом с диска (multipart). */
+async function tgApiForm(method, formData) {
+  if (!BOT_TOKEN) return { ok: false, description: 'TELEGRAM_BOT_TOKEN не задан' };
+  const url = `https://api.telegram.org/bot${BOT_TOKEN}/${method}`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      body: formData,
+      signal: AbortSignal.timeout(45_000),
+    });
+    const raw = await res.text();
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return { ok: false, description: raw.slice(0, 300) };
+    }
+  } catch (e) {
+    console.error('[tgApiForm]', method, e);
+    return { ok: false, description: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const LEAD_TO_DEFAULT = 'hello@bookvolon.ru';
@@ -575,7 +597,7 @@ async function processTelegramUpdate(update) {
   const text = msg?.text ?? msg?.caption;
   if (msg?.chat?.id != null && text && isStartCommand(text)) {
     console.info('[webhook /start] chat', msg.chat.id, text.slice(0, 40));
-    await sendStartMessage(tgApi, msg.chat.id, {
+    await sendStartMessage(tgApi, tgApiForm, msg.chat.id, {
       ...process.env,
       TELEGRAM_BOT_TOKEN: BOT_TOKEN,
     });
