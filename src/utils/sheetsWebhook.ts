@@ -1,14 +1,16 @@
 import { SessionResult } from '../types';
 
-const WEBHOOK_URL = (import.meta.env.VITE_SHEETS_WEBHOOK_URL as string | undefined)?.trim();
+const WEBHOOK_URL_RAW = (import.meta.env.VITE_SHEETS_WEBHOOK_URL as string | undefined)?.trim();
+
+function getSheetsWebhookUrl(): string | null {
+  if (!WEBHOOK_URL_RAW) return null;
+  if (!WEBHOOK_URL_RAW.startsWith('https://script.google.com/')) return null;
+  if (WEBHOOK_URL_RAW.includes('REPLACE_WITH_YOUR')) return null;
+  return WEBHOOK_URL_RAW;
+}
 
 /** Настроен ли реальный URL (не пустой и не заглушка из .env.example). */
-export const isSheetsWebhookConfigured = (): boolean =>
-  Boolean(
-    WEBHOOK_URL &&
-      WEBHOOK_URL.startsWith('https://script.google.com/') &&
-      !WEBHOOK_URL.includes('REPLACE_WITH_YOUR'),
-  );
+export const isSheetsWebhookConfigured = (): boolean => Boolean(getSheetsWebhookUrl());
 
 type AnalyticsEventPayload = {
   eventType: string;
@@ -28,7 +30,8 @@ type AnalyticsEventPayload = {
 };
 
 export const sendAnalyticsEventToSheets = async (event: AnalyticsEventPayload): Promise<boolean> => {
-  if (!isSheetsWebhookConfigured()) return false;
+  const url = getSheetsWebhookUrl();
+  if (!url) return false;
 
   const payload = {
     ...event,
@@ -36,7 +39,7 @@ export const sendAnalyticsEventToSheets = async (event: AnalyticsEventPayload): 
   };
 
   try {
-    const res = await fetch(WEBHOOK_URL, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -51,7 +54,8 @@ export const sendAnalyticsEventToSheets = async (event: AnalyticsEventPayload): 
 };
 
 export const sendSessionToSheets = async (session: SessionResult): Promise<void> => {
-  if (!isSheetsWebhookConfigured()) return;
+  const url = getSheetsWebhookUrl();
+  if (!url) return;
 
   const payload = {
     ...session,
@@ -61,7 +65,7 @@ export const sendSessionToSheets = async (session: SessionResult): Promise<void>
     timestamp: new Date().toISOString(),
   };
 
-  await fetch(WEBHOOK_URL, {
+  await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
