@@ -24,15 +24,23 @@ const safeMetric = (v: unknown, fallback = 0): number =>
 const safeDomainScore = (score: number): number =>
   Number.isFinite(score) && !Number.isNaN(score) ? clampScore(score) : NEUTRAL_DOMAIN_SCORE;
 
-/** Устойчивость внимания: базовая формула + штрафы за CV>40 и точность<70%. */
-export const attentionStabilityDomainScore = (metrics: {
-  flankerIncongruentAccuracy: number;
-  flankerIncongruentCv: number;
-}): number => {
+/** Устойчивость внимания: фланкер (точность + CV неконгруэнтных проб). */
+export const attentionStabilityDomainScore = (
+  metrics: {
+    flankerIncongruentAccuracy: number;
+    flankerIncongruentCv: number;
+  },
+  incongruentTrialCount: number,
+  incongruentValidRtCount: number,
+): number => {
+  /** Меньше 5 неконгруэнтных проб — замер неполный, не занижаем до 0. */
+  if (incongruentTrialCount < 5) return NEUTRAL_DOMAIN_SCORE;
+
   const accuracy = safeMetric(metrics.flankerIncongruentAccuracy);
   const cv = safeMetric(metrics.flankerIncongruentCv);
   let score = clampScore(accuracy * 0.65 + (40 - Math.min(cv, 40)) * 0.9);
-  if (cv > 40) score -= 20;
+  /** CV по 1–2 ответам нестабилен — не штрафуем за «скачки». */
+  if (incongruentValidRtCount >= 3 && cv > 40) score -= 20;
   if (accuracy < 70) score -= 15;
   return clampScore(score);
 };
@@ -203,6 +211,11 @@ const collectMetricWarnings = (
 
   const flankInc = session.flanker.trials.filter((t) => t.type === 'incongruent');
   if (!flankInc.length) w.push('Нет неконгруэнтных проб фланкера.');
+  else if (flankInc.length < 10) {
+    w.push(`Фланкер: только ${flankInc.length} из 10 неконгруэнтных проб — оценка устойчивости внимания ненадёжна.`);
+  } else if (!flankInc.some((t) => t.correct && t.rt !== null)) {
+    w.push('Нет ни одного верного ответа на неконгруэнтные пробы фланкера.');
+  }
 
   return w;
 };
@@ -347,7 +360,12 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
     },
   ];
 
-  const attentionScore = attentionStabilityDomainScore(m);
+  const flankIncValidRt = flankIncTrials.filter((t) => t.correct && t.rt !== null).length;
+  const attentionScore = attentionStabilityDomainScore(
+    m,
+    flankIncTrials.length,
+    flankIncValidRt,
+  );
 
   const reactionSpeedScore = reactionTrusted
     ? reactionSpeedDomainScoreFromMedian(m.reactionMedianRt)

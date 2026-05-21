@@ -13,8 +13,6 @@ import type { DomainInterpretationCopy } from '../copy/cognitiveDomainInterpreta
 import { buildCognitiveAnalytics, type DomainScore } from '../utils/cognitiveAnalytics';
 import type { IndexInterpretation } from '../utils/indexInterpretationBands';
 import { shareResultWithCard } from '../utils/shareResult';
-import { getPaidReportData } from '../utils/paidReport';
-import { PaidReportModal } from '../components/PaidReportModal';
 import { isPaymentsEnabled, shouldBypassReportPayment } from '../utils/paymentStub';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
 import { hasPaymentReturnInUrl } from '../utils/storage';
@@ -97,7 +95,8 @@ const IndexInterpretationBody = ({ index, accent }: { index: IndexInterpretation
 );
 
 export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
-  const { latestResult, setStage, setConsultationReturnTo } = useApp();
+  const { latestResult, setStage, setConsultationReturnTo, resultEntryStep, clearResultEntryStep } =
+    useApp();
   useHydrateLatestResult();
   const [step, setStep] = useState<ResultStep>('index');
   const [domainIndex, setDomainIndex] = useState(0);
@@ -105,7 +104,16 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const [shareBusy, setShareBusy] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [payNotice, setPayNotice] = useState<string | null>(null);
-  const [paidModalOpen, setPaidModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (resultEntryStep === 'session-offer') {
+      setStep('session-offer');
+      clearResultEntryStep();
+    } else if (resultEntryStep === 'hub') {
+      setStep('hub');
+      clearResultEntryStep();
+    }
+  }, [resultEntryStep, clearResultEntryStep]);
   if (!latestResult) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-10 text-center text-white/80">
@@ -158,18 +166,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
 
   const reportUnlocked = latestResult ? isReportPaidUnlocked(latestResult.id) : false;
 
-  const paidReportData = getPaidReportData(
-    a.index.value,
-    a.domains,
-    a.patterns,
-    null,
-    a.overloadMap,
-  );
-
-  const openPaidReportModal = () => {
-    setPaidModalOpen(true);
-  };
-
   const openCheckout = () => {
     if (!latestResult) return;
     if (skipNativePayment || reportUnlocked) {
@@ -179,10 +175,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     if (!isPaymentsEnabled()) return;
     setPayNotice(null);
     setCheckoutOpen(true);
-  };
-
-  const openSessionOffer = () => {
-    setStep('session-offer');
   };
 
   const goToConsultationPayment = () => {
@@ -368,21 +360,10 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           </button>
           <Button
             type="button"
-            variant="secondary"
-            className="w-full rounded-full border border-white/20 bg-white/5 py-3.5 text-[0.9375rem] font-semibold text-white/90"
-            onClick={openPaidReportModal}
-          >
-            Полный отчёт — 399 ₽
-          </Button>
-          <Button
-            type="button"
             className={`cta-shimmer border-0 !bg-none !from-transparent !to-transparent hover:!from-transparent hover:!to-transparent ${calmBtnClass}`}
             onClick={openCheckout}
           >
             {reportUnlocked ? 'Открыть расширенный отчёт' : 'Получить расширенный отчёт — 399 ₽'}
-          </Button>
-          <Button type="button" variant="sell" className={calmBtnClass} onClick={openSessionOffer}>
-            {isPaymentsEnabled() ? 'Записаться на сессию — 5 490 ₽' : 'Оставить заявку на сессию'}
           </Button>
           <SupportFooter showDeveloperCredit={false} />
         </div>
@@ -410,22 +391,8 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
             ))}
           </ul>
         </div>
-        <div className="calm-inset space-y-2 border border-emerald-400/25">
-          <p className="text-sm font-semibold text-white/90 sm:text-base">Персональная сессия с экспертом</p>
-          <p className="text-sm leading-relaxed text-white/75">
-            Разбор вашего профиля онлайн, 30 минут — 5 490 ₽
-          </p>
-          <button
-            type="button"
-            className="text-left text-sm font-medium text-emerald-300/95 underline decoration-emerald-400/40 underline-offset-2 hover:text-emerald-200"
-            onClick={openSessionOffer}
-          >
-            Подробнее о сессии
-          </button>
-        </div>
       </div>
     </CalmScreen>
-    <PaidReportModal open={paidModalOpen} data={paidReportData} onClose={() => setPaidModalOpen(false)} />
     {latestResult ? (
       <PaymentCheckoutSheet
         open={checkoutOpen}

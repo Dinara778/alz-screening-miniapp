@@ -24,6 +24,9 @@ import { sendAnalyticsEventToSheets, sendSessionToSheets } from '../utils/sheets
 
 type ConsultationReturnStage = 'result' | 'full-report';
 
+/** С какого шага открыть ResultPage (например, продажа сессии после отчёта). */
+export type ResultEntryStep = 'hub' | 'session-offer';
+
 type FaceAnswer = { faceId: number; selected: string; correct: string };
 
 type BootState = {
@@ -153,6 +156,9 @@ type AppState = {
   saveResult: (r: SessionResult) => void;
   consultationReturnTo: ConsultationReturnStage | null;
   setConsultationReturnTo: (v: ConsultationReturnStage | null) => void;
+  resultEntryStep: ResultEntryStep | null;
+  openResultAtStep: (step: ResultEntryStep) => void;
+  clearResultEntryStep: () => void;
   studyWordList: string[];
   setStudyWordList: (v: string[]) => void;
 };
@@ -177,7 +183,17 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [sessionSeed, setSessionSeed] = useState(b.sessionSeed);
   const [participant, setParticipant] = useState<ParticipantProfile | null>(b.participant);
   const [consultationReturnTo, setConsultationReturnTo] = useState<ConsultationReturnStage | null>(null);
+  const [resultEntryStep, setResultEntryStep] = useState<ResultEntryStep | null>(null);
   const [studyWordList, setStudyWordList] = useState<string[]>(b.studyWordList);
+
+  const openResultAtStep = useCallback((step: ResultEntryStep) => {
+    setResultEntryStep(step);
+    setStage('result');
+  }, []);
+
+  const clearResultEntryStep = useCallback(() => {
+    setResultEntryStep(null);
+  }, []);
   const sentStageEventsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -417,6 +433,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       saveResult: saveResultFn,
       consultationReturnTo,
       setConsultationReturnTo,
+      resultEntryStep,
+      openResultAtStep,
+      clearResultEntryStep,
       studyWordList,
       setStudyWordList,
     }),
@@ -435,6 +454,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       sessionSeed,
       participant,
       consultationReturnTo,
+      resultEntryStep,
+      openResultAtStep,
+      clearResultEntryStep,
       studyWordList,
       resetSession,
       refreshApp,

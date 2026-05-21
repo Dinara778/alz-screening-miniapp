@@ -1,4 +1,9 @@
 import { useId, type CSSProperties, type ReactNode } from 'react';
+import {
+  ORGANIC_BLOB_PARTICLES,
+  ORGANIC_BLOB_PATH_INNER,
+  ORGANIC_BLOB_PATH_MAIN,
+} from '../../utils/organicBlob';
 import { shouldReduceSvgFilters } from '../../utils/deviceHints';
 
 type Props = {
@@ -7,41 +12,7 @@ type Props = {
   emphasis?: boolean;
 };
 
-/** Симметричный «пухлый» контур без хвоста — как WHOOP Age blob */
-const BLOB_OUTLINE =
-  'M100 20 C132 18 172 34 182 68 C190 102 178 148 148 172 C118 192 78 192 52 172 C26 148 12 102 22 64 C32 30 66 20 100 20 Z';
-
-/** Частицы: плотнее у контура, реже к центру */
-const BLOB_PARTICLES: ReadonlyArray<{ x: number; y: number; r: number; o: number }> = (() => {
-  const pts: { x: number; y: number; r: number; o: number }[] = [];
-  const cx = 100;
-  const cy = 100;
-  const n = 150;
-  for (let i = 0; i < n; i++) {
-    const angle = i * 2.399963229728653;
-    const t = Math.pow((i + 0.5) / n, 0.48);
-    const radius = 28 + t * 58;
-    pts.push({
-      x: cx + Math.cos(angle) * radius * (0.97 + (i % 5) * 0.012),
-      y: cy + Math.sin(angle) * radius * (0.98 + (i % 4) * 0.01),
-      r: 0.45 + (i % 3) * 0.2 + (t > 0.65 ? 0.15 : 0),
-      o: 0.22 + t * 0.45 + (i % 4) * 0.06,
-    });
-  }
-  for (let i = 0; i < 40; i++) {
-    const angle = i * 0.92 + 0.3;
-    const radius = 72 + (i % 6) * 1.8;
-    pts.push({
-      x: cx + Math.cos(angle) * radius,
-      y: cy + Math.sin(angle) * radius,
-      r: 0.5 + (i % 2) * 0.25,
-      o: 0.5 + (i % 3) * 0.12,
-    });
-  }
-  return pts;
-})();
-
-/** Один неровный контур + облако частиц; метрика строго по центру внутри */
+/** Один неровный волнистый контур + облако частиц; метрика строго по центру внутри */
 const CloudHalo = ({ children, accent }: { children: ReactNode; accent: string }) => {
   const uid = useId().replace(/:/g, '');
   const softGlow = shouldReduceSvgFilters();
@@ -54,7 +25,7 @@ const CloudHalo = ({ children, accent }: { children: ReactNode; accent: string }
       }`}
       style={shellStyle}
     >
-      <svg className="absolute inset-0 h-full w-full" viewBox="0 0 200 200" aria-hidden>
+      <svg className="absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 200 200" aria-hidden>
         <defs>
           {!softGlow ? (
             <>
@@ -71,7 +42,7 @@ const CloudHalo = ({ children, accent }: { children: ReactNode; accent: string }
             </>
           ) : null}
           <clipPath id={`${uid}-blob-clip`}>
-            <path d={BLOB_OUTLINE} />
+            <path d={ORGANIC_BLOB_PATH_MAIN} />
           </clipPath>
           <radialGradient id={`${uid}-bg`} cx="50%" cy="48%" r="58%">
             <stop offset="0%" stopColor={accent} stopOpacity={softGlow ? '0.08' : '0.06'} />
@@ -81,29 +52,53 @@ const CloudHalo = ({ children, accent }: { children: ReactNode; accent: string }
         </defs>
 
         {softGlow ? (
-          <path d={BLOB_OUTLINE} fill={accent} opacity="0.1" />
+          <path d={ORGANIC_BLOB_PATH_MAIN} fill={accent} opacity="0.1" />
         ) : (
-          <path d={BLOB_OUTLINE} fill={accent} opacity="0.08" filter={`url(#${uid}-outer-bloom)`} />
+          <path d={ORGANIC_BLOB_PATH_MAIN} fill={accent} opacity="0.08" filter={`url(#${uid}-outer-bloom)`} />
         )}
 
         <g clipPath={`url(#${uid}-blob-clip)`}>
-          <path d={BLOB_OUTLINE} fill={`url(#${uid}-bg)`} />
-          {BLOB_PARTICLES.map((p, i) => (
+          <path d={ORGANIC_BLOB_PATH_MAIN} fill={`url(#${uid}-bg)`} />
+          {ORGANIC_BLOB_PARTICLES.map((p, i) => (
             <circle key={i} cx={p.x} cy={p.y} r={p.r} fill={accent} opacity={p.o} />
           ))}
         </g>
 
-        <path
-          className={softGlow ? undefined : 'metric-cloud-pulse'}
-          d={BLOB_OUTLINE}
-          fill="none"
-          stroke={accent}
-          strokeWidth={softGlow ? '2' : '2.25'}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          opacity="0.95"
-          filter={softGlow ? undefined : `url(#${uid}-stroke-glow)`}
-        />
+        <g className={softGlow ? undefined : 'metric-cloud-drift'} style={{ transformOrigin: '100px 100px' }}>
+          <path
+            d={ORGANIC_BLOB_PATH_INNER}
+            fill="none"
+            stroke={accent}
+            strokeWidth={softGlow ? '1.1' : '1.35'}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            opacity="0.38"
+          />
+          <path
+            className={softGlow ? undefined : 'metric-cloud-pulse'}
+            d={ORGANIC_BLOB_PATH_MAIN}
+            fill="none"
+            stroke={accent}
+            strokeWidth={softGlow ? '2' : '2.35'}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            opacity="0.95"
+            filter={softGlow ? undefined : `url(#${uid}-stroke-glow)`}
+          />
+          {!softGlow ? (
+            <path
+              className="metric-cloud-pulse-delay"
+              d={ORGANIC_BLOB_PATH_MAIN}
+              fill="none"
+              stroke={accent}
+              strokeWidth="1.1"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              opacity="0.35"
+              transform="translate(100 100) scale(1.045) translate(-100 -100)"
+            />
+          ) : null}
+        </g>
       </svg>
 
       <div className="relative z-10 flex max-w-[62%] flex-col items-center justify-center px-4 text-center">
@@ -131,7 +126,7 @@ export const OrganicMetricHalo = ({ children, accent = '#2dd4bf', emphasis = fal
       style={shellStyle}
     >
       <svg
-        className={`absolute inset-0 h-full w-full ${softGlow ? '' : 'metric-halo-spin'}`}
+        className={`absolute inset-0 h-full w-full overflow-visible ${softGlow ? '' : 'metric-halo-spin'}`}
         viewBox="0 0 200 200"
         aria-hidden
       >
@@ -150,10 +145,19 @@ export const OrganicMetricHalo = ({ children, accent = '#2dd4bf', emphasis = fal
             <stop offset="100%" stopColor={accent} stopOpacity="0" />
           </radialGradient>
         </defs>
-        <circle cx="100" cy="100" r="72" fill={`url(#${id}-fill)`} />
+        <path d={ORGANIC_BLOB_PATH_MAIN} fill={`url(#${id}-fill)`} opacity="0.85" />
         <path
           className={softGlow ? undefined : 'metric-halo-pulse'}
-          d="M100 28 C132 30 158 52 168 84 C176 112 162 142 136 158 C112 172 84 170 62 154 C38 136 28 108 34 78 C40 50 68 26 100 28 Z"
+          d={ORGANIC_BLOB_PATH_INNER}
+          fill="none"
+          stroke={accent}
+          strokeWidth="1.1"
+          strokeLinecap="round"
+          opacity="0.5"
+        />
+        <path
+          className={softGlow ? undefined : 'metric-halo-pulse-delay'}
+          d={ORGANIC_BLOB_PATH_MAIN}
           fill="none"
           stroke={accent}
           strokeWidth="1.25"

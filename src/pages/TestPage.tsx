@@ -117,6 +117,11 @@ export const TestPage = () => {
   const flankerAdvanceRef = useRef(false);
   const { setStage, setStroopTrials, setFlankerTrials } = app;
   useEffect(() => {
+    if (app.stage !== 'flanker') return;
+    if (flanker.results.length > 0) setFlankerTrials(flanker.results);
+  }, [app.stage, flanker.results, setFlankerTrials]);
+
+  useEffect(() => {
     if (app.stage !== 'flanker') {
       flankerAdvanceRef.current = false;
       return;
@@ -225,7 +230,9 @@ export const TestPage = () => {
     const targets =
       app.studyWordList.length >= 5 ? app.studyWordList : pickStudyWordList(app.sessionSeed);
     const wm = scoreWordMemory(app.immediateWords, app.delayedWords, targets);
-    const fl = scoreFlanker(app.flankerTrials);
+    const flankerTrialInput =
+      app.flankerTrials.length >= flanker.total ? app.flankerTrials : flanker.results;
+    const fl = scoreFlanker(flankerTrialInput);
     const rx = scoreReaction(app.reactionSuccessful, app.reactionAnticipations + reaction.anticipations);
     const st = scoreStroop(app.stroopTrials);
 
@@ -281,7 +288,7 @@ export const TestPage = () => {
       faceName: fn,
     });
     setStage('result');
-  }, [app, face.trials, face.answers, reaction.anticipations, setStage]);
+  }, [app, face.trials, face.answers, reaction.anticipations, flanker.results, flanker.total, setStage]);
 
   const runFinish = useCallback(() => {
     const allAnswered = face.trials.every((t) => Boolean(face.answers[t.id]));

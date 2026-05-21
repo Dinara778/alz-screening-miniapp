@@ -204,12 +204,12 @@ input:focus-visible {
 @keyframes metric-cloud-pulse {
   0%,
   100% {
-    opacity: 0.7;
+    opacity: 0.72;
     transform: scale(1);
   }
   50% {
     opacity: 1;
-    transform: scale(1.015);
+    transform: scale(1.028);
   }
 }
 

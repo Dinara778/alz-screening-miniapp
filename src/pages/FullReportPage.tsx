@@ -11,10 +11,10 @@ import { useHydrateLatestResult } from '../hooks/useHydrateLatestResult';
 import { formatDomainInterpretationPlain } from '../copy/cognitiveDomainInterpretations';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { downloadCognitiveReportPdf } from '../utils/pdfReport';
-import { isPaymentsEnabled } from '../utils/paymentStub';
 import { isReportPaidUnlocked, isPaymentsBackendConfigured } from '../utils/telegramPayments';
+import { isPaymentsEnabled } from '../utils/paymentStub';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
-type ReportStep = 'ready' | 'report' | 'learned' | 'upsell';
+type ReportStep = 'ready' | 'report' | 'learned';
 
 const learnedItems = [
   'ваши зоны перегрузки',
@@ -23,15 +23,8 @@ const learnedItems = [
   'рекомендации по улучшению',
 ] as const;
 
-const upsellFeatures = [
-  'Онлайн-расшифровку результатов простым языком с опытным экспертом по когнитивной устойчивости (созвон)',
-  'Персональные рекомендации под вашу ситуацию',
-  'Понимание, что больше всего мешает вашему ресурсу',
-  'План улучшения показателей',
-] as const;
-
 export const FullReportPage = () => {
-  const { latestResult, participant, setStage, setConsultationReturnTo } = useApp();
+  const { latestResult, participant, setStage, openResultAtStep, setConsultationReturnTo } = useApp();
   useHydrateLatestResult();
   const [step, setStep] = useState<ReportStep>('ready');
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -101,9 +94,9 @@ export const FullReportPage = () => {
     }
   };
 
-  const handleConsultation = () => {
+  const openSessionOffer = () => {
     setConsultationReturnTo('full-report');
-    setStage('consultation-request');
+    openResultAtStep('session-offer');
   };
 
   const fmt = (d: string) => new Date(d).toLocaleDateString('ru-RU');
@@ -255,8 +248,8 @@ export const FullReportPage = () => {
     return (
       <ReportFlowShell
         footer={
-          <Button type="button" className={CTA_BUTTON_CLASS} onClick={() => setStep('upsell')}>
-            Далее
+          <Button type="button" variant="sell" className={CTA_BUTTON_CLASS} onClick={openSessionOffer}>
+            {isPaymentsEnabled() ? 'Записаться на сессию — 5 490 ₽' : 'Оставить заявку на сессию'}
           </Button>
         }
       >
@@ -280,37 +273,12 @@ export const FullReportPage = () => {
   return (
     <ReportFlowShell
       footer={
-        <div className="flex flex-col gap-3">
-          <p className="text-center text-sm leading-relaxed text-white/55">
-            После оформления заказа мы с вами свяжемся в течение 15 минут.
-          </p>
-          <Button type="button" variant="sell" className={CTA_BUTTON_CLASS} onClick={handleConsultation}>
-            {isPaymentsEnabled() ? 'Записаться на сессию — 5 490 ₽' : 'Оставить заявку на сессию'}
-          </Button>
-        </div>
+        <Button variant="secondary" type="button" onClick={() => openResultAtStep('hub')}>
+          К результатам
+        </Button>
       }
     >
-      <div className="mx-auto w-full max-w-md space-y-5">
-        <SketchHighlightTitle accent={accent} tuckBottomOutline className="mb-3">
-          Разобрать результаты с экспертом
-        </SketchHighlightTitle>
-        <p className="results-body">
-          30-минутная сессия по вашему когнитивному профилю с экспертом по когнитивной устойчивости.
-        </p>
-        <div className="calm-inset space-y-3">
-          <p className="text-sm font-semibold text-white/90 sm:text-base">Что вы получите:</p>
-          <ul className="space-y-2.5 text-sm leading-relaxed text-white/88 sm:text-base">
-            {upsellFeatures.map((line) => (
-              <li key={line} className="flex gap-2">
-                <span className="shrink-0 text-emerald-400" aria-hidden>
-                  ✓
-                </span>
-                <span>{line}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
+      <p className="results-body text-center">Неизвестный шаг отчёта.</p>
     </ReportFlowShell>
   );
 };
