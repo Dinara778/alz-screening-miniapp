@@ -15,7 +15,6 @@ import { UserAgreementDocPage } from './pages/UserAgreementDocPage';
 import { ExpertIntroPage } from './pages/ExpertIntroPage';
 import { IntroTestOfferPage } from './pages/IntroTestOfferPage';
 import { WelcomePage } from './pages/WelcomePage';
-import { AppRefreshControls } from './components/AppRefreshControls';
 import type { AppStage } from './types';
 import { MID_TEST_STAGES } from './utils/storage';
 
@@ -76,13 +75,9 @@ function App() {
         ref={scrollRef}
         className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] [overflow-anchor:none]"
       >
-        <AppRefreshControls />
         <div key={app.stage} className="flex min-h-0 min-w-0 flex-1 flex-col">
           {app.stage === 'corta-intro' && (
-            <CortaIntroPage
-              onContinue={afterIntroContinue}
-              onOpenUserAgreement={() => openUserAgreement('corta-intro')}
-            />
+            <CortaIntroPage onContinue={afterIntroContinue} />
           )}
           {app.stage === 'legal-consent' && (
             <LegalConsentPage

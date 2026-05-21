@@ -1,6 +1,14 @@
 import { SessionResult } from '../types';
 
-const WEBHOOK_URL = import.meta.env.VITE_SHEETS_WEBHOOK_URL as string | undefined;
+const WEBHOOK_URL = (import.meta.env.VITE_SHEETS_WEBHOOK_URL as string | undefined)?.trim();
+
+/** Настроен ли реальный URL (не пустой и не заглушка из .env.example). */
+export const isSheetsWebhookConfigured = (): boolean =>
+  Boolean(
+    WEBHOOK_URL &&
+      WEBHOOK_URL.startsWith('https://script.google.com/') &&
+      !WEBHOOK_URL.includes('REPLACE_WITH_YOUR'),
+  );
 
 type AnalyticsEventPayload = {
   eventType: string;
@@ -20,7 +28,7 @@ type AnalyticsEventPayload = {
 };
 
 export const sendAnalyticsEventToSheets = async (event: AnalyticsEventPayload): Promise<boolean> => {
-  if (!WEBHOOK_URL) return false;
+  if (!isSheetsWebhookConfigured()) return false;
 
   const payload = {
     ...event,
@@ -43,7 +51,7 @@ export const sendAnalyticsEventToSheets = async (event: AnalyticsEventPayload): 
 };
 
 export const sendSessionToSheets = async (session: SessionResult): Promise<void> => {
-  if (!WEBHOOK_URL) return;
+  if (!isSheetsWebhookConfigured()) return;
 
   const payload = {
     ...session,

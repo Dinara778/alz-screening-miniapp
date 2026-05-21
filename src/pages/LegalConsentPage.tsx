@@ -66,14 +66,25 @@ export const LegalConsentPage = ({ onContinue, onOpenPersonalDataConsent, onOpen
     <CalmCardShell fill>
       <ScreenBottomCta
         footer={
-          <Button
-            type="button"
-            className={CTA_BUTTON_CLASS}
-            disabled={!canContinue}
-            onClick={handleContinue}
-          >
-            Далее
-          </Button>
+          <div className="flex flex-col gap-3">
+            <Button
+              type="button"
+              className={CTA_BUTTON_CLASS}
+              disabled={!canContinue}
+              onClick={handleContinue}
+            >
+              Далее
+            </Button>
+            <p className="text-center text-xs leading-relaxed text-white/50">
+              <button
+                type="button"
+                onClick={onOpenUserAgreement}
+                className="font-medium text-emerald-300/90 underline decoration-emerald-400/40 underline-offset-2 transition hover:text-emerald-200"
+              >
+                Пользовательское соглашение
+              </button>
+            </p>
+          </div>
         }
       >
         <div className="mx-auto w-full max-w-md space-y-6 px-1 sm:px-2">
