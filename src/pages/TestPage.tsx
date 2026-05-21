@@ -114,7 +114,19 @@ export const TestPage = () => {
   };
 
   const stroopAdvanceRef = useRef(false);
-  const { setStage, setStroopTrials } = app;
+  const flankerAdvanceRef = useRef(false);
+  const { setStage, setStroopTrials, setFlankerTrials } = app;
+  useEffect(() => {
+    if (app.stage !== 'flanker') {
+      flankerAdvanceRef.current = false;
+      return;
+    }
+    if (!flanker.done || flankerAdvanceRef.current) return;
+    flankerAdvanceRef.current = true;
+    setFlankerTrials(flanker.results);
+    setStage('reaction-instruction');
+  }, [app.stage, flanker.done, flanker.results, setStage, setFlankerTrials]);
+
   useEffect(() => {
     if (app.stage !== 'stroop') {
       stroopAdvanceRef.current = false;
@@ -385,9 +397,10 @@ export const TestPage = () => {
 
   if (app.stage === 'flanker') {
     if (flanker.done) {
-      app.setFlankerTrials(flanker.results);
-      app.setStage('reaction-instruction');
-      return null;
+      return wrapWithTestProgress(
+        app.stage,
+        <div className="calm-inset p-6 calm-body">Переход к следующему заданию…</div>,
+      );
     }
 
     return wrapWithTestProgress(

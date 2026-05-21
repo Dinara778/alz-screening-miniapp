@@ -62,19 +62,25 @@ export const createFlankerTrials = (sessionSeed: number): FlankerStimulus[] => {
   for (let pass = 0; pass < Math.min(5, 1 + Math.floor(habit / 2)); pass += 1) {
     trials = shuffle(trials, rng);
   }
-  for (let iter = 0; iter < 60; iter += 1) {
-    let bad = false;
+  for (let iter = 0; iter < trials.length * 8; iter += 1) {
+    let fixedAll = true;
     for (let i = 0; i < trials.length - 1; i += 1) {
       if (trials[i].arrows === trials[i + 1].arrows) {
-        bad = true;
-        const span = trials.length - i - 2;
-        if (span <= 0) break;
-        const j = i + 2 + randomInt(rng, span);
+        fixedAll = false;
+        const forbidden = trials[i].arrows;
+        const swapCandidates: number[] = [];
+        for (let j = 0; j < trials.length; j += 1) {
+          if (j === i + 1) continue;
+          if (trials[j].arrows === forbidden) continue;
+          swapCandidates.push(j);
+        }
+        if (swapCandidates.length === 0) continue;
+        const j = swapCandidates[randomInt(rng, swapCandidates.length)];
         [trials[i + 1], trials[j]] = [trials[j], trials[i + 1]];
         break;
       }
     }
-    if (!bad) break;
+    if (fixedAll) break;
   }
   return trials;
 };
