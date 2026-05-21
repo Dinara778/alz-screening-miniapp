@@ -412,11 +412,11 @@ export function findPaidReportSessionId(): string | null {
 }
 
 /**
- * Доступ к полному отчёту: оплачено в localStorage или временный обход (VITE_DEV_BYPASS_REPORT_PAYMENT).
- * Без успешной оплаты отчёт не открывается (для теста без оплаты задайте только VITE_DEV_BYPASS_REPORT_PAYMENT).
+ * Доступ к полному отчёту: оплачено в localStorage, оплата выключена на сборке или dev-обход.
  */
 export const isReportPaidUnlocked = (sessionId: string): boolean => {
   if (import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true') return true;
+  if (!isPaymentsEnabled()) return true;
   return localStorage.getItem(reportPaidStorageKey(sessionId)) === '1';
 };
 

@@ -172,7 +172,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       unlockFullReport();
       return;
     }
-    if (!isPaymentsEnabled()) return;
     setPayNotice(null);
     setCheckoutOpen(true);
   };
