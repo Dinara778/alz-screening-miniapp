@@ -270,9 +270,32 @@ const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: '256kb' }));
 
-app.get('/health', (_req, res) => {
-  res.json({ ok: true });
-});
+function sendHealthJson(res) {
+  const paymentsReady =
+    PAYMENT_PROVIDER !== 'none' && Boolean(BOT_TOKEN) && Boolean(PROVIDER_TOKEN?.trim());
+  res.json({
+    ok: true,
+    payments: {
+      ready: paymentsReady,
+      provider: PAYMENT_PROVIDER,
+      botToken: Boolean(BOT_TOKEN),
+      providerToken: Boolean(PROVIDER_TOKEN?.trim()),
+      serveStatic: process.env.SERVE_STATIC === 'true',
+      miniAppUrl: Boolean(process.env.TELEGRAM_MINI_APP_URL?.trim()),
+      hint:
+        PAYMENT_PROVIDER === 'none'
+          ? 'Задайте PAYMENT_PROVIDER=telegram и TELEGRAM_PAYMENT_PROVIDER_TOKEN (BotFather → Payments)'
+          : PAYMENT_PROVIDER === 'telegram' && !PROVIDER_TOKEN?.trim()
+            ? 'TELEGRAM_PAYMENT_PROVIDER_TOKEN пустой в переменных Amvera'
+            : paymentsReady
+              ? 'Сервер готов. На сборке: VITE_PAYMENTS_ENABLED=true'
+              : 'Проверьте TELEGRAM_BOT_TOKEN',
+    },
+  });
+}
+
+app.get('/health', (_req, res) => sendHealthJson(res));
+app.get('/health/payments', (_req, res) => sendHealthJson(res));
 
 app.get('/health/bot', async (_req, res) => {
   const miniAppUrl = process.env.TELEGRAM_MINI_APP_URL?.trim() || '';

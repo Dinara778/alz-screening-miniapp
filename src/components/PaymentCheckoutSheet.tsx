@@ -128,7 +128,8 @@ export const PaymentCheckoutSheet = ({
           no_init_data: 'Откройте приложение из бота Corta',
           no_open_invoice: 'Обновите Telegram до последней версии',
           no_open_link: 'Обновите Telegram до последней версии',
-          payments_disabled: '',
+          payments_disabled:
+            'Оплата не настроена на сервере. В Amvera: PAYMENT_PROVIDER=telegram, TELEGRAM_PAYMENT_PROVIDER_TOKEN, пересборка с VITE_PAYMENTS_ENABLED=true',
         };
         const msg = byReason[r.reason];
         if (msg) showNotice(msg);

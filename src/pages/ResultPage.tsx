@@ -13,10 +13,11 @@ import type { DomainInterpretationCopy } from '../copy/cognitiveDomainInterpreta
 import { buildCognitiveAnalytics, type DomainScore } from '../utils/cognitiveAnalytics';
 import type { IndexInterpretation } from '../utils/indexInterpretationBands';
 import { shareResultWithCard } from '../utils/shareResult';
-import { isPaymentsEnabled, shouldBypassReportPayment } from '../utils/paymentStub';
+import { shouldBypassReportPayment } from '../utils/paymentStub';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
 import { hasPaymentReturnInUrl } from '../utils/storage';
 import {
+  consultationPaidStorageKey,
   isReportPaidUnlocked,
   pollProdamusOrderPaidQuick,
   prodamusPendingOrderKey,
@@ -95,14 +96,15 @@ const IndexInterpretationBody = ({ index, accent }: { index: IndexInterpretation
 );
 
 export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
-  const { latestResult, setStage, setConsultationReturnTo, resultEntryStep, clearResultEntryStep } =
-    useApp();
+  const { latestResult, setStage, resultEntryStep, clearResultEntryStep } = useApp();
   useHydrateLatestResult();
   const [step, setStep] = useState<ResultStep>('index');
   const [domainIndex, setDomainIndex] = useState(0);
   const [shareNotice, setShareNotice] = useState<string | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [sessionCheckoutOpen, setSessionCheckoutOpen] = useState(false);
+  const [sessionPaid, setSessionPaid] = useState(false);
   const [payNotice, setPayNotice] = useState<string | null>(null);
 
   useEffect(() => {
@@ -114,6 +116,11 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       clearResultEntryStep();
     }
   }, [resultEntryStep, clearResultEntryStep]);
+
+  useEffect(() => {
+    if (!latestResult?.id) return;
+    setSessionPaid(localStorage.getItem(consultationPaidStorageKey(latestResult.id)) === '1');
+  }, [latestResult?.id]);
   if (!latestResult) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-10 text-center text-white/80">
@@ -176,9 +183,18 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     setCheckoutOpen(true);
   };
 
-  const goToConsultationPayment = () => {
-    setConsultationReturnTo('result');
-    setStage('consultation-request');
+  const openSessionCheckout = () => {
+    if (!latestResult) return;
+    setPayNotice(null);
+    setSessionCheckoutOpen(true);
+  };
+
+  const markSessionPaid = () => {
+    if (!latestResult) return;
+    localStorage.setItem(consultationPaidStorageKey(latestResult.id), '1');
+    window.dispatchEvent(new Event('consultation-paid'));
+    setSessionPaid(true);
+    setSessionCheckoutOpen(false);
   };
 
   const startDomains = () => {
@@ -292,44 +308,78 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
 
   if (step === 'session-offer') {
     return (
-      <CalmScreen
-        contentAlign="readable"
-        footer={
-          <div className="flex flex-col gap-3">
-            <p className="text-center text-sm leading-relaxed text-white/55">
-              После оформления заказа мы с вами свяжемся в течение 15 минут.
-            </p>
-            <Button type="button" variant="sell" className={calmBtnClass} onClick={goToConsultationPayment}>
-              {isPaymentsEnabled() ? 'Записаться на сессию — 5 490 ₽' : 'Оставить заявку на сессию'}
-            </Button>
-            <button type="button" className={calmBtnGhost} onClick={() => setStep('hub')}>
-              Назад к результатам
-            </button>
+      <>
+        <CalmScreen
+          contentAlign="readable"
+          footer={
+            <div className="flex flex-col gap-3">
+              {sessionPaid ? (
+                <Button type="button" className={calmBtnClass} onClick={() => setStep('hub')}>
+                  Назад к результатам
+                </Button>
+              ) : (
+                <>
+                  <p className="text-center text-sm leading-relaxed text-white/55">
+                    После оформления заказа мы с вами свяжемся в течение 15 минут.
+                  </p>
+                  <Button type="button" variant="sell" className={calmBtnClass} onClick={openSessionCheckout}>
+                    Купить сессию - 5 490 руб.
+                  </Button>
+                  <button type="button" className={calmBtnGhost} onClick={() => setStep('hub')}>
+                    Назад к результатам
+                  </button>
+                </>
+              )}
+              {payNotice ? (
+                <p className="text-center text-xs leading-relaxed text-amber-200/90">{payNotice}</p>
+              ) : null}
+            </div>
+          }
+        >
+          <div className="mx-auto w-full max-w-md space-y-5">
+            {sessionPaid ? (
+              <>
+                <p className="text-lg font-semibold text-emerald-200">Спасибо за оплату!</p>
+                <p className="results-body leading-relaxed">
+                  Мы свяжемся с вами в течение 15 минут для записи на сессию.
+                </p>
+              </>
+            ) : (
+              <>
+                <SketchHighlightTitle accent={accent} tuckBottomOutline className="mb-3">
+                  Разобрать результаты с экспертом
+                </SketchHighlightTitle>
+                <p className="results-body">
+                  30-минутная сессия по вашему когнитивному профилю с экспертом по когнитивной устойчивости.
+                </p>
+                <div className="calm-inset space-y-3">
+                  <p className="text-sm font-semibold text-white/90 sm:text-base">Что вы получите:</p>
+                  <ul className="space-y-2.5 text-sm leading-relaxed text-white/88 sm:text-base">
+                    {sessionUpsellFeatures.map((line) => (
+                      <li key={line} className="flex gap-2">
+                        <span className="shrink-0 text-emerald-400" aria-hidden>
+                          ✓
+                        </span>
+                        <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </>
+            )}
           </div>
-        }
-      >
-        <div className="mx-auto w-full max-w-md space-y-5">
-          <SketchHighlightTitle accent={accent} tuckBottomOutline className="mb-3">
-            Разобрать результаты с экспертом
-          </SketchHighlightTitle>
-          <p className="results-body">
-            30-минутная сессия по вашему когнитивному профилю с экспертом по когнитивной устойчивости.
-          </p>
-          <div className="calm-inset space-y-3">
-            <p className="text-sm font-semibold text-white/90 sm:text-base">Что вы получите:</p>
-            <ul className="space-y-2.5 text-sm leading-relaxed text-white/88 sm:text-base">
-              {sessionUpsellFeatures.map((line) => (
-                <li key={line} className="flex gap-2">
-                  <span className="shrink-0 text-emerald-400" aria-hidden>
-                    ✓
-                  </span>
-                  <span>{line}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </CalmScreen>
+        </CalmScreen>
+        {latestResult ? (
+          <PaymentCheckoutSheet
+            open={sessionCheckoutOpen}
+            product="consultation"
+            sessionId={latestResult.id}
+            onClose={() => setSessionCheckoutOpen(false)}
+            onPaid={markSessionPaid}
+            onNotice={setPayNotice}
+          />
+        ) : null}
+      </>
     );
   }
 

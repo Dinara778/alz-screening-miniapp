@@ -12,7 +12,6 @@ import { formatDomainInterpretationPlain } from '../copy/cognitiveDomainInterpre
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { downloadCognitiveReportPdf } from '../utils/pdfReport';
 import { isReportPaidUnlocked, isPaymentsBackendConfigured } from '../utils/telegramPayments';
-import { isPaymentsEnabled } from '../utils/paymentStub';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 type ReportStep = 'ready' | 'report' | 'learned';
 
@@ -249,7 +248,7 @@ export const FullReportPage = () => {
       <ReportFlowShell
         footer={
           <Button type="button" variant="sell" className={CTA_BUTTON_CLASS} onClick={openSessionOffer}>
-            {isPaymentsEnabled() ? 'Записаться на сессию — 5 490 ₽' : 'Оставить заявку на сессию'}
+            Подробнее о сессии
           </Button>
         }
       >
@@ -265,6 +264,13 @@ export const FullReportPage = () => {
               </li>
             ))}
           </ul>
+          <div className="space-y-3">
+            <SketchHighlightTitle accent={accent}>Что дальше?</SketchHighlightTitle>
+            <p className="results-body leading-relaxed">
+              А дальше вы можете пройти индивидуальную сессию со специалистом по когнитивной устойчивости для
+              получения более глубоких рекомендаций по управлению своим когнитивным состоянием.
+            </p>
+          </div>
         </div>
       </ReportFlowShell>
     );

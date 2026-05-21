@@ -231,8 +231,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
       if (recovery.product === 'consultation') {
-        setConsultationReturnTo('full-report');
-        setStage('consultation-request');
+        openResultAtStep('session-offer');
       }
     };
     void run();
