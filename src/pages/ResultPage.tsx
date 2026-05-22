@@ -13,6 +13,7 @@ import type { DomainInterpretationCopy } from '../copy/cognitiveDomainInterpreta
 import { buildCognitiveAnalytics, type DomainScore } from '../utils/cognitiveAnalytics';
 import { getIndexCategory, isIndexDisplayReady } from '../utils/indexCategory';
 import { getFreeIndexInterpretation, type FreeIndexInterpretation } from '../utils/freeIndexInterpretation';
+import { formatParticipantFirstName } from '../utils/participantDisplayName';
 import { shareResultWithCard } from '../utils/shareResult';
 import { shouldBypassReportPayment } from '../utils/paymentStub';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
@@ -104,7 +105,7 @@ const FreeIndexInterpretationBody = ({
 );
 
 export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
-  const { latestResult, setStage, resultEntryStep, clearResultEntryStep, serverPaymentsReady } =
+  const { latestResult, participant, setStage, resultEntryStep, clearResultEntryStep, serverPaymentsReady } =
     useApp();
   useHydrateLatestResult();
   const [step, setStep] = useState<ResultStep>('index');
@@ -154,6 +155,9 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const freeIndexInterpretation = indexDisplayReady
     ? getFreeIndexInterpretation(a.index.value)
     : getFreeIndexInterpretation(Number.NaN);
+  const displayName = formatParticipantFirstName(
+    latestResult.participant?.name ?? participant?.name,
+  );
   const accent = indexDisplayReady ? indexCategory.color : scoreAccentFromValue(a.index.value);
   const skipNativePayment = shouldBypassReportPayment(serverPaymentsReady);
 
@@ -238,7 +242,13 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       <CalmScreen
         kicker={
           <>
-            Ваш когнитивный профиль <strong className="font-bold">прямо сейчас</strong>:{' '}
+            {displayName ? (
+              <>
+                <span className="font-bold">{displayName}</span>,{' '}
+              </>
+            ) : null}
+            {displayName ? 'ваш' : 'Ваш'} когнитивный профиль{' '}
+            <strong className="font-bold">прямо сейчас</strong>:{' '}
             <span className="font-bold" style={{ color: indexCategory.color }}>
               {indexCategory.category}
             </span>
@@ -303,7 +313,15 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   if (step === 'index-detail') {
     return (
       <CalmScreen
-        kicker="Индекс когнитивной устойчивости"
+        kicker={
+          displayName ? (
+            <>
+              <span className="font-bold">{displayName}</span>, индекс когнитивной устойчивости
+            </>
+          ) : (
+            'Индекс когнитивной устойчивости'
+          )
+        }
         contentAlign="readable"
         footer={
           <Button type="button" className={calmBtnClass} onClick={startDomains}>
