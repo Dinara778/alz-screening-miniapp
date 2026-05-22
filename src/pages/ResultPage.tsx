@@ -11,7 +11,8 @@ import { scoreAccentFromValue } from '../components/results/scoreAccent';
 import { useApp } from '../context/AppContext';
 import type { DomainInterpretationCopy } from '../copy/cognitiveDomainInterpretations';
 import { buildCognitiveAnalytics, type DomainScore } from '../utils/cognitiveAnalytics';
-import type { IndexInterpretation } from '../utils/indexInterpretationBands';
+import { getIndexCategory, isIndexDisplayReady } from '../utils/indexCategory';
+import { getFreeIndexInterpretation, type FreeIndexInterpretation } from '../utils/freeIndexInterpretation';
 import { shareResultWithCard } from '../utils/shareResult';
 import { shouldBypassReportPayment } from '../utils/paymentStub';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
@@ -70,27 +71,33 @@ const DomainInterpretationBody = ({
   );
 };
 
-/** «Прямо сейчас у вас …» — из подписи индекса (без дублирования заглавной). */
-const indexStatusPhrase = (label: string) => {
-  const rest = label.trim();
-  if (!rest) return 'Прямо сейчас у вас заметная перегрузка внимания';
-  return `Прямо сейчас у вас ${rest.charAt(0).toLowerCase()}${rest.slice(1)}`;
-};
-
-const IndexInterpretationBody = ({ index, accent }: { index: IndexInterpretation; accent: string }) => (
+const FreeIndexInterpretationBody = ({
+  title,
+  interpretation,
+  accent,
+}: {
+  title: string;
+  interpretation: FreeIndexInterpretation;
+  accent: string;
+}) => (
   <div className="mx-auto w-full max-w-md space-y-4">
-    <SketchHighlightTitle accent={accent}>{index.label}</SketchHighlightTitle>
-    <div className="calm-inset space-y-5 results-body text-left">
-      <p>{index.description}</p>
-      {index.recommendations.length > 0 ? (
-        <div>
-          <p className="mb-3 font-semibold text-white/95">Рекомендации:</p>
-          <ul className="list-none space-y-2.5">
-            {index.recommendations.map((rec) => (
-              <li key={rec}>{rec}</li>
-            ))}
-          </ul>
-        </div>
+    <SketchHighlightTitle accent={accent}>{title}</SketchHighlightTitle>
+    <div className="calm-inset space-y-4 results-body text-left">
+      <p>
+        <span className="font-semibold text-white/95">В жизни: </span>
+        {interpretation.inLife}
+      </p>
+      {interpretation.feeling ? (
+        <p>
+          <span className="font-semibold text-white/95">Как это ощущается: </span>
+          {interpretation.feeling}
+        </p>
+      ) : null}
+      {interpretation.insight ? (
+        <p>
+          <span className="font-semibold text-white/95">О чём говорит результат: </span>
+          {interpretation.insight}
+        </p>
       ) : null}
     </div>
   </div>
@@ -136,7 +143,18 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const a = buildCognitiveAnalytics(latestResult);
   const domains = a.domains;
   const currentDomain: DomainScore | undefined = domains[domainIndex];
-  const accent = scoreAccentFromValue(a.index.value);
+  const indexDisplayReady = isIndexDisplayReady(
+    a.index.value,
+    a.validation.interpretationTrusted,
+    a.index.granularId,
+  );
+  const indexCategory = indexDisplayReady
+    ? getIndexCategory(a.index.value)
+    : getIndexCategory(Number.NaN);
+  const freeIndexInterpretation = indexDisplayReady
+    ? getFreeIndexInterpretation(a.index.value)
+    : getFreeIndexInterpretation(Number.NaN);
+  const accent = indexDisplayReady ? indexCategory.color : scoreAccentFromValue(a.index.value);
   const skipNativePayment = shouldBypassReportPayment(serverPaymentsReady);
 
   const handleShare = async () => {
@@ -220,13 +238,16 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       <CalmScreen
         kicker={
           <>
-            Ваш когнитивный профиль <strong className="font-bold">прямо сейчас</strong>:
+            Ваш когнитивный профиль <strong className="font-bold">прямо сейчас</strong>:{' '}
+            <span className="font-bold" style={{ color: indexCategory.color }}>
+              {indexCategory.category}
+            </span>
           </>
         }
         kickerProfile
         footer={
           <>
-            {!a.validation.interpretationTrusted ? (
+            {!indexDisplayReady ? (
               <p className="text-center text-xs leading-relaxed text-amber-200/90">
                 Ограниченная достоверность замера — пройдите все блоки заново для точного профиля.
               </p>
@@ -240,17 +261,41 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         <p className="mb-5 max-w-[min(22rem,92vw)] text-center text-xs leading-relaxed text-white/50 sm:mb-6 sm:text-sm">
           * профиль меняется в течение дня
         </p>
-        <OrganicMetricHalo accent={accent} emphasis>
-          <span className="inline-flex items-baseline justify-center gap-0.5 tabular-nums leading-none">
-            <span className="text-[clamp(3.25rem,16vw,4.75rem)] font-bold tracking-tight text-white">
-              {a.index.value}
-            </span>
-            <span className="text-[clamp(0.75rem,3.2vw,1rem)] font-medium text-white/45">/100</span>
-          </span>
-        </OrganicMetricHalo>
-        <p className="mt-8 max-w-[min(22rem,92vw)] px-2 text-center text-lg font-semibold leading-snug text-white sm:mt-10 sm:text-xl">
-          {indexStatusPhrase(a.index.label)}
-        </p>
+        {indexDisplayReady ? (
+          <>
+            <OrganicMetricHalo accent={accent} emphasis>
+              <span className="inline-flex items-baseline justify-center gap-0.5 tabular-nums leading-none">
+                <span
+                  className="text-[clamp(3.25rem,16vw,4.75rem)] font-bold tracking-tight"
+                  style={{ color: indexCategory.color }}
+                >
+                  {a.index.value}
+                </span>
+                <span
+                  className="text-[clamp(0.75rem,3.2vw,1rem)] font-medium opacity-70"
+                  style={{ color: indexCategory.color }}
+                >
+                  /100
+                </span>
+              </span>
+            </OrganicMetricHalo>
+            {indexCategory.humanPhrase ? (
+              <p
+                className="mt-8 max-w-[min(22rem,92vw)] px-2 text-center text-base font-medium leading-relaxed sm:mt-10 sm:text-lg"
+                style={{ color: indexCategory.color }}
+              >
+                {indexCategory.humanPhrase}
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <p
+            className="mx-auto max-w-[min(22rem,92vw)] px-2 text-center text-base font-semibold leading-relaxed sm:text-lg"
+            style={{ color: indexCategory.color }}
+          >
+            {indexCategory.category}
+          </p>
+        )}
       </CalmScreen>
     );
   }
@@ -266,7 +311,11 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           </Button>
         }
       >
-        <IndexInterpretationBody index={a.index} accent={accent} />
+        <FreeIndexInterpretationBody
+          title={indexCategory.category}
+          interpretation={freeIndexInterpretation}
+          accent={accent}
+        />
       </CalmScreen>
     );
   }
