@@ -454,6 +454,14 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
         'Несколько доменов одновременно проседают: нагрузка распределяется неравномерно и быстрее снижает качество.',
       lifeManifestation: 'Сложнее удерживать стабильный режим при длинной серии стимулов.',
     },
+    {
+      id: 'retention_drop',
+      title: 'Снижение удержания информации',
+      active: retentionDrop,
+      explanation: patterns.find((p) => p.id === 'retention_drop')?.description ?? '',
+      lifeManifestation:
+        'Свежее удерживается с перебоями: детали минутной давности стираются быстрее обычного.',
+    },
   ];
 
   const drivers: ConcentrationDriver[] = [];
