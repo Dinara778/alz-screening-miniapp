@@ -1,5 +1,8 @@
 import type { CognitiveDomainKey, SessionResult } from '../types';
-import { getDomainInterpretation, type DomainInterpretationCopy } from '../copy/cognitiveDomainInterpretations';
+import {
+  getDomainInterpretationForKey,
+  type DomainInterpretationCopy,
+} from '../copy/cognitiveDomainInterpretations';
 import { avg, cv, median } from './metrics';
 import {
   getGranularIndexInterpretation,
@@ -381,7 +384,7 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
   const retentionScore = informationRetentionDomainScore(m);
 
   const mkDomain = (key: CognitiveDomainKey, title: string, score: number): DomainScore => {
-    const interpretation = getDomainInterpretation(key);
+    const interpretation = getDomainInterpretationForKey(key, score);
     return {
       key,
       title,

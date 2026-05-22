@@ -1,5 +1,8 @@
 import { SessionResult } from '../types';
-import { formatDomainInterpretationPlain, getDomainInterpretation } from '../copy/cognitiveDomainInterpretations';
+import {
+  formatDomainInterpretationPlain,
+  getDomainInterpretationForKey,
+} from '../copy/cognitiveDomainInterpretations';
 import { buildCognitiveAnalytics } from './cognitiveAnalytics';
 
 type DomainLevel = 'strong' | 'watch' | 'overload';
@@ -47,7 +50,9 @@ export const buildCognitiveProfile = (session: SessionResult): CognitiveProfile 
       title: 'Устойчивость внимания',
       level: levelFromScore(a.domains.find((d) => d.key === 'attentionStability')?.score ?? 50),
       score: a.domains.find((d) => d.key === 'attentionStability')?.score ?? 50,
-      interpretation: formatDomainInterpretationPlain(getDomainInterpretation('attentionStability')),
+      interpretation: formatDomainInterpretationPlain(
+        getDomainInterpretationForKey('attentionStability', a.domains.find((d) => d.key === 'attentionStability')?.score ?? 50),
+      ),
       recommendations: a.patterns.find((p) => p.id === 'switching_overload')?.recommendations ?? [],
       metrics: [
         `Точность фланкера: ${a.metrics.flankerIncongruentAccuracy.toFixed(1)}%`,
@@ -70,10 +75,17 @@ export const buildCognitiveProfile = (session: SessionResult): CognitiveProfile 
       ),
       interpretation: [
         'Скорость реакции',
-        formatDomainInterpretationPlain(getDomainInterpretation('reactionSpeed')),
+        formatDomainInterpretationPlain(
+          getDomainInterpretationForKey('reactionSpeed', a.domains.find((d) => d.key === 'reactionSpeed')?.score ?? 50),
+        ),
         '',
         'Стабильность реакции',
-        formatDomainInterpretationPlain(getDomainInterpretation('reactionStability')),
+        formatDomainInterpretationPlain(
+          getDomainInterpretationForKey(
+            'reactionStability',
+            a.domains.find((d) => d.key === 'reactionStability')?.score ?? 50,
+          ),
+        ),
       ].join('\n'),
       recommendations: a.patterns.find((p) => p.id === 'high_reactivity')?.recommendations ?? [],
       metrics: [
@@ -88,7 +100,12 @@ export const buildCognitiveProfile = (session: SessionResult): CognitiveProfile 
       title: 'Когнитивная гибкость',
       level: levelFromScore(a.domains.find((d) => d.key === 'cognitiveFlexibility')?.score ?? 50),
       score: a.domains.find((d) => d.key === 'cognitiveFlexibility')?.score ?? 50,
-      interpretation: formatDomainInterpretationPlain(getDomainInterpretation('cognitiveFlexibility')),
+      interpretation: formatDomainInterpretationPlain(
+        getDomainInterpretationForKey(
+          'cognitiveFlexibility',
+          a.domains.find((d) => d.key === 'cognitiveFlexibility')?.score ?? 50,
+        ),
+      ),
       recommendations: a.patterns.find((p) => p.id === 'switching_overload')?.recommendations ?? [],
       metrics: [
         `Конфликт (разница времени): ${a.metrics.stroopInterferenceMs.toFixed(0)} мс`,
@@ -101,7 +118,12 @@ export const buildCognitiveProfile = (session: SessionResult): CognitiveProfile 
       title: 'Удержание информации',
       level: levelFromScore(a.domains.find((d) => d.key === 'informationRetention')?.score ?? 50),
       score: a.domains.find((d) => d.key === 'informationRetention')?.score ?? 50,
-      interpretation: formatDomainInterpretationPlain(getDomainInterpretation('informationRetention')),
+      interpretation: formatDomainInterpretationPlain(
+        getDomainInterpretationForKey(
+          'informationRetention',
+          a.domains.find((d) => d.key === 'informationRetention')?.score ?? 50,
+        ),
+      ),
       recommendations: a.patterns.find((p) => p.id === 'retention_drop')?.recommendations ?? [],
       metrics: [
         `Отсроченно: ${a.metrics.wordDelayedScore}/5`,
