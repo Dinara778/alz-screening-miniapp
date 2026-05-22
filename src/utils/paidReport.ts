@@ -2,6 +2,11 @@ import type { CognitiveDomainKey } from '../types';
 import { getGranularIndexInterpretation } from './indexInterpretationBands';
 import type { CognitivePattern, OverloadMapItem } from './cognitiveAnalytics';
 import { scoreAccentFromValue } from '../components/results/scoreAccent';
+import {
+  getOverloadMapWithTemporalTexts,
+  getTemporalRecommendations,
+  type TemporalOverloadCard,
+} from './paidReportTemporal';
 
 export type LeadingDeficit =
   | 'memory'
@@ -38,6 +43,8 @@ export type PaidReportData = {
   leadingDeficitTitle: string;
   leadingDeficitKey: LeadingDeficit | null;
   overloadEntries: PaidReportOverloadEntry[];
+  temporalOverloadCards: TemporalOverloadCard[];
+  temporalRecommendations: string[];
   seriousRecommendations: string[];
   footerDisclaimer: string;
 };
@@ -221,6 +228,24 @@ export function getLeadingDeficit(domainScores: DomainScoresInput): LeadingDefic
   return chosen ? DOMAIN_TO_DEFICIT[chosen] : null;
 }
 
+/** Все домены с минимальным баллом (для ничьей — несколько ведущих дефицитов). */
+export function getLeadingDeficits(domainScores: DomainScoresInput): LeadingDeficit[] {
+  const scores = normalizeDomainScores(domainScores);
+  let minScore = Infinity;
+
+  for (const key of DEFICIT_PRIORITY) {
+    minScore = Math.min(minScore, safeScore(scores[key]));
+  }
+
+  const deficits: LeadingDeficit[] = [];
+  for (const key of DEFICIT_PRIORITY) {
+    if (safeScore(scores[key]) === minScore) {
+      deficits.push(DOMAIN_TO_DEFICIT[key]);
+    }
+  }
+  return deficits;
+}
+
 function buildOverloadEntries(
   activePatterns: CognitivePattern[],
   overloadMap: OverloadMapItem[],
@@ -311,6 +336,8 @@ export function getPaidReportData(
     leadingDeficitTitle: leadingKey ? LEADING_DEFICIT_TITLES[leadingKey] : 'Сбалансированный профиль',
     leadingDeficitKey: leadingKey,
     overloadEntries: buildOverloadEntries(activePatterns, overloadMap),
+    temporalOverloadCards: getOverloadMapWithTemporalTexts(overloadMap),
+    temporalRecommendations: getTemporalRecommendations(leadingKey, domainScores),
     seriousRecommendations,
     footerDisclaimer: FOOTER_DISCLAIMER,
   };

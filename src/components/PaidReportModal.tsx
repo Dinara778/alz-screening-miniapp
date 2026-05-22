@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Button } from './Button';
 import { CalmCardShell } from './CalmCardShell';
+import { PaidReportTemporalBlocks } from './PaidReportTemporalBlocks';
 import type { PaidReportData } from '../utils/paidReport';
 
 type Props = {
@@ -88,45 +89,10 @@ export const PaidReportModal = ({ open, data, onClose }: Props) => {
             </p>
           </section>
 
-          <section className="mt-6 space-y-3">
-            <SectionTitle>Персональная карта перегрузки</SectionTitle>
-            {data.overloadEntries.length > 0 ? (
-              <ul className="space-y-3">
-                {data.overloadEntries.map((row) => (
-                  <li
-                    key={row.id}
-                    className="rounded-lg border border-amber-400/35 bg-amber-400/10 p-3 text-sm leading-relaxed"
-                  >
-                    <p className="font-semibold text-white">{row.title}</p>
-                    <p className="mt-2 calm-body text-white/88">{row.description}</p>
-                    <p className="mt-2 calm-body text-white/75">
-                      <span className="font-medium text-white/90">Пример: </span>
-                      {row.example}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="calm-inset calm-body text-sm text-white/70">
-                По этому прохождению выраженных зон перегрузки не выделено — профиль выглядит
-                устойчивым.
-              </p>
-            )}
-          </section>
-
-          <section className="mt-6 space-y-3">
-            <SectionTitle>Адресные рекомендации</SectionTitle>
-            <ul className="calm-inset list-none space-y-2.5 results-body text-sm">
-              {data.seriousRecommendations.map((line) => (
-                <li key={line} className="flex gap-2 text-white/88">
-                  <span className="shrink-0 text-emerald-400" aria-hidden>
-                    •
-                  </span>
-                  <span>{line}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
+          <PaidReportTemporalBlocks
+            temporalOverloadCards={data.temporalOverloadCards}
+            temporalRecommendations={data.temporalRecommendations}
+          />
 
           <p className="mt-6 border-t border-white/10 pt-4 text-center text-xs leading-relaxed text-white/45">
             {data.footerDisclaimer}

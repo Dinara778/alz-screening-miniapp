@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '../components/Button';
 import { DomainProfileCard } from '../components/DomainProfileCard';
-import { ResultOverloadMap } from '../components/ResultOverloadMap';
+import {
+  PaidReportTemporalOverload,
+  PaidReportTemporalRecommendations,
+} from '../components/PaidReportTemporalBlocks';
 import { ReportFlowShell } from '../components/results/ReportFlowShell';
 import { SketchHighlightTitle } from '../components/results/SketchHighlightTitle';
 import { scoreAccentFromValue } from '../components/results/scoreAccent';
@@ -10,6 +13,11 @@ import { useApp } from '../context/AppContext';
 import { useHydrateLatestResult } from '../hooks/useHydrateLatestResult';
 import { formatDomainInterpretationPlain } from '../copy/cognitiveDomainInterpretations';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
+import { getLeadingDeficit } from '../utils/paidReport';
+import {
+  getOverloadMapWithTemporalTexts,
+  getTemporalRecommendations,
+} from '../utils/paidReportTemporal';
 import { downloadCognitiveReportPdf } from '../utils/pdfReport';
 import { isReportPaidUnlocked, isPaymentsBackendConfigured } from '../utils/telegramPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
@@ -35,6 +43,22 @@ export const FullReportPage = () => {
     if (!latestResult) return null;
     return buildCognitiveAnalytics(latestResult);
   }, [latestResult]);
+
+  const domainScoresInput = useMemo(
+    () => (analytics ? analytics.domains.map((d) => ({ key: d.key, score: d.score })) : []),
+    [analytics],
+  );
+
+  const temporalOverloadCards = useMemo(
+    () => (analytics ? getOverloadMapWithTemporalTexts(analytics.overloadMap) : []),
+    [analytics],
+  );
+
+  const temporalRecommendations = useMemo(() => {
+    if (!analytics) return [];
+    const leading = getLeadingDeficit(domainScoresInput);
+    return getTemporalRecommendations(leading, domainScoresInput);
+  }, [analytics, domainScoresInput]);
 
   useEffect(() => {
     if (!latestResult) return;
@@ -221,24 +245,21 @@ export const FullReportPage = () => {
               </div>
             </div>
 
-            <div>
-              <SketchHighlightTitle accent={accent}>Карта когнитивной перегрузки</SketchHighlightTitle>
-              <div className="mt-3">
-                <ResultOverloadMap
-                  overloadMap={analytics.overloadMap}
-                  overloadMapIntro={analytics.index.overloadMapIntro}
-                  overloadVisualTier={analytics.index.overloadVisualTier}
-                />
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <SketchHighlightTitle accent={accent}>Персональная карта перегрузки</SketchHighlightTitle>
+                <PaidReportTemporalOverload hideSectionTitle cards={temporalOverloadCards} />
               </div>
-            </div>
-
-            <div className="calm-inset space-y-3">
-              <SketchHighlightTitle accent={accent}>Краткие рекомендации</SketchHighlightTitle>
-              <ul className="list-none space-y-2 text-sm leading-relaxed text-white/88 sm:text-base">
-                {analytics.stabilizationTips.map((t) => (
-                  <li key={t.text}>• {t.text}</li>
-                ))}
-              </ul>
+              {temporalRecommendations.length > 0 ? (
+                <div className="space-y-3">
+                  <SketchHighlightTitle accent={accent}>Что делать в этом состоянии</SketchHighlightTitle>
+                  <PaidReportTemporalRecommendations
+                    hideSectionTitle
+                    className="space-y-3"
+                    lines={temporalRecommendations}
+                  />
+                </div>
+              ) : null}
             </div>
           </div>
         </ReportFlowShell>

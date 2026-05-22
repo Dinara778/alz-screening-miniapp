@@ -16,14 +16,27 @@ export function formatPaidReportPlainText(report: PaidReportData): string {
     `Ведущий дефицит: ${report.leadingDeficitTitle}`,
   ];
 
-  if (report.overloadEntries.length) {
+  if (report.temporalOverloadCards.length) {
+    lines.push('', 'Персональная карта перегрузки');
+    report.temporalOverloadCards.forEach((row) => {
+      lines.push(
+        `— ${row.title}`,
+        row.description,
+        `Как вы это замечаете сегодня: ${row.howYouNotice}`,
+        `Что сделать в этом состоянии: ${row.whatToDo}`,
+      );
+    });
+  } else if (report.overloadEntries.length) {
     lines.push('', 'Персональная карта перегрузки');
     report.overloadEntries.forEach((row) => {
       lines.push(`— ${row.title}`, row.description, `Пример: ${row.example}`);
     });
   }
 
-  if (report.seriousRecommendations.length) {
+  if (report.temporalRecommendations.length) {
+    lines.push('', 'Что делать в этом состоянии');
+    report.temporalRecommendations.forEach((r, i) => lines.push(`${i + 1}. ${r}`));
+  } else if (report.seriousRecommendations.length) {
     lines.push('', 'Адресные рекомендации');
     report.seriousRecommendations.forEach((r, i) => lines.push(`${i + 1}. ${r}`));
   }
