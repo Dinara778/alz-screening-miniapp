@@ -36,7 +36,7 @@ export const SketchHighlightTitle = ({
       className={`sketch-highlight-title mb-1 max-w-full text-left ${modifiers} ${className}`.trim()}
     >
       <span className="sketch-highlight-title__box" style={boxStyle}>
-        <span className="sketch-highlight-title__text app-heading block leading-snug">
+        <span className="sketch-highlight-title__text app-heading block leading-snug !text-white">
           {children}
         </span>
       </span>

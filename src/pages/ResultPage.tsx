@@ -13,7 +13,7 @@ import type { DomainInterpretationCopy } from '../copy/cognitiveDomainInterpreta
 import { buildCognitiveAnalytics, type DomainScore } from '../utils/cognitiveAnalytics';
 import { getIndexCategory, isIndexDisplayReady } from '../utils/indexCategory';
 import { getFreeIndexInterpretation, type FreeIndexInterpretation } from '../utils/freeIndexInterpretation';
-import { formatParticipantFirstName } from '../utils/participantDisplayName';
+import { formatParticipantFirstName, formatPersonalizedHeading } from '../utils/participantDisplayName';
 import { shareResultWithCard } from '../utils/shareResult';
 import { shouldBypassReportPayment } from '../utils/paymentStub';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
@@ -54,17 +54,17 @@ const DomainInterpretationBody = ({
   return (
     <div className="mx-auto w-full max-w-md space-y-4">
       <SketchHighlightTitle accent={accent}>{title}</SketchHighlightTitle>
-      <div className="calm-inset space-y-4 results-body text-left">
+      <div className="calm-inset space-y-4 text-left text-base leading-relaxed text-white sm:text-lg">
         <p>
-          <span className="font-semibold text-white/95">В жизни: </span>
+          <span className="font-semibold">В жизни: </span>
           {inLife}
         </p>
         <p>
-          <span className="font-semibold text-white/95">Как проявляется: </span>
+          <span className="font-semibold">Как проявляется: </span>
           {manifestations}
         </p>
         <p>
-          <span className="font-semibold text-white/95">О чём говорит результат: </span>
+          <span className="font-semibold">О чём говорит результат: </span>
           {aboutResult}
         </p>
       </div>
@@ -83,20 +83,20 @@ const FreeIndexInterpretationBody = ({
 }) => (
   <div className="mx-auto w-full max-w-md space-y-4">
     <SketchHighlightTitle accent={accent}>{title}</SketchHighlightTitle>
-    <div className="calm-inset space-y-4 results-body text-left">
+    <div className="calm-inset space-y-4 text-left text-base leading-relaxed text-white sm:text-lg">
       <p>
-        <span className="font-semibold text-white/95">В жизни: </span>
+        <span className="font-semibold">В жизни: </span>
         {interpretation.inLife}
       </p>
       {interpretation.feeling ? (
         <p>
-          <span className="font-semibold text-white/95">Как это ощущается: </span>
+          <span className="font-semibold">Как это ощущается: </span>
           {interpretation.feeling}
         </p>
       ) : null}
       {interpretation.insight ? (
         <p>
-          <span className="font-semibold text-white/95">О чём говорит результат: </span>
+          <span className="font-semibold">О чём говорит результат: </span>
           {interpretation.insight}
         </p>
       ) : null}
@@ -376,7 +376,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         }
       >
         <DomainInterpretationBody
-          title={d.title}
+          title={formatPersonalizedHeading(displayName, d.title)}
           interpretation={d.interpretation}
           accent={scoreAccentFromValue(d.score)}
         />

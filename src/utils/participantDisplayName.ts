@@ -9,3 +9,11 @@ export function formatParticipantFirstName(raw: string | undefined | null): stri
   if (PLACEHOLDER_NAMES.has(first.toLowerCase())) return null;
   return first;
 }
+
+/** «Игорь, стабильность реакции» — имя + заголовок с маленькой буквы. */
+export function formatPersonalizedHeading(name: string | null, heading: string): string {
+  if (!name) return heading;
+  const h = heading.trim();
+  if (!h) return name;
+  return `${name}, ${h.charAt(0).toLowerCase()}${h.slice(1)}`;
+}
