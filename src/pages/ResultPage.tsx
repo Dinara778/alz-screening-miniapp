@@ -15,6 +15,8 @@ import { getIndexCategory, isIndexDisplayReady } from '../utils/indexCategory';
 import { getFreeIndexInterpretation, type FreeIndexInterpretation } from '../utils/freeIndexInterpretation';
 import { formatParticipantFirstName, formatPersonalizedHeading } from '../utils/participantDisplayName';
 import { shareResultWithCard } from '../utils/shareResult';
+import { buildAnimalOfTheDayCard } from '../copy/animalOfTheDay';
+import { AnimalOfTheDayScreen } from '../components/AnimalOfTheDayScreen';
 import { shouldBypassReportPayment } from '../utils/paymentStub';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
@@ -28,7 +30,14 @@ import {
   recoverProdamusPaymentFromUrl,
 } from '../utils/telegramPayments';
 
-type ResultStep = 'index' | 'index-detail' | 'domain-metric' | 'domain-detail' | 'hub' | 'session-offer';
+type ResultStep =
+  | 'index'
+  | 'animal-day'
+  | 'index-detail'
+  | 'domain-metric'
+  | 'domain-detail'
+  | 'hub'
+  | 'session-offer';
 
 const sessionUpsellFeatures = [
   'Онлайн-расшифровку результатов простым языком с опытным экспертом по когнитивной устойчивости (созвон)',
@@ -159,6 +168,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     latestResult.participant?.name ?? participant?.name,
   );
   const accent = indexDisplayReady ? indexCategory.color : scoreAccentFromValue(a.index.value);
+  const animalOfTheDayCard = buildAnimalOfTheDayCard(a.domains, a.overloadMap, a.index.value);
   const skipNativePayment = shouldBypassReportPayment(serverPaymentsReady);
 
   const handleShare = async () => {
@@ -262,8 +272,8 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
                 Ограниченная достоверность замера — пройдите все блоки заново для точного профиля.
               </p>
             ) : null}
-            <Button type="button" className={calmBtnClass} onClick={() => setStep('index-detail')}>
-              Узнать, что это значит
+            <Button type="button" className={calmBtnClass} onClick={() => setStep('animal-day')}>
+              Далее
             </Button>
           </>
         }
@@ -307,6 +317,12 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           </p>
         )}
       </CalmScreen>
+    );
+  }
+
+  if (step === 'animal-day') {
+    return (
+      <AnimalOfTheDayScreen card={animalOfTheDayCard} onContinue={() => setStep('index-detail')} />
     );
   }
 
