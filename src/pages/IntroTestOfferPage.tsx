@@ -11,15 +11,13 @@ type Props = {
   onContinue: () => void;
 };
 
-const MEASURES = [
-  'Скорость обработки (реакция и переключение).',
-  'Стабильность внимания (устойчивость к отвлечениям).',
-  'Вариативность реакций (ровный ритм без «рывков»).',
-  'Рабочая память (удержание в моменте).',
-  'Когнитивная выносливость (усталость под нагрузкой).',
+const PROFILE_PREVIEW_ITEMS = [
+  '⚡ Насколько быстро сейчас работает мозг',
+  '🎯 Легко ли вы отвлекаетесь',
+  '🧩 Насколько хорошо удерживаете информацию в моменте',
+  '🔋 Есть ли признаки когнитивной перегрузки',
+  '📉 Снижается ли качество работы под нагрузкой',
 ] as const;
-
-const MEASURE_ICONS = ['⚡', '🎯', '〰️', '🧩', '💪'] as const;
 
 export const IntroTestOfferPage = ({ onContinue }: Props) => {
   const footer = (
@@ -29,23 +27,20 @@ export const IntroTestOfferPage = ({ onContinue }: Props) => {
   );
 
   return (
-    <IntroShell aria-label="Что мы анализируем" footer={footer} compact>
+    <IntroShell aria-label="Оценка когнитивного профиля" footer={footer} compact>
       <div className="space-y-4 overflow-visible pb-2">
         <SketchHighlightTitle accent={INTRO_TITLE_ACCENT} generousOutline>
           <>
-            Оценка когнитивного
+            Оценка когнитивного профиля.
             <br />
-            профиля
+            Займёт около {TEST_DURATION_LABEL}.
           </>
         </SketchHighlightTitle>
-        <p className="calm-caption">Оценка займёт около {TEST_DURATION_LABEL}.</p>
+        <p className="calm-caption">Мы поможем понять:</p>
         <div className="calm-inset">
-          <div className="app-heading">Что мы анализируем:</div>
-          <ul className="mt-2 space-y-2 text-sm leading-relaxed text-white/90 sm:text-base">
-            {MEASURES.map((line, i) => (
-              <li key={line}>
-                {MEASURE_ICONS[i]} {line}
-              </li>
+          <ul className="space-y-2.5 text-sm leading-relaxed text-white/90 sm:text-base">
+            {PROFILE_PREVIEW_ITEMS.map((line) => (
+              <li key={line}>{line}</li>
             ))}
           </ul>
         </div>
