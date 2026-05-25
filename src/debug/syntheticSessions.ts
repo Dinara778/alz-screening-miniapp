@@ -5,7 +5,7 @@ export const SYNTH_PARTICIPANT: SessionResult['participant'] = {
   name: 'Synthetic',
   email: '',
   phone: '',
-  sex: 'Другой',
+  sex: 'Женский',
   age: 40,
   education: '',
   educationYears: 12,

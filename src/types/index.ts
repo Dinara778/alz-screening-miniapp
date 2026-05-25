@@ -59,7 +59,7 @@ export type ParticipantProfile = {
   name: string;
   email: string;
   phone: string;
-  sex: 'Женский' | 'Мужской' | 'Другой';
+  sex: 'Женский' | 'Мужской';
   age: number;
   education: string;
   educationYears: number;

@@ -1,4 +1,4 @@
-import { FormEvent, useRef, useState, type FocusEvent, type ReactNode } from 'react';
+import { useRef, useState, type FocusEvent, type ReactNode } from 'react';
 import { BackArrowButton } from '../components/BackArrowButton';
 import { CalmCardShell } from '../components/CalmCardShell';
 import { Button } from '../components/Button';
@@ -12,8 +12,18 @@ import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
 type Props = { onStart: (profile: ParticipantProfile) => void; onHistory: () => void };
 
-/** После интро: имя → пол → возраст → почта → экран перед заданиями. */
+/** Интро (2 экрана) → имя → пол → возраст → старт оценки. */
 const FIELD_STEP_MAX = 5;
+
+const SEX_OPTIONS = ['Женский', 'Мужской'] as const satisfies readonly ParticipantProfile['sex'][];
+
+const PROFILE_PREVIEW_ITEMS = [
+  '⚡ Насколько быстро сейчас работает мозг',
+  '🎯 Легко ли вы отвлекаетесь',
+  '🧩 Насколько хорошо удерживаете информацию в моменте',
+  '🔋 Есть ли признаки когнитивной перегрузки',
+  '📉 Снижается ли качество работы под нагрузкой',
+] as const;
 
 const inputClass = 'calm-input';
 
@@ -26,7 +36,6 @@ const scrollFieldIntoView = (e: FocusEvent<HTMLInputElement>) => {
 export const WelcomePage = ({ onStart, onHistory }: Props) => {
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [sex, setSex] = useState<ParticipantProfile['sex']>('Женский');
   const [age, setAge] = useState('');
   const formSessionIdRef = useRef(`welcome-${Date.now()}`);
@@ -42,7 +51,6 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
       triggerField,
       participant: {
         name: name.trim() || undefined,
-        email: email.trim() || undefined,
       },
     }).catch(() => {});
   };
@@ -51,26 +59,23 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
   const goBack = () => setStep((s) => Math.max(0, s - 1));
 
   const canAdvanceFrom = (s: number): boolean => {
-    if (s === 0) return true;
-    if (s === 1) return name.trim().length >= 2;
-    if (s === 2) return true;
-    if (s === 3) {
+    if (s <= 2) return true;
+    if (s === 3) return true;
+    if (s === 4) {
       const n = Number(age);
       return Number.isFinite(n) && n >= 18 && n <= 100;
     }
-    if (s === 4) return email.trim().includes('@');
     return false;
   };
 
   const buildProfile = (): ParticipantProfile | null => {
-    const normalizedEmail = email.trim();
     const parsedAge = Number(age);
-    if (!name.trim() || !normalizedEmail || !Number.isFinite(parsedAge)) {
+    if (!Number.isFinite(parsedAge) || parsedAge < 18 || parsedAge > 100) {
       return null;
     }
     return {
-      name: name.trim(),
-      email: normalizedEmail,
+      name: name.trim() || 'Не указано',
+      email: 'Не указано',
       phone: 'Не указано',
       sex,
       age: parsedAge,
@@ -80,18 +85,16 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
     };
   };
 
-  const completeEmailStep = (e: FormEvent) => {
-    e.preventDefault();
-    if (!canAdvanceFrom(4) || !buildProfile()) return;
+  const completeFormSteps = () => {
+    const profile = buildProfile();
+    if (!profile) return;
 
-    const profile = buildProfile()!;
     void sendAnalyticsEventToSheets({
       eventType: 'form_submitted',
       sessionId: formSessionIdRef.current,
       stage: 'welcome',
       participant: {
         name: profile.name,
-        email: profile.email,
         sex: profile.sex,
         age: profile.age,
         pcConfidence: 3,
@@ -153,21 +156,45 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
 
   let stepBody: ReactNode = null;
   let stepFooter: React.ReactNode = nextButton(step);
+  const introStep = step <= 1;
 
   if (step === 0) {
     stepBody = (
       <div className="space-y-5 text-center sm:text-left">
-        <h2 className="app-heading text-center">Несколько вопросов перед началом оценки</h2>
-        <p className="calm-caption sm:text-base">Имя, пол, возраст и почта. Займёт около минуты.</p>
+        <h2 className="app-heading text-center leading-snug">
+          Ваш мозг сейчас в ресурсе или перегружен?
+        </h2>
+        <p className="calm-body text-base leading-relaxed sm:text-lg">
+          За {TEST_DURATION_LABEL} система оценит внимание, память и скорость обработки информации.
+        </p>
+        <p className="calm-body text-base leading-relaxed text-white/88 sm:text-lg">
+          Вы узнаете: ваш текущий уровень когнитивного ресурса, есть ли признаки перегрузки, рекомендации для
+          быстрого восстановления ресурсов мозга.
+        </p>
       </div>
     );
     stepFooter = nextButton(0);
   } else if (step === 1) {
     stepBody = (
+      <div className="space-y-5 text-center sm:text-left">
+        <h2 className="app-heading text-center leading-snug">Оценка когнитивного профиля</h2>
+        <p className="calm-body text-base leading-relaxed sm:text-lg">
+          Займёт около {TEST_DURATION_LABEL}. Мы поможем понять:
+        </p>
+        <ul className="calm-inset space-y-2.5 text-left text-base leading-relaxed text-white/88 sm:text-lg">
+          {PROFILE_PREVIEW_ITEMS.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      </div>
+    );
+    stepFooter = nextButton(1);
+  } else if (step === 2) {
+    stepBody = (
       <div className="space-y-4">
         <div className="text-center text-4xl">✨</div>
         <h2 className="app-heading text-center">Как вас зовут?</h2>
-        <p className="text-center calm-caption">Укажите, как к вам обращаться</p>
+        <p className="text-center calm-caption">Необязательно — можно пропустить</p>
         <input
           className={inputClass}
           placeholder="Имя"
@@ -181,15 +208,15 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         />
       </div>
     );
-    stepFooter = nextButton(1);
-  } else if (step === 2) {
+    stepFooter = nextButton(2);
+  } else if (step === 3) {
     stepBody = (
       <div className="space-y-4">
         <div className="text-center text-4xl">👥</div>
         <h2 className="app-heading text-center">Выберите пол</h2>
         <p className="text-center calm-caption">Нужен для корректной нормы в аналитике</p>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {(['Женский', 'Мужской', 'Другой'] as const).map((opt) => (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {SEX_OPTIONS.map((opt) => (
             <button
               key={opt}
               type="button"
@@ -203,14 +230,14 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
                   : 'border-white/15 bg-white/5 text-white/80 hover:border-white/25 hover:bg-white/10'
               }`}
             >
-              {opt === 'Женский' ? '👩' : opt === 'Мужской' ? '👨' : '✨'} {opt}
+              {opt === 'Женский' ? '👩' : '👨'} {opt}
             </button>
           ))}
         </div>
       </div>
     );
-    stepFooter = nextButton(2);
-  } else if (step === 3) {
+    stepFooter = nextButton(3);
+  } else if (step === 4) {
     stepBody = (
       <div className="space-y-4">
         <div className="text-center text-4xl">🎂</div>
@@ -232,38 +259,23 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         />
       </div>
     );
-    stepFooter = nextButton(3);
-  } else if (step === 4) {
-    stepBody = (
-      <form id="welcome-email" className="space-y-4" onSubmit={completeEmailStep}>
-        <div className="text-center text-4xl">📧</div>
-        <h2 className="app-heading text-center">Ваша почта</h2>
-        <p className="text-center calm-caption">Последний шаг — и можно начинать замер</p>
-        <input
-          className={inputClass}
-          placeholder="Почта"
-          type="email"
-          value={email}
-          autoFocus
-          onFocus={scrollFieldIntoView}
-          onChange={(e) => {
-            sendFormStartedEvent('email');
-            setEmail(e.target.value);
-          }}
-        />
-        <p className="rounded-xl border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-center text-xs text-amber-100/90">
-          📧 Почта — для сервисных сообщений и связи с вами.
-        </p>
-      </form>
+    stepFooter = (
+      <Button
+        type="button"
+        className={CTA_BUTTON_CLASS}
+        disabled={!canAdvanceFrom(4)}
+        onClick={completeFormSteps}
+      >
+        Далее
+      </Button>
     );
-    stepFooter = nextButton(4, { type: 'submit', form: 'welcome-email' });
   }
 
-  const stackForm = step >= 1 && step <= 4;
+  const stackForm = step >= 2 && step <= 4;
 
   return (
     <div className={`flex flex-col ${stackForm ? 'shrink-0' : 'min-h-0 flex-1'}`}>
-      <CalmCardShell fill={!stackForm}>
+      <CalmCardShell fill={introStep}>
         <div className="relative mb-4 shrink-0 space-y-3">
           <div className="flex items-start gap-3">
             {step >= 1 && step <= 4 ? (
@@ -294,9 +306,9 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
 
         <ScreenBottomCta
           className="relative z-10"
-          fill={step === 0}
+          fill={introStep}
           stackFooter={stackForm}
-          contentAlign={step === 0 ? 'center' : 'start'}
+          contentAlign={introStep ? 'center' : 'start'}
           footer={stepFooter}
           footerExtra={
             step === 0 ? (
