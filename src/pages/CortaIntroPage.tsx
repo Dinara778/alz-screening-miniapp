@@ -41,16 +41,14 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
 
         <div className="space-y-3">
           <h1 className="text-[clamp(1.625rem,6.5vw,2.25rem)] font-bold leading-[1.15] tracking-tight text-white sm:text-[2.125rem]">
-            Узнайте состояние вашего мозга{' '}
-            <span className="text-emerald-400">за {TEST_DURATION_LABEL}</span>
+            Ваш мозг сейчас в ресурсе или перегружен?
           </h1>
           <p className="text-sm leading-relaxed text-slate-300 sm:text-[0.9375rem]">
-            Система помогает увидеть текущее состояние вашего когнитивного ресурса — внимания, памяти и скорости
-            мышления.
+            За {TEST_DURATION_LABEL} система оценит внимание, память и скорость обработки информации.
           </p>
           <p className="pt-2 text-sm leading-relaxed text-slate-300 sm:pt-3 sm:text-[0.9375rem]">
-            Вы получите персональный профиль, объяснение своих результатов и рекомендации для снижения перегрузки и
-            повышения ясности мышления.
+            Вы узнаете: ваш текущий уровень когнитивного ресурса, есть ли признаки перегрузки, рекомендации для
+            быстрого восстановления ресурсов мозга.
           </p>
         </div>
       </div>

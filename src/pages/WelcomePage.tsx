@@ -161,16 +161,8 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
   if (step === 0) {
     stepBody = (
       <div className="space-y-5 text-center sm:text-left">
-        <h2 className="app-heading text-center leading-snug">
-          Ваш мозг сейчас в ресурсе или перегружен?
-        </h2>
-        <p className="calm-body text-base leading-relaxed sm:text-lg">
-          За {TEST_DURATION_LABEL} система оценит внимание, память и скорость обработки информации.
-        </p>
-        <p className="calm-body text-base leading-relaxed text-white/88 sm:text-lg">
-          Вы узнаете: ваш текущий уровень когнитивного ресурса, есть ли признаки перегрузки, рекомендации для
-          быстрого восстановления ресурсов мозга.
-        </p>
+        <h2 className="app-heading text-center">Несколько вопросов перед началом оценки</h2>
+        <p className="calm-caption sm:text-base">Пол и возраст, при желании — имя. Займёт около минуты.</p>
       </div>
     );
     stepFooter = nextButton(0);
