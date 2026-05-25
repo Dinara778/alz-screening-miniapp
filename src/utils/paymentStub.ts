@@ -3,12 +3,16 @@
  * VITE_PAYMENTS_ENABLED=false на сборке — «бесплатный отчёт» по умолчанию,
  * но если сервер (/health → payments.ready) настроен с ЮKassa, оплата включается.
  */
+
+/** ВРЕМЕННО: отчёт 199 ₽ без оплаты. Перед продом вернуть false. */
+const TEMPORARY_BYPASS_REPORT_PAYMENT = true;
+
 export const isPaymentsEnabled = (): boolean =>
   import.meta.env.VITE_PAYMENTS_ENABLED !== 'false';
 
-/** Только локальная разработка: VITE_DEV_BYPASS_REPORT_PAYMENT=true */
+/** Dev-обход или TEMPORARY_BYPASS_REPORT_PAYMENT выше */
 export const isDevPaymentBypass = (): boolean =>
-  import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true';
+  TEMPORARY_BYPASS_REPORT_PAYMENT || import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true';
 
 /** Оплата активна: в сборке или сервер сообщил payments.ready. */
 export const arePaymentsActive = (serverPaymentsReady = false): boolean =>
