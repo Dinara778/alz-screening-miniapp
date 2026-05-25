@@ -281,12 +281,32 @@ function readFrontendBuildInfo() {
   return null;
 }
 
+function stripEnvQuotes(raw) {
+  const t = String(raw ?? '').trim();
+  if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
+    return t.slice(1, -1).trim();
+  }
+  return t;
+}
+
 function resolveSheetsWebhookUrl() {
-  const fromEnv = (process.env.SHEETS_WEBHOOK_URL || '').trim();
-  const candidate = fromEnv || readFrontendBuildInfo()?.sheetsWebhookUrl?.trim() || '';
+  const fromEnv = stripEnvQuotes(process.env.SHEETS_WEBHOOK_URL);
+  const fromBuild = stripEnvQuotes(readFrontendBuildInfo()?.sheetsWebhookUrl);
+  const candidate = fromEnv || fromBuild || '';
   if (!candidate.startsWith('https://script.google.com/')) return null;
+  if (candidate.includes('/dev')) return null;
   if (candidate.includes('REPLACE_WITH_YOUR')) return null;
+  if (!candidate.includes('/exec')) return null;
   return candidate;
+}
+
+function sheetsWebhookSource() {
+  if (stripEnvQuotes(process.env.SHEETS_WEBHOOK_URL).startsWith('https://script.google.com/')) {
+    return 'runtime';
+  }
+  const fromBuild = stripEnvQuotes(readFrontendBuildInfo()?.sheetsWebhookUrl);
+  if (fromBuild.startsWith('https://script.google.com/')) return 'build-info';
+  return null;
 }
 
 async function forwardToGoogleSheets(payload) {
@@ -335,11 +355,17 @@ async function sendHealthJson(res) {
   }
   const sheetsUrl = resolveSheetsWebhookUrl();
   if (!sheetsUrl) {
-    hints.push('Аналитика: задайте VITE_SHEETS_WEBHOOK_URL при сборке (или SHEETS_WEBHOOK_URL при запуске)');
+    hints.push(
+      'Аналитика: SHEETS_WEBHOOK_URL на «Запуск» (проще) или VITE_SHEETS_WEBHOOK_URL на «Сборка», URL …/exec',
+    );
   }
   res.json({
     ok: true,
-    analytics: { sheetsConfigured: Boolean(sheetsUrl) },
+    analytics: {
+      sheetsConfigured: Boolean(sheetsUrl),
+      source: sheetsWebhookSource(),
+      testUrl: '/api/sheets-test',
+    },
     payments: {
       ready: paymentsReady,
       provider: PAYMENT_PROVIDER,
@@ -372,11 +398,38 @@ app.post('/api/sheets-event', async (req, res) => {
       return res.status(503).json({ ok: false, error: result.error });
     }
     if (!result.ok) {
+      console.error('[sheets] upstream', result.status, result.error);
       return res.status(502).json({ ok: false, error: result.error, status: result.status });
     }
     return res.json({ ok: true });
   } catch (err) {
     console.error('[sheets]', err);
+    return res.status(502).json({ ok: false, error: String(err) });
+  }
+});
+
+/** Проверка цепочки Amvera → Google без Mini App. Откройте в браузере. */
+app.get('/api/sheets-test', async (_req, res) => {
+  try {
+    const result = await forwardToGoogleSheets({
+      eventType: 'server_test',
+      sessionId: `amvera-${Date.now()}`,
+      stage: 'debug',
+      screen: 'debug',
+      timestamp: new Date().toISOString(),
+    });
+    if (!result.ok && result.status === 503) {
+      return res.status(503).json({ ok: false, error: result.error });
+    }
+    if (!result.ok) {
+      return res.status(502).json({ ok: false, error: result.error, status: result.status });
+    }
+    return res.json({
+      ok: true,
+      message: 'Строка server_test должна появиться на листе events в Google Таблице',
+    });
+  } catch (err) {
+    console.error('[sheets-test]', err);
     return res.status(502).json({ ok: false, error: String(err) });
   }
 });
@@ -731,7 +784,7 @@ if (process.env.SERVE_STATIC === 'true') {
   const distDir = path.join(__dirname, '../dist');
   if (fs.existsSync(distDir)) {
     app.use(express.static(distDir));
-    app.get(/^(?!\/(webhook|invoice|health|prodamus|consultation-lead|payment-order-status|payment-return-confirm|payment-recover-session)).*$/, (_req, res) => {
+    app.get(/^(?!\/(webhook|invoice|health|api|prodamus|consultation-lead|payment-order-status|payment-return-confirm|payment-recover-session)).*$/, (_req, res) => {
       res.sendFile(path.join(distDir, 'index.html'));
     });
     console.info('[static] dist:', distDir);

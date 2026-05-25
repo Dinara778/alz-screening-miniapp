@@ -10,8 +10,9 @@ function getSheetsWebhookUrl(): string | null {
   return WEBHOOK_URL_RAW;
 }
 
-/** Настроен ли реальный URL (не пустой и не заглушка из .env.example). */
-export const isSheetsWebhookConfigured = (): boolean => Boolean(getSheetsWebhookUrl());
+/** Есть канал доставки: прокси на том же домене (Amvera) или прямой URL в сборке. */
+export const isSheetsWebhookConfigured = (): boolean =>
+  Boolean(getSheetsProxyUrl()) || Boolean(getSheetsWebhookUrl());
 
 export type AnalyticsEventPayload = {
   eventType: string;
@@ -108,15 +109,17 @@ async function deliverAnalyticsPayload(
   payload: AnalyticsEventPayload,
   transport: 'fetch' | 'beacon',
 ): Promise<boolean> {
-  const configured = Boolean(getSheetsWebhookUrl());
-  if (!configured) {
+  const keepalive = transport === 'beacon';
+  const hasProxy = Boolean(getSheetsProxyUrl());
+  const hasDirect = Boolean(getSheetsWebhookUrl());
+
+  if (!hasProxy && !hasDirect) {
     stashAnalyticsPreview(payload);
     return false;
   }
 
-  const keepalive = transport === 'beacon';
-  if (await postViaSheetsProxy(payload, keepalive)) return true;
-  if (await postDirectToGoogle(payload, keepalive)) return true;
+  if (hasProxy && (await postViaSheetsProxy(payload, keepalive))) return true;
+  if (hasDirect && (await postDirectToGoogle(payload, keepalive))) return true;
 
   stashAnalyticsPreview(payload);
   return false;
@@ -146,8 +149,6 @@ export const sendAnalyticsEventBeacon = async (event: AnalyticsEventPayload): Pr
 };
 
 export const sendSessionToSheets = async (session: SessionResult): Promise<void> => {
-  if (!getSheetsWebhookUrl()) return;
-
   const payload: AnalyticsEventPayload = {
     ...session,
     riskLevel: session.status,

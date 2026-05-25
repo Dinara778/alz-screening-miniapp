@@ -4,7 +4,8 @@
 
 | eventType | Когда |
 |-----------|--------|
-| `stage_reached` | Пользователь открыл экран (`stage`, колонка `screen` — то же) |
+| `stage_reached` | Открыл крупный этап (`welcome`, `test`, `result`…) |
+| `screen_view` | Открыл подэкран (`screen` = `result/report-offer` и т.д.) |
 | `app_exit` | Свернул / закрыл Mini App (`screen`, `exitReason`) |
 | `form_started` / `form_submitted` | Анкета |
 | `session_completed` | Завершил все задания |
@@ -53,6 +54,13 @@ VITE_SHEETS_WEBHOOK_URL=https://script.google.com/macros/s/ВАШ_ID/exec
 **Важно:** Mini App в Telegram **не может** надёжно слать POST напрямую в Google (CORS). События идут через **ваш сервер на Amvera**: `POST /api/sheets-event` → Google. URL берётся из `VITE_SHEETS_WEBHOOK_URL` при сборке (см. `dist/build-info.json`). Опционально дублируйте при запуске: `SHEETS_WEBHOOK_URL` (тот же `/exec`).
 
 Проверка сервера: `GET https://ваш-домен.amvera.io/health` → `"analytics":{"sheetsConfigured":true}`.
+
+**Быстрый тест без Telegram:** откройте в браузере  
+`https://ваш-домен.amvera.io/api/sheets-test`  
+→ `{"ok":true,...}` и строка `server_test` на листе `events`.
+
+Если `sheetsConfigured: false`, проще всего на Amvera **«Запуск»** добавить  
+`SHEETS_WEBHOOK_URL` (тот же `/exec`, что в Google) и **перезапустить** контейнер — без пересборки.
 
 ### 4. Проверка
 

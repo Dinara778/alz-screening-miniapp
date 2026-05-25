@@ -218,9 +218,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     setResultEntryStep(null);
   }, []);
   const sentStageEventsRef = useRef<Set<string>>(new Set());
+  const sentScreenViewEventsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     sentStageEventsRef.current = new Set();
+    sentScreenViewEventsRef.current = new Set();
   }, [sessionSeed]);
 
   useEffect(() => {
@@ -337,7 +339,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
     void sendAnalyticsEventToSheets({
       eventType: 'stage_reached',
-      sessionId: String(sessionSeed),
+      sessionId: analyticsSessionId,
       stage,
       screen: stage,
       participant: participant
@@ -354,7 +356,37 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     }).catch(() => {
       // Ignore analytics errors to keep UX stable.
     });
-  }, [sessionSeed, stage, participant]);
+  }, [sessionSeed, stage, participant, analyticsSessionId]);
+
+  /** Подэкраны (result/report-offer и т.д.) — отдельная строка в таблице без закрытия приложения. */
+  useEffect(() => {
+    if (!analyticsScreenDetail) return;
+    const screen = `${stage}/${analyticsScreenDetail}`;
+    const key = `${sessionSeed}:${screen}`;
+    if (sentScreenViewEventsRef.current.has(key)) return;
+    sentScreenViewEventsRef.current.add(key);
+
+    void sendAnalyticsEventToSheets({
+      eventType: 'screen_view',
+      sessionId: analyticsSessionId,
+      stage,
+      screenDetail: analyticsScreenDetail,
+      screen,
+      participant: participant
+        ? {
+            name: participant.name,
+            email: participant.email,
+            phone: participant.phone,
+            sex: participant.sex,
+            age: participant.age,
+            education: participant.education,
+            pcConfidence: participant.pcConfidence,
+          }
+        : undefined,
+    }).catch(() => {
+      // Ignore analytics errors to keep UX stable.
+    });
+  }, [sessionSeed, stage, analyticsScreenDetail, analyticsSessionId, participant]);
 
   const resetSession = useCallback(() => {
     setStage('corta-intro');
