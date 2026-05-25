@@ -5,7 +5,7 @@
  */
 
 /** QA: true — отчёт без оплаты. Прод: false (оплата через Telegram + ЮKassa). */
-const TEMPORARY_BYPASS_REPORT_PAYMENT = true;
+const TEMPORARY_BYPASS_REPORT_PAYMENT = false;
 
 export const isPaymentsEnabled = (): boolean =>
   import.meta.env.VITE_PAYMENTS_ENABLED !== 'false';
