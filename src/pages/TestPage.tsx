@@ -14,14 +14,16 @@ import { useReactionTest } from '../hooks/useReactionTest';
 import { useStroopTest } from '../hooks/useStroopTest';
 import { useTimer } from '../hooks/useTimer';
 import { REACTION_TRIAL_COUNT } from '../constants/reactionTest';
+import {
+  DELAYED_RECALL_HINT,
+  INTERFERENCE_MS,
+  WORD_STUDY_MS,
+  WORD_STUDY_SEC,
+} from '../constants/wordMemoryTiming';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { nextFlankerPrepDelayMs, nextReactionStimulusDelayMs, pickStudyWordList } from '../utils/generateStimuli';
 import { buildStatus, normalizeWords, scoreFaceName, scoreFlanker, scoreReaction, scoreStroop, scoreWordMemory } from '../utils/scoring';
 import type { AppStage } from '../types';
-
-const INTERFERENCE_MS = 180000;
-const WORD_STUDY_MS = 30_000;
-const WORD_STUDY_SEC = WORD_STUDY_MS / 1000;
 
 const TEST_STAGES_CENTERED = new Set<AppStage>(['reaction', 'flanker', 'stroop', 'interference-wait']);
 /** Контент скроллится внутри, CTA закреплён внизу карточки */
@@ -344,7 +346,7 @@ export const TestPage = () => {
           </p>
           <p className="text-lg font-semibold leading-relaxed text-white sm:text-xl">{words.join(', ')}</p>
           <p className="text-sm calm-body">
-            Сначала введёте слова сразу, затем снова — после других заданий (примерно через 3 минуты).
+            Сначала введёте слова сразу, затем снова — после других заданий ({DELAYED_RECALL_HINT}).
           </p>
           <div className="space-y-2.5 rounded-xl border border-white/15 bg-white/[0.06] px-3 py-3">
             <div className="flex items-center justify-between text-sm font-semibold text-white/80">

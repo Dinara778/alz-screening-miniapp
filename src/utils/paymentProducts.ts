@@ -23,7 +23,7 @@ export const PAYMENT_PRODUCTS: Record<TelegramInvoiceProduct, PaymentProductMeta
       'Персональные рекомендации по улучшению состояния',
       'Отчёт сохраняется на вашем устройстве',
     ],
-    paymentNote: 'Безопасная оплата · чек отправляется на email после оплаты',
+    paymentNote: 'Оплата через Telegram (ЮKassa) · чек на email после оплаты',
     awaitingReturnHint:
       'После успешной оплаты отчёт откроется автоматически. Если этого не произошло — напишите в техподдержку.',
     redirectOpenedMessage:

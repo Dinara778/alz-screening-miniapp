@@ -186,6 +186,7 @@ export const FullReportPage = () => {
   if (step === 'ready') {
     return (
       <ReportFlowShell
+        centerContent
         footer={
           <div className="flex flex-col gap-3">
             <Button type="button" className={CTA_BUTTON_CLASS} onClick={() => setStep('report')}>
@@ -194,7 +195,7 @@ export const FullReportPage = () => {
           </div>
         }
       >
-        <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5 py-6 text-center sm:text-left">
+        <div className="mx-auto w-full max-w-md space-y-5 py-6 text-center sm:text-left">
           <h2 className="app-heading leading-snug">
             <span className="inline-flex flex-wrap items-center justify-center gap-2 sm:justify-start">
               <span>Ваш расширенный отчёт готов!</span>
