@@ -285,6 +285,31 @@ input:focus-visible {
   animation: value-prop-in 0.5s ease-out both;
 }
 
+/** Подсказка прокрутки на экране расширенного отчёта — в тон CTA (#34d399) */
+@keyframes report-scroll-hint-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(7px);
+  }
+}
+
+.report-scroll-hint-label {
+  color: #6ee7b7;
+  text-shadow:
+    0 0 12px rgba(52, 211, 153, 0.85),
+    0 0 24px rgba(45, 212, 191, 0.45);
+}
+
+.report-scroll-hint-arrow {
+  color: #34d399;
+  animation: report-scroll-hint-bounce 1.5s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px rgba(52, 211, 153, 0.95))
+    drop-shadow(0 0 22px rgba(45, 212, 191, 0.55));
+}
+
 /** CTA первого экрана — переливающийся градиент */
 .cta-shimmer {
   position: relative;

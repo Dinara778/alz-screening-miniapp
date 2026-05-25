@@ -213,6 +213,7 @@ export const FullReportPage = () => {
     return (
       <>
         <ReportFlowShell
+          showScrollHint
           footer={
             <div className="flex flex-col gap-3">
               <Button
