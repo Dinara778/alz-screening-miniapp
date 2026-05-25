@@ -65,7 +65,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
       return null;
     }
     return {
-      name: name.trim() || 'Не указано',
+      name: name.trim(),
       email: 'Не указано',
       phone: 'Не указано',
       sex,

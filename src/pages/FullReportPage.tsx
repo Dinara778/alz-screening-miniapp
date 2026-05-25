@@ -5,6 +5,8 @@ import {
   PaidReportTemporalOverload,
   PaidReportTemporalRecommendations,
 } from '../components/PaidReportTemporalBlocks';
+import { SupportFooter } from '../components/SupportFooter';
+import { CalmScreen } from '../components/results/CalmScreen';
 import { ReportFlowShell } from '../components/results/ReportFlowShell';
 import { SketchHighlightTitle } from '../components/results/SketchHighlightTitle';
 import { scoreAccentFromValue } from '../components/results/scoreAccent';
@@ -287,19 +289,23 @@ export const FullReportPage = () => {
 
   if (step === 'learned') {
     return (
-      <ReportFlowShell
+      <CalmScreen
+        contentAlign="readable"
         footer={
-          <Button type="button" variant="sell" className={CTA_BUTTON_CLASS} onClick={openSessionOffer}>
-            Подробнее о сессии
-          </Button>
+          <div className="space-y-3">
+            <Button type="button" variant="sell" className={CTA_BUTTON_CLASS} onClick={openSessionOffer}>
+              Подробнее о сессии
+            </Button>
+            <SupportFooter showDeveloperCredit={false} />
+          </div>
         }
       >
-        <div className="mx-auto w-full max-w-md space-y-5">
+        <div className="mx-auto w-full max-w-md space-y-5 pb-4">
           <SketchHighlightTitle accent={accent}>Что вы узнали:</SketchHighlightTitle>
-          <ul className="calm-inset space-y-2.5 text-base leading-relaxed text-white/88 sm:text-lg">
+          <ul className="calm-inset list-none space-y-2.5 results-body">
             {learnedItems.map((item) => (
               <li key={item} className="flex gap-2">
-                <span className="text-emerald-400" aria-hidden>
+                <span className="shrink-0 text-emerald-400" aria-hidden>
                   •
                 </span>
                 <span>{item}</span>
@@ -308,13 +314,13 @@ export const FullReportPage = () => {
           </ul>
           <div className="space-y-3">
             <SketchHighlightTitle accent={accent}>Что дальше?</SketchHighlightTitle>
-            <p className="results-body leading-relaxed">
+            <p className="results-body">
               А дальше вы можете пройти индивидуальную сессию со специалистом по когнитивной устойчивости для
               получения более глубоких рекомендаций по управлению своим когнитивным состоянием.
             </p>
           </div>
         </div>
-      </ReportFlowShell>
+      </CalmScreen>
     );
   }
 

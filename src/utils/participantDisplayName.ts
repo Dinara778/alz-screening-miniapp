@@ -1,12 +1,28 @@
-const PLACEHOLDER_NAMES = new Set(['не указано', 'пользователь', 'тест', 'test']);
+const PLACEHOLDER_NAMES = new Set([
+  'не указано',
+  'не',
+  'пользователь',
+  'тест',
+  'test',
+]);
+
+function isPlaceholderName(value: string): boolean {
+  const n = value.trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!n) return true;
+  if (PLACEHOLDER_NAMES.has(n)) return true;
+  if (n.startsWith('не указано')) return true;
+  return false;
+}
 
 /** Первое имя из анкеты для обращения на экране результата. */
 export function formatParticipantFirstName(raw: string | undefined | null): string | null {
   const trimmed = raw?.trim();
-  if (!trimmed) return null;
+  if (!trimmed || isPlaceholderName(trimmed)) return null;
+
   const first = trimmed.split(/\s+/)[0]?.trim();
-  if (!first || first.length < 2) return null;
-  if (PLACEHOLDER_NAMES.has(first.toLowerCase())) return null;
+  if (!first || isPlaceholderName(first)) return null;
+  if (first.length < 2) return null;
+
   return first;
 }
 
