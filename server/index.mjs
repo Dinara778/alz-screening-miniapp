@@ -348,7 +348,11 @@ async function sendHealthJson(res) {
     hints.push(`Вебхук не на ${webhookUrl} — оплата в Telegram может отменяться`);
   }
   if (buildInfo && !frontendPaymentsOn) {
-    hints.push('Фронт собран с VITE_PAYMENTS_ENABLED=false — отчёт открывается без оплаты');
+    hints.push(
+      paymentsReady
+        ? 'Сборка: VITE_PAYMENTS_ENABLED=false, но сервер payments.ready — на проде оплата 199 ₽ активна'
+        : 'Фронт: VITE_PAYMENTS_ENABLED=false и сервер без оплаты — отчёт без оплаты',
+    );
   }
   if (!buildInfo) {
     hints.push('Нет dist/build-info.json — пересоберите Docker после git push');
