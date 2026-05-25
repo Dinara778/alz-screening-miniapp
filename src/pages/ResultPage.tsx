@@ -312,15 +312,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   if (step === 'index-detail') {
     return (
       <CalmScreen
-        kicker={
-          displayName ? (
-            <>
-              <span className="font-bold">{displayName}</span>, индекс когнитивной устойчивости
-            </>
-          ) : (
-            'Индекс когнитивной устойчивости'
-          )
-        }
+        kicker="Индекс когнитивной устойчивости"
         contentAlign="readable"
         footer={
           <Button type="button" className={calmBtnClass} onClick={() => setStep('measured')}>
@@ -404,7 +396,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           }
         >
           <div className="mx-auto w-full max-w-md space-y-5 pb-4">
-            <p className="results-body leading-relaxed">
+            <p className="app-heading leading-snug text-white/95">
               Вы уже видите, какие показатели сейчас просели. Но важно понять:
             </p>
             <ul className="calm-inset space-y-3 text-base leading-relaxed text-white/88 sm:text-lg">
@@ -425,9 +417,11 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
                 </li>
               ))}
             </ul>
-            <p className="text-center text-base font-semibold text-white sm:text-lg">
-              Персональная расшифровка результата — {reportPriceRub} ₽
-            </p>
+            <div className="flex justify-center pt-1">
+              <SketchHighlightTitle accent={accent} generousOutline>
+                Персональная расшифровка результата — {reportPriceRub} ₽
+              </SketchHighlightTitle>
+            </div>
           </div>
         </CalmScreen>
         {reportCheckoutSheet}

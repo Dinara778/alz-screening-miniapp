@@ -139,6 +139,15 @@ input:focus-visible {
     @apply text-base leading-relaxed text-white/85 sm:text-lg;
   }
 
+  /** Длинный экран платного отчёта — единая типографика */
+  .report-long-screen .report-domain-title {
+    @apply text-base font-bold leading-snug text-white sm:text-lg;
+  }
+
+  .report-long-screen .report-domain-score {
+    @apply text-base font-bold tabular-nums text-white/90 sm:text-lg;
+  }
+
   .calm-card {
     @apply relative overflow-hidden rounded-3xl border border-white/10 bg-[#0a0e0d]/95 p-6 shadow-[0_24px_60px_-28px_rgba(0,0,0,0.55)];
   }

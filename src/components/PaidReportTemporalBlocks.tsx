@@ -24,23 +24,23 @@ export const PaidReportTemporalOverload = ({
         {cards.map((row) => (
           <li
             key={row.id}
-            className="rounded-lg border border-amber-400/35 bg-amber-400/10 p-3 text-sm leading-relaxed"
+            className="rounded-lg border border-amber-400/35 bg-amber-400/10 p-3"
           >
-            <p className="font-semibold text-white">{row.title}</p>
-            <p className="mt-2 calm-body text-white/88">{row.description}</p>
-            <p className="mt-2 calm-body text-white/75">
-              <span className="font-medium text-white/90">Как вы это замечаете сегодня: </span>
+            <p className="report-domain-title">{row.title}</p>
+            <p className="results-body mt-2">{row.description}</p>
+            <p className="results-body mt-2">
+              <span className="font-semibold text-white/95">Как вы это замечаете сегодня: </span>
               {row.howYouNotice}
             </p>
-            <p className="mt-2 calm-body text-white/75">
-              <span className="font-medium text-white/90">Что сделать в этом состоянии: </span>
+            <p className="results-body mt-2">
+              <span className="font-semibold text-white/95">Что сделать в этом состоянии: </span>
               {row.whatToDo}
             </p>
           </li>
         ))}
       </ul>
     ) : (
-      <p className="calm-inset calm-body text-sm text-white/70">{NO_ACTIVE_OVERLOAD_MESSAGE}</p>
+      <p className="calm-inset results-body text-white/85">{NO_ACTIVE_OVERLOAD_MESSAGE}</p>
     )}
   </section>
 );
@@ -61,9 +61,9 @@ export const PaidReportTemporalRecommendations = ({
   return (
     <section className={className}>
       {hideSectionTitle ? null : <SectionTitle>Что делать в этом состоянии</SectionTitle>}
-      <ul className="calm-inset list-none space-y-2.5 results-body text-sm">
+      <ul className="calm-inset list-none space-y-2.5 results-body">
         {lines.map((line) => (
-          <li key={line} className="flex gap-2 text-white/88">
+          <li key={line} className="flex gap-2">
             <span className="shrink-0 text-emerald-400" aria-hidden>
               •
             </span>

@@ -33,7 +33,7 @@ export const ReportScrollDownHint = ({ scrollRef }: Props) => {
 
   return (
     <div
-      className="report-scroll-hint pointer-events-none absolute inset-x-0 bottom-3 z-20 flex flex-col items-center gap-2"
+      className="report-scroll-hint pointer-events-none flex flex-col items-center gap-1.5 py-1"
       role="presentation"
       aria-hidden
     >

@@ -7,24 +7,24 @@ export const DomainProfileCard = ({ domain }: Props) => {
   const { title, score, interpretation: i } = domain;
   return (
     <div className="calm-inset border-0">
-      <div className="flex justify-between gap-2 text-sm">
-        <span className="font-semibold text-white">{title}</span>
-        <span className="tabular-nums calm-caption">{score}</span>
+      <div className="flex justify-between gap-2">
+        <span className="report-domain-title">{title}</span>
+        <span className="report-domain-score">{score}</span>
       </div>
       <div className="mt-2 h-2 rounded-full bg-slate-200 overflow-hidden">
         <div className="h-2 rounded-full bg-emerald-800" style={{ width: `${score}%` }} />
       </div>
-      <div className="mt-3 space-y-2 text-sm calm-body leading-relaxed">
+      <div className="mt-3 space-y-2 results-body">
         <p>
-          <span className="font-semibold calm-body">В жизни: </span>
+          <span className="font-semibold text-white/95">В жизни: </span>
           {i.inLife}
         </p>
         <p>
-          <span className="font-semibold calm-body">Как проявляется: </span>
+          <span className="font-semibold text-white/95">Как проявляется: </span>
           {i.manifestations}
         </p>
         <p>
-          <span className="font-semibold calm-body">О чём говорит результат: </span>
+          <span className="font-semibold text-white/95">О чём говорит результат: </span>
           {i.aboutResult}
         </p>
       </div>

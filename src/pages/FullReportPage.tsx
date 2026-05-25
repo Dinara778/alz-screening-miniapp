@@ -231,18 +231,23 @@ export const FullReportPage = () => {
             </div>
           }
         >
-          <div className="mx-auto w-full max-w-md space-y-6">
+          <div className="report-long-screen mx-auto w-full max-w-md space-y-6 pb-2">
             <div className="calm-inset space-y-3">
               <SketchHighlightTitle accent={accent}>
                 Ваш индекс когнитивной устойчивости{' '}
                 <strong className="font-bold">прямо сейчас</strong>:
               </SketchHighlightTitle>
-              <div className="text-4xl font-bold tabular-nums">{analytics.index.value}</div>
+              <div className="text-4xl font-bold tabular-nums text-white">{analytics.index.value}</div>
               <p className="results-body">{analytics.index.description}</p>
               {analytics.index.recommendations.length > 0 ? (
-                <ul className="list-none space-y-2 text-sm leading-relaxed text-white/88 sm:text-base">
+                <ul className="list-none space-y-2.5 results-body">
                   {analytics.index.recommendations.map((rec) => (
-                    <li key={rec}>• {rec}</li>
+                    <li key={rec} className="flex gap-2">
+                      <span className="shrink-0 text-emerald-400" aria-hidden>
+                        •
+                      </span>
+                      <span>{rec}</span>
+                    </li>
                   ))}
                 </ul>
               ) : null}
