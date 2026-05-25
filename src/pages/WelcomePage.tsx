@@ -12,18 +12,10 @@ import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
 type Props = { onStart: (profile: ParticipantProfile) => void; onHistory: () => void };
 
-/** Интро (2 экрана) → имя → пол → возраст → старт оценки. */
-const FIELD_STEP_MAX = 5;
+/** Знакомство → имя → пол → возраст → старт оценки. */
+const FIELD_STEP_MAX = 4;
 
 const SEX_OPTIONS = ['Женский', 'Мужской'] as const satisfies readonly ParticipantProfile['sex'][];
-
-const PROFILE_PREVIEW_ITEMS = [
-  '⚡ Насколько быстро сейчас работает мозг',
-  '🎯 Легко ли вы отвлекаетесь',
-  '🧩 Насколько хорошо удерживаете информацию в моменте',
-  '🔋 Есть ли признаки когнитивной перегрузки',
-  '📉 Снижается ли качество работы под нагрузкой',
-] as const;
 
 const inputClass = 'calm-input';
 
@@ -60,8 +52,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
 
   const canAdvanceFrom = (s: number): boolean => {
     if (s <= 2) return true;
-    if (s === 3) return true;
-    if (s === 4) {
+    if (s === 3) {
       const n = Number(age);
       return Number.isFinite(n) && n >= 18 && n <= 100;
     }
@@ -124,7 +115,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
     </Button>
   );
 
-  if (step === 5) {
+  if (step === 4) {
     return (
       <CalmCardShell fill>
         <ScreenBottomCta
@@ -156,7 +147,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
 
   let stepBody: ReactNode = null;
   let stepFooter: React.ReactNode = nextButton(step);
-  const introStep = step <= 1;
+  const introStep = step === 0;
 
   if (step === 0) {
     stepBody = (
@@ -167,21 +158,6 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
     );
     stepFooter = nextButton(0);
   } else if (step === 1) {
-    stepBody = (
-      <div className="space-y-5 text-center sm:text-left">
-        <h2 className="app-heading text-center leading-snug">Оценка когнитивного профиля</h2>
-        <p className="calm-body text-base leading-relaxed sm:text-lg">
-          Займёт около {TEST_DURATION_LABEL}. Мы поможем понять:
-        </p>
-        <ul className="calm-inset space-y-2.5 text-left text-base leading-relaxed text-white/88 sm:text-lg">
-          {PROFILE_PREVIEW_ITEMS.map((line) => (
-            <li key={line}>{line}</li>
-          ))}
-        </ul>
-      </div>
-    );
-    stepFooter = nextButton(1);
-  } else if (step === 2) {
     stepBody = (
       <div className="space-y-4">
         <div className="text-center text-4xl">✨</div>
@@ -200,8 +176,8 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         />
       </div>
     );
-    stepFooter = nextButton(2);
-  } else if (step === 3) {
+    stepFooter = nextButton(1);
+  } else if (step === 2) {
     stepBody = (
       <div className="space-y-4">
         <div className="text-center text-4xl">👥</div>
@@ -228,8 +204,8 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
         </div>
       </div>
     );
-    stepFooter = nextButton(3);
-  } else if (step === 4) {
+    stepFooter = nextButton(2);
+  } else if (step === 3) {
     stepBody = (
       <div className="space-y-4">
         <div className="text-center text-4xl">🎂</div>
@@ -255,7 +231,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
       <Button
         type="button"
         className={CTA_BUTTON_CLASS}
-        disabled={!canAdvanceFrom(4)}
+        disabled={!canAdvanceFrom(3)}
         onClick={completeFormSteps}
       >
         Далее
@@ -263,14 +239,14 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
     );
   }
 
-  const stackForm = step >= 2 && step <= 4;
+  const stackForm = step >= 1 && step <= 3;
 
   return (
     <div className={`flex flex-col ${stackForm ? 'shrink-0' : 'min-h-0 flex-1'}`}>
       <CalmCardShell fill={introStep}>
         <div className="relative mb-4 shrink-0 space-y-3">
           <div className="flex items-start gap-3">
-            {step >= 1 && step <= 4 ? (
+            {step >= 1 && step <= 3 ? (
               <BackArrowButton onClick={goBack} className="mt-0.5 shrink-0" aria-label="Назад" />
             ) : null}
             <div className="min-w-0 flex-1 space-y-2.5">
@@ -285,7 +261,7 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
                 )}
                 <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-0.5 text-[0.6875rem] font-medium text-white/65">
                   {step === 0
-                    ? 'впереди 5 шагов'
+                    ? 'впереди 4 шага'
                     : step >= FIELD_STEP_MAX - 1
                       ? 'финиш ✨'
                       : `осталось: ${FIELD_STEP_MAX - step}`}

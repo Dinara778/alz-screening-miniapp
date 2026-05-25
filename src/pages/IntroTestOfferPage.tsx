@@ -1,7 +1,6 @@
 import { Button } from '../components/Button';
 import { SketchHighlightTitle } from '../components/results/SketchHighlightTitle';
 import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
-import { TEST_DURATION_LABEL } from '../constants/testDuration';
 import { IntroShell } from '../components/landing/IntroShell';
 
 /** Зелёная обводка заголовка — как CTA (#34d399 в .cta-shimmer). */
@@ -30,13 +29,9 @@ export const IntroTestOfferPage = ({ onContinue }: Props) => {
     <IntroShell aria-label="Оценка когнитивного профиля" footer={footer} compact>
       <div className="space-y-4 overflow-visible pb-2">
         <SketchHighlightTitle accent={INTRO_TITLE_ACCENT} generousOutline>
-          <>
-            Оценка когнитивного профиля.
-            <br />
-            Займёт около {TEST_DURATION_LABEL}.
-          </>
+          Оценка когнитивного профиля
         </SketchHighlightTitle>
-        <p className="calm-caption">Мы поможем понять:</p>
+        <p className="text-lg font-bold leading-snug text-white sm:text-xl">Мы поможем понять:</p>
         <div className="calm-inset">
           <ul className="space-y-2.5 text-sm leading-relaxed text-white/90 sm:text-base">
             {PROFILE_PREVIEW_ITEMS.map((line) => (
