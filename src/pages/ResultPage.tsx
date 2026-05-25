@@ -4,16 +4,14 @@ import { Button } from '../components/Button';
 import { CalmScreen } from '../components/results/CalmScreen';
 import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { OrganicMetricHalo } from '../components/results/OrganicMetricHalo';
-import { ScoreRing } from '../components/results/ScoreRing';
 import { SketchHighlightTitle } from '../components/results/SketchHighlightTitle';
 import { SupportFooter } from '../components/SupportFooter';
 import { scoreAccentFromValue } from '../components/results/scoreAccent';
 import { useApp } from '../context/AppContext';
-import type { DomainInterpretationCopy } from '../copy/cognitiveDomainInterpretations';
-import { buildCognitiveAnalytics, type DomainScore } from '../utils/cognitiveAnalytics';
+import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { getIndexCategory, isIndexDisplayReady } from '../utils/indexCategory';
-import { getFreeIndexInterpretation, type FreeIndexInterpretation } from '../utils/freeIndexInterpretation';
-import { formatParticipantFirstName, formatPersonalizedHeading } from '../utils/participantDisplayName';
+import { getFreeIndexInterpretation } from '../utils/freeIndexInterpretation';
+import { formatParticipantFirstName } from '../utils/participantDisplayName';
 import { shareResultWithCard } from '../utils/shareResult';
 import { shouldBypassReportPayment } from '../utils/paymentStub';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
@@ -22,13 +20,11 @@ import { hasPaymentReturnInUrl } from '../utils/storage';
 import {
   consultationPaidStorageKey,
   isReportPaidUnlocked,
-  pollProdamusOrderPaidQuick,
-  prodamusPendingOrderKey,
   reportPaidStorageKey,
   recoverProdamusPaymentFromUrl,
 } from '../utils/telegramPayments';
 
-type ResultStep = 'index' | 'index-detail' | 'domain-metric' | 'domain-detail' | 'hub' | 'session-offer';
+type ResultStep = 'index' | 'index-detail' | 'measured' | 'report-offer' | 'hub' | 'session-offer';
 
 const sessionUpsellFeatures = [
   'Онлайн-расшифровку результатов простым языком с опытным экспертом по когнитивной устойчивости (созвон)',
@@ -37,40 +33,24 @@ const sessionUpsellFeatures = [
   'План улучшения показателей',
 ] as const;
 
+const reportOfferBullets = [
+  {
+    title: 'Как это проявляется именно в вашей жизни',
+    detail: null,
+  },
+  {
+    title: 'Что именно сейчас перегружает ваш мозг',
+    detail: '(внимание, удержание информации, скорость или устойчивость под нагрузкой)',
+  },
+  {
+    title: 'Что поможет улучшить состояние уже сегодня',
+    detail: '(персональные рекомендации по вашему профилю)',
+  },
+] as const;
+
 const calmBtnClass = CTA_BUTTON_CLASS;
 const calmBtnGhost =
   'w-full rounded-full border border-white/15 bg-transparent py-3.5 text-[0.9375rem] font-medium text-white/90 transition hover:border-white/30 hover:bg-white/5';
-
-const DomainInterpretationBody = ({
-  title,
-  interpretation,
-  accent,
-}: {
-  title: string;
-  interpretation: DomainInterpretationCopy;
-  accent: string;
-}) => {
-  const { inLife, manifestations, aboutResult } = interpretation;
-  return (
-    <div className="mx-auto w-full max-w-md space-y-4">
-      <SketchHighlightTitle accent={accent}>{title}</SketchHighlightTitle>
-      <div className="calm-inset space-y-4 text-left text-base leading-relaxed text-white sm:text-lg">
-        <p>
-          <span className="font-semibold">В жизни: </span>
-          {inLife}
-        </p>
-        <p>
-          <span className="font-semibold">Как проявляется: </span>
-          {manifestations}
-        </p>
-        <p>
-          <span className="font-semibold">О чём говорит результат: </span>
-          {aboutResult}
-        </p>
-      </div>
-    </div>
-  );
-};
 
 const FreeIndexInterpretationBody = ({
   title,
@@ -78,7 +58,7 @@ const FreeIndexInterpretationBody = ({
   accent,
 }: {
   title: string;
-  interpretation: FreeIndexInterpretation;
+  interpretation: ReturnType<typeof getFreeIndexInterpretation>;
   accent: string;
 }) => (
   <div className="mx-auto w-full max-w-md space-y-4">
@@ -109,7 +89,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     useApp();
   useHydrateLatestResult();
   const [step, setStep] = useState<ResultStep>('index');
-  const [domainIndex, setDomainIndex] = useState(0);
   const [shareNotice, setShareNotice] = useState<string | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -131,6 +110,19 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     if (!latestResult?.id) return;
     setSessionPaid(localStorage.getItem(consultationPaidStorageKey(latestResult.id)) === '1');
   }, [latestResult?.id]);
+
+  const skipNativePayment = shouldBypassReportPayment(serverPaymentsReady);
+
+  useEffect(() => {
+    if (!latestResult?.id || skipNativePayment || !hasPaymentReturnInUrl()) return;
+    void recoverProdamusPaymentFromUrl().then((recovery) => {
+      if (recovery?.product === 'full_report' && recovery.sessionId === latestResult.id) {
+        localStorage.setItem(reportPaidStorageKey(latestResult.id), '1');
+        setStage('full-report');
+      }
+    });
+  }, [latestResult?.id, skipNativePayment, setStage]);
+
   if (!latestResult) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-10 text-center text-white/80">
@@ -141,9 +133,9 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       </div>
     );
   }
+
   const a = buildCognitiveAnalytics(latestResult);
   const domains = a.domains;
-  const currentDomain: DomainScore | undefined = domains[domainIndex];
   const indexDisplayReady = isIndexDisplayReady(
     a.index.value,
     a.validation.interpretationTrusted,
@@ -159,7 +151,26 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     latestResult.participant?.name ?? participant?.name,
   );
   const accent = indexDisplayReady ? indexCategory.color : scoreAccentFromValue(a.index.value);
-  const skipNativePayment = shouldBypassReportPayment(serverPaymentsReady);
+  const reportPriceRub = PAYMENT_PRODUCTS.full_report.priceRub;
+
+  const measuredRows = [
+    {
+      label: 'Внимание',
+      score: domains.find((d) => d.key === 'attentionStability')?.score ?? 0,
+    },
+    {
+      label: 'Скорость реакции',
+      score: domains.find((d) => d.key === 'reactionSpeed')?.score ?? 0,
+    },
+    {
+      label: 'Удержание информации',
+      score: domains.find((d) => d.key === 'informationRetention')?.score ?? 0,
+    },
+    {
+      label: 'Когнитивная устойчивость',
+      score: a.index.value,
+    },
+  ];
 
   const handleShare = async () => {
     setShareNotice(null);
@@ -185,22 +196,9 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     setStage('full-report');
   };
 
-  useEffect(() => {
-    if (!latestResult?.id || skipNativePayment || !hasPaymentReturnInUrl()) return;
-    void recoverProdamusPaymentFromUrl().then((recovery) => {
-      if (recovery?.product === 'full_report' && recovery.sessionId === latestResult.id) {
-        localStorage.setItem(reportPaidStorageKey(latestResult.id), '1');
-        setStage('full-report');
-      }
-    });
-  }, [latestResult?.id, skipNativePayment, setStage]);
-
-  const reportUnlocked = latestResult
-    ? isReportPaidUnlocked(latestResult.id, serverPaymentsReady)
-    : false;
+  const reportUnlocked = isReportPaidUnlocked(latestResult.id, serverPaymentsReady);
 
   const openCheckout = () => {
-    if (!latestResult) return;
     if (skipNativePayment || reportUnlocked) {
       unlockFullReport();
       return;
@@ -210,32 +208,27 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   };
 
   const openSessionCheckout = () => {
-    if (!latestResult) return;
     setPayNotice(null);
     setSessionCheckoutOpen(true);
   };
 
   const markSessionPaid = () => {
-    if (!latestResult) return;
     localStorage.setItem(consultationPaidStorageKey(latestResult.id), '1');
     window.dispatchEvent(new Event('consultation-paid'));
     setSessionPaid(true);
     setSessionCheckoutOpen(false);
   };
 
-  const startDomains = () => {
-    setDomainIndex(0);
-    setStep('domain-metric');
-  };
-
-  const nextFromDomainDetail = () => {
-    if (domainIndex < domains.length - 1) {
-      setDomainIndex((i) => i + 1);
-      setStep('domain-metric');
-    } else {
-      setStep('hub');
-    }
-  };
+  const reportCheckoutSheet = (
+    <PaymentCheckoutSheet
+      open={checkoutOpen}
+      product="full_report"
+      sessionId={latestResult.id}
+      onClose={() => setCheckoutOpen(false)}
+      onPaid={unlockFullReport}
+      onNotice={setPayNotice}
+    />
+  );
 
   if (step === 'index') {
     return (
@@ -324,8 +317,8 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         }
         contentAlign="readable"
         footer={
-          <Button type="button" className={calmBtnClass} onClick={startDomains}>
-            Далее — показатели профиля
+          <Button type="button" className={calmBtnClass} onClick={() => setStep('measured')}>
+            Узнать больше
           </Button>
         }
       >
@@ -338,49 +331,89 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     );
   }
 
-  if (step === 'domain-metric' && currentDomain) {
-    const d = currentDomain;
-    const dAccent = scoreAccentFromValue(d.score);
+  if (step === 'measured') {
     return (
       <CalmScreen
-        kicker={`${domainIndex + 1} / ${domains.length}`}
+        contentAlign="readable"
         footer={
-          <Button type="button" className={calmBtnClass} onClick={() => setStep('domain-detail')}>
-            Узнать, что это значит
+          <Button type="button" className={calmBtnClass} onClick={() => setStep('report-offer')}>
+            Далее
           </Button>
         }
       >
-        <p className="metric-screen-title mb-8 max-w-[18rem]">{d.title}</p>
-        <div className="relative flex h-[min(62vw,260px)] w-[min(62vw,260px)] items-center justify-center">
-          <ScoreRing value={d.score} accent={dAccent} size={260} />
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-[clamp(3rem,14vw,4.25rem)] font-semibold tabular-nums leading-none text-white">
-              {d.score}
-            </span>
+        <div className="mx-auto w-full max-w-md space-y-5">
+          <SketchHighlightTitle accent={accent}>Что мы измерили</SketchHighlightTitle>
+          <div className="calm-inset space-y-3">
+            {measuredRows.map((row) => {
+              const rowAccent = scoreAccentFromValue(row.score);
+              return (
+                <div
+                  key={row.label}
+                  className="flex items-center justify-between gap-3 text-base leading-relaxed sm:text-lg"
+                >
+                  <span className="text-white/88">{row.label}</span>
+                  <span
+                    className="shrink-0 text-2xl font-bold tabular-nums sm:text-3xl"
+                    style={{ color: rowAccent }}
+                  >
+                    {row.score}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </CalmScreen>
     );
   }
 
-  if (step === 'domain-detail' && currentDomain) {
-    const d = currentDomain;
+  if (step === 'report-offer') {
     return (
-      <CalmScreen
-        kicker={`${domainIndex + 1} / ${domains.length}`}
-        contentAlign="readable"
-        footer={
-          <Button type="button" className={calmBtnClass} onClick={nextFromDomainDetail}>
-            {domainIndex < domains.length - 1 ? 'Далее' : 'Готово'}
-          </Button>
-        }
-      >
-        <DomainInterpretationBody
-          title={formatPersonalizedHeading(displayName, d.title)}
-          interpretation={d.interpretation}
-          accent={scoreAccentFromValue(d.score)}
-        />
-      </CalmScreen>
+      <>
+        <CalmScreen
+          contentAlign="readable"
+          footer={
+            <div className="space-y-3">
+              {payNotice ? (
+                <p className="text-center text-xs leading-relaxed text-amber-200/90">{payNotice}</p>
+              ) : null}
+              <Button type="button" variant="sell" className={calmBtnClass} onClick={openCheckout}>
+                {reportUnlocked
+                  ? 'Открыть расшифровку'
+                  : `Разобрать результат → ${reportPriceRub} ₽`}
+              </Button>
+            </div>
+          }
+        >
+          <div className="mx-auto w-full max-w-md space-y-5 pb-4">
+            <p className="results-body leading-relaxed">
+              Вы уже видите, какие показатели сейчас просели. Но важно понять:
+            </p>
+            <ul className="calm-inset space-y-3 text-base leading-relaxed text-white/88 sm:text-lg">
+              {reportOfferBullets.map((item) => (
+                <li key={item.title} className="flex gap-2">
+                  <span className="shrink-0 text-emerald-400" aria-hidden>
+                    ✓
+                  </span>
+                  <span>
+                    {item.title}
+                    {item.detail ? (
+                      <>
+                        <br />
+                        <span className="text-white/65">{item.detail}</span>
+                      </>
+                    ) : null}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-center text-base font-semibold text-white sm:text-lg">
+              Персональная расшифровка результата — {reportPriceRub} ₽
+            </p>
+          </div>
+        </CalmScreen>
+        {reportCheckoutSheet}
+      </>
     );
   }
 
@@ -447,16 +480,14 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
             )}
           </div>
         </CalmScreen>
-        {latestResult ? (
-          <PaymentCheckoutSheet
-            open={sessionCheckoutOpen}
-            product="consultation"
-            sessionId={latestResult.id}
-            onClose={() => setSessionCheckoutOpen(false)}
-            onPaid={markSessionPaid}
-            onNotice={setPayNotice}
-          />
-        ) : null}
+        <PaymentCheckoutSheet
+          open={sessionCheckoutOpen}
+          product="consultation"
+          sessionId={latestResult.id}
+          onClose={() => setSessionCheckoutOpen(false)}
+          onPaid={markSessionPaid}
+          onNotice={setPayNotice}
+        />
       </>
     );
   }
@@ -470,68 +501,59 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
 
   return (
     <>
-    <CalmScreen
-      contentAlign="readable"
-      footer={
-        <div className="space-y-3">
-          {shareNotice ? (
-            <p className="text-center text-xs leading-relaxed text-white/70">{shareNotice}</p>
-          ) : null}
-          <button
-            type="button"
-            className={calmBtnGhost}
-            disabled={shareBusy}
-            onClick={() => void handleShare()}
-          >
-            {shareBusy ? 'Готовим картинку…' : 'Поделиться результатом'}
-          </button>
-          <Button
-            type="button"
-            className={`cta-shimmer border-0 !bg-none !from-transparent !to-transparent hover:!from-transparent hover:!to-transparent ${calmBtnClass}`}
-            onClick={openCheckout}
-          >
-            {reportUnlocked
-              ? 'Открыть расширенный отчёт'
-              : `Получить расширенный отчёт — ${PAYMENT_PRODUCTS.full_report.priceRub} ₽`}
-          </Button>
-          <SupportFooter showDeveloperCredit={false} />
+      <CalmScreen
+        contentAlign="readable"
+        footer={
+          <div className="space-y-3">
+            {shareNotice ? (
+              <p className="text-center text-xs leading-relaxed text-white/70">{shareNotice}</p>
+            ) : null}
+            <button
+              type="button"
+              className={calmBtnGhost}
+              disabled={shareBusy}
+              onClick={() => void handleShare()}
+            >
+              {shareBusy ? 'Готовим картинку…' : 'Поделиться результатом'}
+            </button>
+            <Button
+              type="button"
+              className={`cta-shimmer border-0 !bg-none !from-transparent !to-transparent hover:!from-transparent hover:!to-transparent ${calmBtnClass}`}
+              onClick={openCheckout}
+            >
+              {reportUnlocked
+                ? 'Открыть расширенный отчёт'
+                : `Получить расширенный отчёт — ${reportPriceRub} ₽`}
+            </Button>
+            <SupportFooter showDeveloperCredit={false} />
+          </div>
+        }
+      >
+        <div className="mx-auto w-full max-w-md space-y-5 pb-4">
+          <SketchHighlightTitle accent={accent} generousOutline>
+            Узнайте, что перегружает вашу когнитивную систему
+          </SketchHighlightTitle>
+          <p className="results-body text-center sm:text-left">
+            и как это исправить — с помощью расширенного отчёта
+            <br />
+            на&nbsp;основе вашего&nbsp;индивидуального когнитивного профиля
+          </p>
+          <div className="calm-inset space-y-3">
+            <p className="text-sm font-semibold text-white/90 sm:text-base">Что входит в отчёт:</p>
+            <ul className="space-y-2.5 text-sm leading-relaxed text-white/88 sm:text-base">
+              {reportFeatures.map((line) => (
+                <li key={line} className="flex gap-2">
+                  <span className="shrink-0 text-emerald-400" aria-hidden>
+                    ✓
+                  </span>
+                  <span>{line}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
-      }
-    >
-      <div className="mx-auto w-full max-w-md space-y-5 pb-4">
-        <SketchHighlightTitle accent={accent} generousOutline>
-          Узнайте, что перегружает вашу когнитивную систему
-        </SketchHighlightTitle>
-        <p className="results-body text-center sm:text-left">
-          и как это исправить — с помощью расширенного отчёта
-          <br />
-          на&nbsp;основе вашего&nbsp;индивидуального когнитивного профиля
-        </p>
-        <div className="calm-inset space-y-3">
-          <p className="text-sm font-semibold text-white/90 sm:text-base">Что входит в отчёт:</p>
-          <ul className="space-y-2.5 text-sm leading-relaxed text-white/88 sm:text-base">
-            {reportFeatures.map((line) => (
-              <li key={line} className="flex gap-2">
-                <span className="shrink-0 text-emerald-400" aria-hidden>
-                  ✓
-                </span>
-                <span>{line}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </CalmScreen>
-    {latestResult ? (
-      <PaymentCheckoutSheet
-        open={checkoutOpen}
-        product="full_report"
-        sessionId={latestResult.id}
-        onClose={() => setCheckoutOpen(false)}
-        onPaid={unlockFullReport}
-        onNotice={setPayNotice}
-      />
-    ) : null}
+      </CalmScreen>
+      {reportCheckoutSheet}
     </>
   );
 };
