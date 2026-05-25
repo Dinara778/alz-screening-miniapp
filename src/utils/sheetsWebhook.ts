@@ -12,10 +12,14 @@ function getSheetsWebhookUrl(): string | null {
 /** Настроен ли реальный URL (не пустой и не заглушка из .env.example). */
 export const isSheetsWebhookConfigured = (): boolean => Boolean(getSheetsWebhookUrl());
 
-type AnalyticsEventPayload = {
+export type AnalyticsEventPayload = {
   eventType: string;
   sessionId: string;
   stage?: string;
+  /** Полный путь экрана, напр. result/measured или flanker */
+  screen?: string;
+  screenDetail?: string;
+  exitReason?: string;
   timestamp?: string;
   participant?: {
     name?: string;
@@ -29,28 +33,75 @@ type AnalyticsEventPayload = {
   [key: string]: unknown;
 };
 
-export const sendAnalyticsEventToSheets = async (event: AnalyticsEventPayload): Promise<boolean> => {
-  const url = getSheetsWebhookUrl();
-  if (!url) return false;
+const PREVIEW_KEY = 'alz_analytics_preview_v1';
 
+/** Пока таблица не подключена — последние события в sessionStorage (для отладки). */
+export function stashAnalyticsPreview(event: AnalyticsEventPayload): void {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    const payload = { ...event, timestamp: event.timestamp ?? new Date().toISOString() };
+    const raw = sessionStorage.getItem(PREVIEW_KEY);
+    const list: AnalyticsEventPayload[] = raw ? JSON.parse(raw) : [];
+    list.push(payload);
+    sessionStorage.setItem(PREVIEW_KEY, JSON.stringify(list.slice(-80)));
+  } catch {
+    /* ignore quota */
+  }
+  if (import.meta.env.DEV) {
+    console.info('[analytics]', event.eventType, event.screen ?? event.stage, event);
+  }
+}
+
+function deliverAnalyticsPayload(payload: AnalyticsEventPayload, transport: 'fetch' | 'beacon'): Promise<boolean> {
+  const url = getSheetsWebhookUrl();
+  if (!url) {
+    stashAnalyticsPreview(payload);
+    return Promise.resolve(false);
+  }
+
+  const body = JSON.stringify(payload);
+
+  if (transport === 'beacon' && typeof navigator.sendBeacon === 'function') {
+    try {
+      const ok = navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+      return Promise.resolve(ok);
+    } catch {
+      /* fall through to fetch */
+    }
+  }
+
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    redirect: 'follow',
+    keepalive: transport === 'beacon',
+    body,
+  })
+    .then((res) => res.ok)
+    .catch(() => false);
+}
+
+export const sendAnalyticsEventToSheets = async (event: AnalyticsEventPayload): Promise<boolean> => {
   const payload = {
     ...event,
     timestamp: event.timestamp ?? new Date().toISOString(),
   };
-
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      redirect: 'follow',
-      body: JSON.stringify(payload),
-    });
-    return res.ok;
-  } catch {
-    return false;
+  if (!payload.screen && payload.stage) {
+    payload.screen = payload.screenDetail ? `${payload.stage}/${payload.screenDetail}` : payload.stage;
   }
+  return deliverAnalyticsPayload(payload, 'fetch');
+};
+
+/** Для app_exit при закрытии — sendBeacon / keepalive. */
+export const sendAnalyticsEventBeacon = async (event: AnalyticsEventPayload): Promise<boolean> => {
+  const payload = {
+    ...event,
+    timestamp: event.timestamp ?? new Date().toISOString(),
+  };
+  if (!payload.screen && payload.stage) {
+    payload.screen = payload.screenDetail ? `${payload.stage}/${payload.screenDetail}` : payload.stage;
+  }
+  return deliverAnalyticsPayload(payload, 'beacon');
 };
 
 export const sendSessionToSheets = async (session: SessionResult): Promise<void> => {
@@ -62,6 +113,8 @@ export const sendSessionToSheets = async (session: SessionResult): Promise<void>
     riskLevel: session.status,
     eventType: 'session_completed',
     sessionId: session.id,
+    stage: 'result',
+    screen: 'result',
     timestamp: new Date().toISOString(),
   };
 

@@ -46,6 +46,8 @@ function appendRow_(data) {
       'eventType',
       'sessionId',
       'stage',
+      'screen',
+      'exitReason',
       'name',
       'email',
       'phone',
@@ -58,11 +60,16 @@ function appendRow_(data) {
   }
 
   const p = data.participant || {};
+  const screen =
+    data.screen ||
+    (data.screenDetail && data.stage ? data.stage + '/' + data.screenDetail : data.stage || '');
   const row = [
     data.timestamp || new Date().toISOString(),
     data.eventType || '',
     data.sessionId || data.id || '',
     data.stage || '',
+    screen,
+    data.exitReason || '',
     p.name || '',
     p.email || '',
     p.phone || '',

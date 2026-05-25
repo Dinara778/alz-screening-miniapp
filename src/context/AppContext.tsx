@@ -24,6 +24,7 @@ import {
   recoverProdamusPaymentFromUrl,
   tryRecoverReportAccess,
 } from '../utils/telegramPayments';
+import { useAppExitAnalytics } from '../hooks/useAppExitAnalytics';
 import { sendAnalyticsEventToSheets, sendSessionToSheets } from '../utils/sheetsWebhook';
 
 type ConsultationReturnStage = 'result' | 'full-report';
@@ -167,6 +168,9 @@ type AppState = {
   setStudyWordList: (v: string[]) => void;
   /** true после GET /health, если на сервере ЮKassa/Telegram оплата включена */
   serverPaymentsReady: boolean;
+  /** Подэкран внутри stage (result/index, full-report/report, …) для аналитики выхода */
+  analyticsScreenDetail: string | null;
+  setAnalyticsScreenDetail: (detail: string | null) => void;
 };
 
 const Ctx = createContext<AppState | null>(null);
@@ -190,6 +194,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [participant, setParticipant] = useState<ParticipantProfile | null>(b.participant);
   const [consultationReturnTo, setConsultationReturnTo] = useState<ConsultationReturnStage | null>(null);
   const [resultEntryStep, setResultEntryStep] = useState<ResultEntryStep | null>(null);
+  const [analyticsScreenDetail, setAnalyticsScreenDetail] = useState<string | null>(null);
   const [studyWordList, setStudyWordList] = useState<string[]>(b.studyWordList);
   const [serverPaymentsReady, setServerPaymentsReady] = useState(false);
 
@@ -313,6 +318,19 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
+    setAnalyticsScreenDetail(null);
+  }, [stage]);
+
+  const analyticsSessionId = latestResult?.id ?? String(sessionSeed);
+
+  useAppExitAnalytics({
+    stage,
+    sessionId: analyticsSessionId,
+    screenDetail: analyticsScreenDetail,
+    participant,
+  });
+
+  useEffect(() => {
     const key = `${sessionSeed}:${stage}`;
     if (sentStageEventsRef.current.has(key)) return;
     sentStageEventsRef.current.add(key);
@@ -321,6 +339,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       eventType: 'stage_reached',
       sessionId: String(sessionSeed),
       stage,
+      screen: stage,
       participant: participant
         ? {
             name: participant.name,
@@ -456,6 +475,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       studyWordList,
       setStudyWordList,
       serverPaymentsReady,
+      analyticsScreenDetail,
+      setAnalyticsScreenDetail,
     }),
     [
       stage,
@@ -477,6 +498,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       clearResultEntryStep,
       studyWordList,
       serverPaymentsReady,
+      analyticsScreenDetail,
       resetSession,
       refreshApp,
       restartApp,

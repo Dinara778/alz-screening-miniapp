@@ -31,8 +31,15 @@ const learnedItems = [
 ] as const;
 
 export const FullReportPage = () => {
-  const { latestResult, participant, setStage, openResultAtStep, setConsultationReturnTo, serverPaymentsReady } =
-    useApp();
+  const {
+    latestResult,
+    participant,
+    setStage,
+    openResultAtStep,
+    setConsultationReturnTo,
+    serverPaymentsReady,
+    setAnalyticsScreenDetail,
+  } = useApp();
   useHydrateLatestResult();
   const [step, setStep] = useState<ReportStep>('ready');
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -59,6 +66,10 @@ export const FullReportPage = () => {
     const leading = getLeadingDeficit(domainScoresInput);
     return getTemporalRecommendations(leading, domainScoresInput);
   }, [analytics, domainScoresInput]);
+
+  useEffect(() => {
+    setAnalyticsScreenDetail(step);
+  }, [step, setAnalyticsScreenDetail]);
 
   useEffect(() => {
     if (!latestResult) return;

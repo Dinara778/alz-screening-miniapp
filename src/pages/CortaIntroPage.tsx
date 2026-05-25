@@ -41,7 +41,11 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
 
         <div className="space-y-3">
           <h1 className="text-[clamp(1.625rem,6.5vw,2.25rem)] font-bold leading-[1.15] tracking-tight text-white sm:text-[2.125rem]">
-            Ваш мозг сейчас в ресурсе или перегружен?
+            В каком режиме сейчас работает{' '}
+            <span className="rounded-md bg-emerald-400/15 px-1.5 py-0.5 text-emerald-300 decoration-clone box-decoration-clone">
+              ваш мозг
+            </span>
+            ?
           </h1>
           <p className="text-sm leading-relaxed text-slate-300 sm:text-[0.9375rem]">
             За {TEST_DURATION_LABEL} система оценит внимание, память и скорость обработки информации.

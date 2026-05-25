@@ -85,8 +85,15 @@ const FreeIndexInterpretationBody = ({
 );
 
 export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
-  const { latestResult, participant, setStage, resultEntryStep, clearResultEntryStep, serverPaymentsReady } =
-    useApp();
+  const {
+    latestResult,
+    participant,
+    setStage,
+    resultEntryStep,
+    clearResultEntryStep,
+    serverPaymentsReady,
+    setAnalyticsScreenDetail,
+  } = useApp();
   useHydrateLatestResult();
   const [step, setStep] = useState<ResultStep>('index');
   const [shareNotice, setShareNotice] = useState<string | null>(null);
@@ -95,6 +102,10 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const [sessionCheckoutOpen, setSessionCheckoutOpen] = useState(false);
   const [sessionPaid, setSessionPaid] = useState(false);
   const [payNotice, setPayNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    setAnalyticsScreenDetail(step);
+  }, [step, setAnalyticsScreenDetail]);
 
   useEffect(() => {
     if (resultEntryStep === 'session-offer') {
