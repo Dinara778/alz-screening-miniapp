@@ -126,6 +126,15 @@ input:focus-visible {
     bottom: -0.06em;
   }
 
+  /** Текст заголовка с левого края блока — вровень с подзаголовком ниже */
+  .sketch-highlight-title--flush-start {
+    padding-left: 0;
+  }
+
+  .sketch-highlight-title--flush-start .sketch-highlight-title__text {
+    padding-left: 0;
+  }
+
   .results-body {
     @apply text-base leading-relaxed text-white/85 sm:text-lg;
   }

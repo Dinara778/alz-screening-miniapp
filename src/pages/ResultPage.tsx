@@ -252,7 +252,8 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           <>
             {!indexDisplayReady ? (
               <p className="text-center text-xs leading-relaxed text-amber-200/90">
-                Ограниченная достоверность замера — пройдите все блоки заново для точного профиля.
+                Ограниченная достоверность замера. Рекомендуем пройти задания заново — так профиль
+                станет точнее.
               </p>
             ) : null}
             <Button type="button" className={calmBtnClass} onClick={() => setStep('index-detail')}>
@@ -283,19 +284,13 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
               </span>
             </OrganicMetricHalo>
             {indexCategory.humanPhrase ? (
-              <p
-                className="mt-8 max-w-[min(22rem,92vw)] px-2 text-center text-base font-medium leading-relaxed sm:mt-10 sm:text-lg"
-                style={{ color: indexCategory.color }}
-              >
+              <p className="mt-8 max-w-[min(22rem,92vw)] px-2 text-center text-base font-medium leading-relaxed text-white sm:mt-10 sm:text-lg">
                 {indexCategory.humanPhrase}
               </p>
             ) : null}
           </>
         ) : (
-          <p
-            className="mx-auto max-w-[min(22rem,92vw)] px-2 text-center text-base font-semibold leading-relaxed sm:text-lg"
-            style={{ color: indexCategory.color }}
-          >
+          <p className="mx-auto max-w-[min(22rem,92vw)] px-2 text-center text-base font-semibold leading-relaxed text-white sm:text-lg">
             {indexCategory.category}
           </p>
         )}
@@ -343,6 +338,12 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       >
         <div className="mx-auto w-full max-w-md space-y-5">
           <SketchHighlightTitle accent={accent}>Что мы измерили</SketchHighlightTitle>
+          {!indexDisplayReady ? (
+            <p className="text-sm leading-relaxed text-amber-200/90">
+              Ограниченная достоверность замера. Рекомендуем пройти задания заново, чтобы увидеть
+              цифры по каждому показателю.
+            </p>
+          ) : null}
           <div className="calm-inset space-y-3">
             {measuredRows.map((row) => {
               const rowAccent = scoreAccentFromValue(row.score);
@@ -352,12 +353,18 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
                   className="flex items-center justify-between gap-3 text-base leading-relaxed sm:text-lg"
                 >
                   <span className="text-white/88">{row.label}</span>
-                  <span
-                    className="shrink-0 text-2xl font-bold tabular-nums sm:text-3xl"
-                    style={{ color: rowAccent }}
-                  >
-                    {row.score}
-                  </span>
+                  {indexDisplayReady ? (
+                    <span
+                      className="shrink-0 text-2xl font-bold tabular-nums sm:text-3xl"
+                      style={{ color: rowAccent }}
+                    >
+                      {row.score}
+                    </span>
+                  ) : (
+                    <span className="shrink-0 text-2xl font-semibold tabular-nums text-white/35 sm:text-3xl">
+                      —
+                    </span>
+                  )}
                 </div>
               );
             })}

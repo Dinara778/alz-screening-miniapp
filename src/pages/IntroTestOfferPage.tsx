@@ -27,8 +27,12 @@ export const IntroTestOfferPage = ({ onContinue }: Props) => {
 
   return (
     <IntroShell aria-label="Оценка когнитивного профиля" footer={footer} compact>
-      <div className="space-y-4 overflow-visible pb-2">
-        <SketchHighlightTitle accent={INTRO_TITLE_ACCENT} generousOutline>
+      <div className="space-y-4 overflow-visible pb-2 text-left">
+        <SketchHighlightTitle
+          accent={INTRO_TITLE_ACCENT}
+          generousOutline
+          className="sketch-highlight-title--flush-start"
+        >
           Оценка когнитивного профиля
         </SketchHighlightTitle>
         <p className="text-lg font-bold leading-snug text-white sm:text-xl">Мы поможем понять:</p>

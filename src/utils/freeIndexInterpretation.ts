@@ -5,7 +5,8 @@ export type FreeIndexInterpretation = {
 };
 
 const INSUFFICIENT: FreeIndexInterpretation = {
-  inLife: 'Данных недостаточно для оценки. Пройдите все блоки теста заново.',
+  inLife:
+    'Данных недостаточно для оценки. Рекомендуем пройти задания заново — отвечайте после сигнала, без спешки.',
   feeling: '',
   insight: '',
 };
