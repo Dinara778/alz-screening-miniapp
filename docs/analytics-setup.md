@@ -50,6 +50,10 @@ VITE_SHEETS_WEBHOOK_URL=https://script.google.com/macros/s/ВАШ_ID/exec
 
 Пересоберите и задеплойте приложение.
 
+**Важно:** Mini App в Telegram **не может** надёжно слать POST напрямую в Google (CORS). События идут через **ваш сервер на Amvera**: `POST /api/sheets-event` → Google. URL берётся из `VITE_SHEETS_WEBHOOK_URL` при сборке (см. `dist/build-info.json`). Опционально дублируйте при запуске: `SHEETS_WEBHOOK_URL` (тот же `/exec`).
+
+Проверка сервера: `GET https://ваш-домен.amvera.io/health` → `"analytics":{"sheetsConfigured":true}`.
+
 ### 4. Проверка
 
 1. Откройте Mini App, пройдите 1–2 экрана, закройте.

@@ -281,6 +281,28 @@ function readFrontendBuildInfo() {
   return null;
 }
 
+function resolveSheetsWebhookUrl() {
+  const fromEnv = (process.env.SHEETS_WEBHOOK_URL || '').trim();
+  const candidate = fromEnv || readFrontendBuildInfo()?.sheetsWebhookUrl?.trim() || '';
+  if (!candidate.startsWith('https://script.google.com/')) return null;
+  if (candidate.includes('REPLACE_WITH_YOUR')) return null;
+  return candidate;
+}
+
+async function forwardToGoogleSheets(payload) {
+  const url = resolveSheetsWebhookUrl();
+  if (!url) {
+    return { ok: false, status: 503, error: 'SHEETS_WEBHOOK_URL не задан (сборка VITE_SHEETS_WEBHOOK_URL)' };
+  }
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload ?? {}),
+    redirect: 'follow',
+  });
+  return { ok: res.ok, status: res.status, error: res.ok ? null : await res.text().catch(() => 'upstream error') };
+}
+
 async function sendHealthJson(res) {
   const paymentsReady =
     PAYMENT_PROVIDER !== 'none' && Boolean(BOT_TOKEN) && Boolean(PROVIDER_TOKEN?.trim());
@@ -311,8 +333,13 @@ async function sendHealthJson(res) {
   if (!buildInfo) {
     hints.push('Нет dist/build-info.json — пересоберите Docker после git push');
   }
+  const sheetsUrl = resolveSheetsWebhookUrl();
+  if (!sheetsUrl) {
+    hints.push('Аналитика: задайте VITE_SHEETS_WEBHOOK_URL при сборке (или SHEETS_WEBHOOK_URL при запуске)');
+  }
   res.json({
     ok: true,
+    analytics: { sheetsConfigured: Boolean(sheetsUrl) },
     payments: {
       ready: paymentsReady,
       provider: PAYMENT_PROVIDER,
@@ -336,6 +363,22 @@ app.get('/health', (req, res) => {
 });
 app.get('/health/payments', (req, res) => {
   void sendHealthJson(res);
+});
+
+app.post('/api/sheets-event', async (req, res) => {
+  try {
+    const result = await forwardToGoogleSheets(req.body ?? {});
+    if (!result.ok && result.status === 503) {
+      return res.status(503).json({ ok: false, error: result.error });
+    }
+    if (!result.ok) {
+      return res.status(502).json({ ok: false, error: result.error, status: result.status });
+    }
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('[sheets]', err);
+    return res.status(502).json({ ok: false, error: String(err) });
+  }
 });
 
 app.get('/health/bot', async (_req, res) => {

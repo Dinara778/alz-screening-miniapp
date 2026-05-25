@@ -8,6 +8,7 @@ fs.writeFileSync(
   JSON.stringify({
     paymentsEnabled: process.env.VITE_PAYMENTS_ENABLED !== 'false',
     paymentsUrl: process.env.VITE_TELEGRAM_PAYMENTS_URL?.trim() || null,
+    sheetsWebhookUrl: process.env.VITE_SHEETS_WEBHOOK_URL?.trim() || null,
     builtAt: new Date().toISOString(),
   }),
 );

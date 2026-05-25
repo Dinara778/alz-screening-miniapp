@@ -1,4 +1,5 @@
 import { SessionResult } from '../types';
+import { getPaymentsApiUrl } from './telegramPayments';
 
 const WEBHOOK_URL_RAW = (import.meta.env.VITE_SHEETS_WEBHOOK_URL as string | undefined)?.trim();
 
@@ -52,33 +53,73 @@ export function stashAnalyticsPreview(event: AnalyticsEventPayload): void {
   }
 }
 
-function deliverAnalyticsPayload(payload: AnalyticsEventPayload, transport: 'fetch' | 'beacon'): Promise<boolean> {
-  const url = getSheetsWebhookUrl();
-  if (!url) {
-    stashAnalyticsPreview(payload);
-    return Promise.resolve(false);
-  }
+function getSheetsProxyUrl(): string | null {
+  const api = getPaymentsApiUrl();
+  if (!api) return null;
+  return `${api.replace(/\/$/, '')}/api/sheets-event`;
+}
 
+/** Прямой POST в Google из Mini App часто блокируется CORS — шлём через свой API на Amvera. */
+async function postViaSheetsProxy(payload: AnalyticsEventPayload, keepalive: boolean): Promise<boolean> {
+  const proxy = getSheetsProxyUrl();
+  if (!proxy) return false;
+  try {
+    const res = await fetch(proxy, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive,
+      body: JSON.stringify(payload),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Запасной канал: text/plain без preflight (может сработать без прокси). */
+async function postDirectToGoogle(payload: AnalyticsEventPayload, keepalive: boolean): Promise<boolean> {
+  const url = getSheetsWebhookUrl();
+  if (!url) return false;
   const body = JSON.stringify(payload);
 
-  if (transport === 'beacon' && typeof navigator.sendBeacon === 'function') {
+  if (keepalive && typeof navigator.sendBeacon === 'function') {
     try {
-      const ok = navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
-      return Promise.resolve(ok);
+      if (navigator.sendBeacon(url, new Blob([body], { type: 'text/plain;charset=utf-8' }))) return true;
     } catch {
-      /* fall through to fetch */
+      /* fetch below */
     }
   }
 
-  return fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    redirect: 'follow',
-    keepalive: transport === 'beacon',
-    body,
-  })
-    .then((res) => res.ok)
-    .catch(() => false);
+  try {
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      keepalive,
+      body,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function deliverAnalyticsPayload(
+  payload: AnalyticsEventPayload,
+  transport: 'fetch' | 'beacon',
+): Promise<boolean> {
+  const configured = Boolean(getSheetsWebhookUrl());
+  if (!configured) {
+    stashAnalyticsPreview(payload);
+    return false;
+  }
+
+  const keepalive = transport === 'beacon';
+  if (await postViaSheetsProxy(payload, keepalive)) return true;
+  if (await postDirectToGoogle(payload, keepalive)) return true;
+
+  stashAnalyticsPreview(payload);
+  return false;
 }
 
 export const sendAnalyticsEventToSheets = async (event: AnalyticsEventPayload): Promise<boolean> => {
@@ -105,10 +146,9 @@ export const sendAnalyticsEventBeacon = async (event: AnalyticsEventPayload): Pr
 };
 
 export const sendSessionToSheets = async (session: SessionResult): Promise<void> => {
-  const url = getSheetsWebhookUrl();
-  if (!url) return;
+  if (!getSheetsWebhookUrl()) return;
 
-  const payload = {
+  const payload: AnalyticsEventPayload = {
     ...session,
     riskLevel: session.status,
     eventType: 'session_completed',
@@ -118,11 +158,5 @@ export const sendSessionToSheets = async (session: SessionResult): Promise<void>
     timestamp: new Date().toISOString(),
   };
 
-  await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
+  await deliverAnalyticsPayload(payload, 'fetch');
 };
