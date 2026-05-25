@@ -179,7 +179,7 @@ export const PaymentCheckoutSheet = ({
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-emerald-300/90">Оплата</p>
-              <h2 id="payment-checkout-title" className="app-heading mt-1 text-xl">
+              <h2 id="payment-checkout-title" className="app-heading mt-1 leading-snug">
                 {reportAlreadyPaidHelp
                   ? 'Я уже оплатил'
                   : alreadyPaid && product === 'full_report'
