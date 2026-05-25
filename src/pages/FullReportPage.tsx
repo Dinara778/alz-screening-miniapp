@@ -22,7 +22,9 @@ import {
 } from '../utils/paidReportTemporal';
 import { downloadCognitiveReportPdf } from '../utils/pdfReport';
 import { isReportPaidUnlocked, isPaymentsBackendConfigured } from '../utils/telegramPayments';
+import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
+
 type ReportStep = 'ready' | 'report' | 'learned';
 
 const learnedItems = [
@@ -31,6 +33,26 @@ const learnedItems = [
   'слабые когнитивные паттерны',
   'рекомендации по улучшению',
 ] as const;
+
+const sessionPdfFeatures = [
+  'Онлайн-расшифровку результатов простым языком с опытным экспертом по когнитивной устойчивости (созвон)',
+  'Персональные рекомендации под вашу ситуацию',
+  'Понимание, что больше всего мешает вашему ресурсу',
+  'План улучшения показателей',
+] as const;
+
+/** Короткая подпись ссылки для PDF (без https://). */
+function pdfTelegramAppLinkLabel(): string {
+  const raw = (import.meta.env.VITE_SHARE_BOT_URL as string | undefined)?.trim() || 'https://t.me/cortalab_ns_bot';
+  try {
+    const host = new URL(raw).hostname.replace(/^www\./, '');
+    const path = new URL(raw).pathname.replace(/^\//, '');
+    if (host === 't.me') return path ? `t.me/${path}` : 't.me';
+  } catch {
+    /* ignore */
+  }
+  return raw.replace(/^https?:\/\//i, '');
+}
 
 export const FullReportPage = () => {
   const {
@@ -174,6 +196,39 @@ export const FullReportPage = () => {
           <li key={t.text}>{t.text}</li>
         ))}
       </ul>
+
+      <h2 className="mt-8 border-t border-slate-200 pt-6 text-lg font-bold">Что дальше</h2>
+      <h3 className="mt-4 text-base font-semibold text-slate-900">Что вы узнали</h3>
+      <ul className="mt-2 list-disc pl-5 space-y-1">
+        {learnedItems.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+      <p className="mt-4 text-sm leading-relaxed">
+        А дальше вы можете пройти индивидуальную сессию со специалистом по когнитивной устойчивости для
+        получения более глубоких рекомендаций по управлению своим когнитивным состоянием.
+      </p>
+
+      <h3 className="mt-5 text-base font-semibold text-slate-900">
+        Сессия с экспертом — {PAYMENT_PRODUCTS.consultation.priceRub.toLocaleString('ru-RU')} ₽
+      </h3>
+      <p className="mt-2 text-sm leading-relaxed">
+        30-минутная сессия по вашему когнитивному профилю с экспертом по когнитивной устойчивости.
+      </p>
+      <p className="mt-3 text-sm font-semibold text-slate-800">Что вы получите:</p>
+      <ul className="mt-2 list-none space-y-2 pl-0">
+        {sessionPdfFeatures.map((line) => (
+          <li key={line} className="text-sm leading-relaxed">
+            <span className="mr-1.5 text-teal-700">✓</span>
+            {line}
+          </li>
+        ))}
+      </ul>
+
+      <p className="mt-6 text-sm leading-relaxed text-slate-700">
+        Записаться на сессию можно в приложении:
+      </p>
+      <p className="mt-1 text-base font-semibold text-teal-800">{pdfTelegramAppLinkLabel()}</p>
     </div>
   );
 
