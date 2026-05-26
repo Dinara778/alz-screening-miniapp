@@ -436,21 +436,45 @@ async function confirmReportPaymentFast(sessionId: string): Promise<boolean> {
 }
 
 export type RecoverReportResult =
-  | { ok: true }
+  | { ok: true; sessionId: string }
   | { ok: false; message: string };
 
-/** Восстановить доступ к отчёту после Prodamus. */
+function findAnyReportPaidSessionIdInStorage(): string | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith('report_paid_')) continue;
+      if (localStorage.getItem(key) === '1') {
+        return key.slice('report_paid_'.length);
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function unlockReportSession(sessionId: string): RecoverReportResult {
+  localStorage.setItem(reportPaidStorageKey(sessionId), '1');
+  return { ok: true, sessionId };
+}
+
+/** Восстановить доступ к отчёту (Telegram + ЮKassa или Prodamus). */
 export async function recoverFullReportAccess(sessionId: string): Promise<RecoverReportResult> {
-  if (isReportPaidUnlocked(sessionId)) return { ok: true };
+  if (isReportPaidUnlocked(sessionId)) return { ok: true, sessionId };
+
+  const storedPaid = findAnyReportPaidSessionIdInStorage();
+  if (storedPaid) return unlockReportSession(storedPaid);
 
   const tg = window.Telegram?.WebApp;
   if (!tg?.initData) {
-    return { ok: false, message: 'Откройте Corta из бота в Telegram (не из браузера).' };
+    return { ok: false, message: 'Откройте Corta из Telegram (кнопка у бота), не во внешнем браузере.' };
   }
 
   const fromUrl = await recoverProdamusPaymentFromUrl();
-  if (fromUrl?.product === 'full_report' && fromUrl.sessionId === sessionId) {
-    return { ok: true };
+  if (fromUrl?.product === 'full_report' && fromUrl.sessionId) {
+    return unlockReportSession(fromUrl.sessionId);
   }
 
   const base = getPaymentsApiUrl();
@@ -462,24 +486,26 @@ export async function recoverFullReportAccess(sessionId: string): Promise<Recove
         body: JSON.stringify({ initData: tg.initData, sessionId, product: 'full_report' }),
       });
       const data = (await res.json()) as PaidOrderPayload;
-      if (res.ok && data.paid && applyPaidOrder(data)) return { ok: true };
+      if (res.ok && data.paid && data.sessionId && applyPaidOrder(data)) {
+        return { ok: true, sessionId: data.sessionId };
+      }
       if (res.status === 404) {
         return {
           ok: false,
-          message: 'Сервер ещё без обновления. Задеплойте последний код на Amvera и повторите.',
+          message: 'Сервер ещё без обновления. Обновите Corta и повторите через минуту.',
         };
       }
     } catch {
       return { ok: false, message: 'Нет связи с сервером. Проверьте интернет и повторите.' };
     }
 
-    if (await confirmReportPaymentFast(sessionId)) return { ok: true };
+    if (await confirmReportPaymentFast(sessionId)) return { ok: true, sessionId };
   }
 
   return {
     ok: false,
     message:
-      'Оплату пока не видим. Подождите 1–2 минуты и нажмите снова. Если деньги списались — напишите в поддержку с датой и @username в Telegram.',
+      'Оплату пока не видим по этому аккаунту. Если списание было — напишите в поддержку: дата, @username, что проходили тест дважды.',
   };
 }
 

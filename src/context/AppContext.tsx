@@ -21,8 +21,8 @@ import { pickStudyWordList } from '../utils/generateStimuli';
 import { arePaymentsActive, isPaymentsEnabled } from '../utils/paymentStub';
 import {
   getPaymentsApiUrl,
+  recoverFullReportAccess,
   recoverProdamusPaymentFromUrl,
-  tryRecoverReportAccess,
 } from '../utils/telegramPayments';
 import { useAppExitAnalytics } from '../hooks/useAppExitAnalytics';
 import { sendAnalyticsEventToSheets, sendSessionToSheets } from '../utils/sheetsWebhook';
@@ -254,12 +254,14 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         loadSessionFromHistory(loadProgress()?.latestSessionId ?? loadLastSessionId());
       if (session && !latestResult) setLatestResult(session);
       if (!session?.id) return;
-      const ok = await tryRecoverReportAccess(session.id);
-      if (ok && stage === 'result') {
-        setStage('full-report');
+      const recovered = await recoverFullReportAccess(session.id);
+      if (recovered.ok) {
+        const paidSession = loadSessionFromHistory(recovered.sessionId);
+        if (paidSession) setLatestResult(paidSession);
+        if (stage === 'result') setStage('full-report');
         return;
       }
-      if (stage === 'full-report' && !ok && !isReportPaidUnlocked(session.id, serverPaymentsReady)) {
+      if (stage === 'full-report' && !recovered.ok && !isReportPaidUnlocked(session.id, serverPaymentsReady)) {
         setStage('result');
       }
     };

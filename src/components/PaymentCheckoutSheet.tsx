@@ -19,7 +19,8 @@ type Props = {
   product: TelegramInvoiceProduct;
   sessionId: string;
   onClose: () => void;
-  onPaid: () => void;
+  /** sessionId оплаченного прохождения (для отчёта; может отличаться от текущего). */
+  onPaid: (paidSessionId?: string) => void;
   onNotice: (message: string | null) => void;
 };
 
@@ -41,6 +42,7 @@ export const PaymentCheckoutSheet = ({
     product === 'full_report' ? isReportPaidUnlocked(sessionId, false) : false,
   );
   const [sheetNotice, setSheetNotice] = useState<string | null>(null);
+  const [checkBusy, setCheckBusy] = useState(false);
   const payInFlightRef = useRef(false);
 
   const showNotice = useCallback(
@@ -90,13 +92,13 @@ export const PaymentCheckoutSheet = ({
     const onVis = () => {
       if (document.visibilityState !== 'visible') return;
       if (isReportPaidUnlocked(sessionId, serverPaymentsReady)) {
-        onPaid();
+        onPaid(sessionId);
         onClose();
         return;
       }
       void recoverFullReportAccess(sessionId).then((r) => {
         if (r.ok) {
-          onPaid();
+          onPaid(r.sessionId);
           onClose();
         }
       });
@@ -112,7 +114,7 @@ export const PaymentCheckoutSheet = ({
   const handlePay = async () => {
     if (payBusyOnly || payInFlightRef.current) return;
     if (product === 'full_report' && isReportPaidUnlocked(sessionId, serverPaymentsReady)) {
-      onPaid();
+      onPaid(sessionId);
       onClose();
       return;
     }
@@ -127,7 +129,7 @@ export const PaymentCheckoutSheet = ({
     try {
       const r = await openTelegramInvoiceForProduct(product, sessionId);
       if (r.status === 'paid') {
-        onPaid();
+        onPaid(sessionId);
         onClose();
         return;
       }
@@ -178,15 +180,22 @@ export const PaymentCheckoutSheet = ({
   };
 
   const handleCheckPayment = async () => {
-    if (product !== 'full_report' || payBusyOnly) return;
+    if (product !== 'full_report' || payBusyOnly || checkBusy) return;
+    setCheckBusy(true);
     showNotice('Проверяем оплату на сервере…');
-    const r = await recoverFullReportAccess(sessionId);
-    if (r.ok) {
-      onPaid();
-      onClose();
-      return;
+    try {
+      const r = await recoverFullReportAccess(sessionId);
+      if (r.ok) {
+        onPaid(r.sessionId);
+        onClose();
+        return;
+      }
+      showNotice(r.message);
+    } catch {
+      showNotice('Не удалось связаться с сервером. Проверьте интернет и повторите.');
+    } finally {
+      setCheckBusy(false);
     }
-    showNotice(r.message);
   };
 
   const reportAlreadyPaidHelp = alreadyPaidHelpOpen && product === 'full_report';
@@ -197,15 +206,13 @@ export const PaymentCheckoutSheet = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="payment-checkout-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
-      <button
-        type="button"
-        className="absolute inset-0 cursor-default"
-        aria-label="Закрыть"
-        onClick={onClose}
-      />
+      <div className="relative z-10 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
       <CalmCardShell
-        className="relative z-10 flex max-h-[min(92dvh,720px)] w-full max-w-md flex-col rounded-b-none sm:rounded-3xl"
+        className="flex max-h-[min(92dvh,720px)] w-full flex-col rounded-b-none sm:rounded-3xl"
         innerClassName="flex min-h-0 flex-1 flex-col p-0"
       >
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-3 pt-5 sm:px-6 sm:pt-6">
@@ -259,11 +266,15 @@ export const PaymentCheckoutSheet = ({
               <Button
                 type="button"
                 variant="sell"
-                className="w-full rounded-2xl py-3.5 text-sm font-semibold"
+                disabled={checkBusy}
+                className="relative z-20 w-full touch-manipulation rounded-2xl py-3.5 text-sm font-semibold"
                 onClick={() => void handleCheckPayment()}
               >
-                Проверить оплату и открыть отчёт
+                {checkBusy ? 'Проверяем оплату…' : 'Проверить оплату и открыть отчёт'}
               </Button>
+              {sheetNotice ? (
+                <p className="text-center text-xs leading-relaxed text-amber-200/95">{sheetNotice}</p>
+              ) : null}
             </div>
           ) : alreadyPaid && product === 'full_report' ? (
             <div className="mt-4 space-y-4">
@@ -275,7 +286,7 @@ export const PaymentCheckoutSheet = ({
                 variant="sell"
                 className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold sm:text-lg"
                 onClick={() => {
-                  onPaid();
+                  onPaid(sessionId);
                   onClose();
                 }}
               >
@@ -370,6 +381,7 @@ export const PaymentCheckoutSheet = ({
           </div>
         )}
       </CalmCardShell>
+      </div>
     </div>
   );
 };

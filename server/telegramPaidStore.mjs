@@ -80,3 +80,15 @@ export function isTelegramPaidForUser(tgUserId, sessionId, product) {
   }
   return { paid: false };
 }
+
+/** Любая успешная оплата продукта у пользователя (последняя по времени). */
+export function findLatestTelegramPaidForUser(tgUserId, product) {
+  if (tgUserId == null || !product) return { paid: false };
+  let best = null;
+  for (const row of paid.values()) {
+    if (row.tgUserId !== Number(tgUserId) || row.product !== product) continue;
+    if (!best || row.paidAt > best.paidAt) best = row;
+  }
+  if (!best) return { paid: false };
+  return { paid: true, product: best.product, sessionId: best.sessionId };
+}

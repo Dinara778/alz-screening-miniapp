@@ -44,6 +44,7 @@ import {
 import { prodamusVerifySignature } from './prodamusHmac.mjs';
 import { buildTelegramYookassaInvoiceParams } from './yookassaReceipt.mjs';
 import {
+  findLatestTelegramPaidForUser,
   isTelegramPaidForUser,
   markTelegramPaid,
   parseInvoicePayload,
@@ -638,7 +639,10 @@ app.post('/payment-recover-session', async (req, res) => {
     }
     const user = parseTgUser(initData);
     if (PAYMENT_PROVIDER === 'telegram') {
-      return res.json(isTelegramPaidForUser(user?.id, String(sessionId), product));
+      const exact = isTelegramPaidForUser(user?.id, String(sessionId), product);
+      if (exact.paid) return res.json(exact);
+      const anyPaid = findLatestTelegramPaidForUser(user?.id, product);
+      return res.json(anyPaid);
     }
     if (PAYMENT_PROVIDER !== 'prodamus') {
       return res.json({ paid: false });

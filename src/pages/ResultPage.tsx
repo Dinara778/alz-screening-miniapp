@@ -16,7 +16,7 @@ import { shareResultWithCard } from '../utils/shareResult';
 import { shouldBypassReportPayment } from '../utils/paymentStub';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
-import { hasPaymentReturnInUrl } from '../utils/storage';
+import { hasPaymentReturnInUrl, loadSessionFromHistory } from '../utils/storage';
 import {
   consultationPaidStorageKey,
   isReportPaidUnlocked,
@@ -89,6 +89,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     latestResult,
     participant,
     setStage,
+    setLatestResult,
     resultEntryStep,
     clearResultEntryStep,
     serverPaymentsReady,
@@ -201,9 +202,13 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     }
   };
 
-  const unlockFullReport = () => {
-    if (!latestResult) return;
-    localStorage.setItem(reportPaidStorageKey(latestResult.id), '1');
+  const unlockFullReport = (paidSessionId?: string) => {
+    const sid = paidSessionId ?? latestResult?.id;
+    if (!sid) return;
+    const session =
+      latestResult?.id === sid ? latestResult : loadSessionFromHistory(sid) ?? latestResult;
+    if (session) setLatestResult(session);
+    localStorage.setItem(reportPaidStorageKey(sid), '1');
     setStage('full-report');
   };
 
