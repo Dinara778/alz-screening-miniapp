@@ -10,6 +10,7 @@ import {
   openTelegramInvoiceForProduct,
   pollProdamusOrderPaidQuick,
   prodamusPendingOrderKey,
+  recoverFullReportAccess,
   type TelegramInvoiceProduct,
 } from '../utils/telegramPayments';
 
@@ -84,6 +85,26 @@ export const PaymentCheckoutSheet = ({
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [open, product, awaitingReturn, tryConfirmConsultationPaid]);
 
+  useEffect(() => {
+    if (!open || product !== 'full_report') return;
+    const onVis = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (isReportPaidUnlocked(sessionId, serverPaymentsReady)) {
+        onPaid();
+        onClose();
+        return;
+      }
+      void recoverFullReportAccess(sessionId).then((r) => {
+        if (r.ok) {
+          onPaid();
+          onClose();
+        }
+      });
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [open, product, sessionId, serverPaymentsReady, onPaid, onClose]);
+
   if (!open) return null;
 
   const payBusyOnly = payBusy;
@@ -156,6 +177,18 @@ export const PaymentCheckoutSheet = ({
     setAlreadyPaidHelpOpen(true);
   };
 
+  const handleCheckPayment = async () => {
+    if (product !== 'full_report' || payBusyOnly) return;
+    showNotice('Проверяем оплату на сервере…');
+    const r = await recoverFullReportAccess(sessionId);
+    if (r.ok) {
+      onPaid();
+      onClose();
+      return;
+    }
+    showNotice(r.message);
+  };
+
   const reportAlreadyPaidHelp = alreadyPaidHelpOpen && product === 'full_report';
 
   return (
@@ -223,6 +256,14 @@ export const PaymentCheckoutSheet = ({
                 Одна сессия оценки когнитивного профиля стоит {reportPriceRub} руб. Это разовый платёж за
                 расширенный отчёт, не подписка.
               </p>
+              <Button
+                type="button"
+                variant="sell"
+                className="w-full rounded-2xl py-3.5 text-sm font-semibold"
+                onClick={() => void handleCheckPayment()}
+              >
+                Проверить оплату и открыть отчёт
+              </Button>
             </div>
           ) : alreadyPaid && product === 'full_report' ? (
             <div className="mt-4 space-y-4">

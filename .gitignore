@@ -12,6 +12,9 @@ node_modules/.vite/
 .env
 .env.*.local
 
+# Оплаты Telegram (ЮKassa), не в git
+server/data/
+
 # OS / IDE
 .DS_Store
 *.tsbuildinfo

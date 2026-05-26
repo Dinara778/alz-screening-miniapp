@@ -43,6 +43,11 @@ import {
 } from './prodamus.mjs';
 import { prodamusVerifySignature } from './prodamusHmac.mjs';
 import { buildTelegramYookassaInvoiceParams } from './yookassaReceipt.mjs';
+import {
+  isTelegramPaidForUser,
+  markTelegramPaid,
+  parseInvoicePayload,
+} from './telegramPaidStore.mjs';
 
 function normalizeBotToken(raw) {
   const t = String(raw ?? '').trim();
@@ -565,6 +570,17 @@ app.post('/invoice', async (req, res) => {
       });
     }
 
+    const user = parseTgUser(initData);
+    const priorPaid = isTelegramPaidForUser(user?.id, String(sessionId), product);
+    if (priorPaid.paid) {
+      return res.json({
+        provider: 'telegram',
+        alreadyPaid: true,
+        sessionId: priorPaid.sessionId,
+        product: priorPaid.product,
+      });
+    }
+
     const payload = `${product}:${String(sessionId).slice(0, 40)}:${Date.now()}`.slice(0, 128);
     const receiptParams = buildTelegramYookassaInvoiceParams(spec);
     const result = await tgApi('createInvoiceLink', {
@@ -612,9 +628,6 @@ app.post('/payment-order-status', async (req, res) => {
 /** Восстановить доступ: есть ли уже оплаченный заказ для этой сессии. */
 app.post('/payment-recover-session', async (req, res) => {
   try {
-    if (PAYMENT_PROVIDER !== 'prodamus') {
-      return res.json({ paid: false });
-    }
     if (!BOT_TOKEN) return res.status(500).json({ paid: false });
     const { initData, sessionId, product = 'full_report' } = req.body ?? {};
     if (!initData || typeof initData !== 'string' || !sessionId) {
@@ -624,6 +637,12 @@ app.post('/payment-recover-session', async (req, res) => {
       return res.status(401).json({ paid: false });
     }
     const user = parseTgUser(initData);
+    if (PAYMENT_PROVIDER === 'telegram') {
+      return res.json(isTelegramPaidForUser(user?.id, String(sessionId), product));
+    }
+    if (PAYMENT_PROVIDER !== 'prodamus') {
+      return res.json({ paid: false });
+    }
     const st = prodamusFindPaidForUserSession(user?.id, String(sessionId), product);
     return res.json(st);
   } catch (e) {
@@ -750,7 +769,18 @@ async function processTelegramUpdate(update) {
   if (!update || !BOT_TOKEN) return;
 
   if (update.message?.successful_payment) {
-    console.info('[paid]', update.message.successful_payment.invoice_payload);
+    const sp = update.message.successful_payment;
+    console.info('[paid]', sp.invoice_payload);
+    const parsed = parseInvoicePayload(sp.invoice_payload);
+    const tgUserId = update.message.from?.id;
+    if (parsed && tgUserId != null) {
+      markTelegramPaid({
+        tgUserId,
+        sessionId: parsed.sessionId,
+        product: parsed.product,
+        payload: sp.invoice_payload,
+      });
+    }
   }
 
   const msg = update.message;

@@ -312,8 +312,10 @@ export const openTelegramInvoiceForProduct = async (
 
   return new Promise((resolve) => {
     tg.openInvoice!(invoiceUrl!, (st: string) => {
-      if (st === 'paid') resolve({ status: 'paid' });
-      else if (st === 'cancelled') resolve({ status: 'cancelled' });
+      if (st === 'paid') {
+        applyPaidOrder({ paid: true, product, sessionId });
+        resolve({ status: 'paid' });
+      } else if (st === 'cancelled') resolve({ status: 'cancelled' });
       else resolve({ status: 'failed', detail: st || 'unknown' });
     });
   });

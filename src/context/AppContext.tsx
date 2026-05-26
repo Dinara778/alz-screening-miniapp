@@ -249,12 +249,18 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       if (document.visibilityState !== 'visible') return;
       setHistory(loadHistory());
       if (stage !== 'result' && stage !== 'full-report') return;
-      if (latestResult?.id) return;
-      const session = loadSessionFromHistory(loadProgress()?.latestSessionId ?? loadLastSessionId());
-      if (session) setLatestResult(session);
-      if (stage === 'full-report' && session?.id) {
-        const ok = await tryRecoverReportAccess(session.id);
-        if (!ok && !isReportPaidUnlocked(session.id, serverPaymentsReady)) setStage('result');
+      const session =
+        latestResult ??
+        loadSessionFromHistory(loadProgress()?.latestSessionId ?? loadLastSessionId());
+      if (session && !latestResult) setLatestResult(session);
+      if (!session?.id) return;
+      const ok = await tryRecoverReportAccess(session.id);
+      if (ok && stage === 'result') {
+        setStage('full-report');
+        return;
+      }
+      if (stage === 'full-report' && !ok && !isReportPaidUnlocked(session.id, serverPaymentsReady)) {
+        setStage('result');
       }
     };
     document.addEventListener('visibilitychange', onVis);
