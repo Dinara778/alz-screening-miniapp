@@ -13,6 +13,7 @@ import { scoreAccentFromValue } from '../components/results/scoreAccent';
 import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { useApp } from '../context/AppContext';
 import { useHydrateLatestResult } from '../hooks/useHydrateLatestResult';
+import { useSyncPaidReportSession } from '../hooks/useSyncPaidReportSession';
 import { formatDomainInterpretationPlain } from '../copy/cognitiveDomainInterpretations';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { getLeadingDeficit } from '../utils/paidReport';
@@ -65,6 +66,7 @@ export const FullReportPage = () => {
     setAnalyticsScreenDetail,
   } = useApp();
   useHydrateLatestResult();
+  useSyncPaidReportSession();
   const [step, setStep] = useState<ReportStep>('ready');
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);

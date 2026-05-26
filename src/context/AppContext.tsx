@@ -16,14 +16,15 @@ import {
 } from '../utils/storage';
 import { goToIntroFresh, stripPaymentQueryFromUrl } from '../utils/appReload';
 import { MID_TEST_STAGES } from '../utils/storage';
-import { isReportPaidUnlocked } from '../utils/telegramPayments';
 import { pickStudyWordList } from '../utils/generateStimuli';
 import { arePaymentsActive, isPaymentsEnabled } from '../utils/paymentStub';
 import {
+  getPaidReportSessionId,
   getPaymentsApiUrl,
   recoverFullReportAccess,
   recoverProdamusPaymentFromUrl,
 } from '../utils/telegramPayments';
+import { consumeReopenPaidReportSessionId, markReopenPaidReportAfterReload } from '../utils/reportReload';
 import { useAppExitAnalytics } from '../hooks/useAppExitAnalytics';
 import { sendAnalyticsEventToSheets, sendSessionToSheets } from '../utils/sheetsWebhook';
 
@@ -219,6 +220,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
   const sentStageEventsRef = useRef<Set<string>>(new Set());
   const sentScreenViewEventsRef = useRef<Set<string>>(new Set());
+  const reportRecoverKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     sentStageEventsRef.current = new Set();
@@ -245,6 +247,34 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   }, [stage, latestResult]);
 
   useEffect(() => {
+    const paidId = consumeReopenPaidReportSessionId();
+    if (!paidId) return;
+    const session = loadSessionFromHistory(paidId);
+    if (session) {
+      setLatestResult(session);
+      setStage('full-report');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (stage !== 'result' && stage !== 'full-report') {
+      reportRecoverKeyRef.current = null;
+      return;
+    }
+    const sid =
+      latestResult?.id ?? loadProgress()?.latestSessionId ?? loadLastSessionId();
+    if (!sid) return;
+    const key = `${stage}:${sid}`;
+    if (reportRecoverKeyRef.current === key) return;
+    reportRecoverKeyRef.current = key;
+    void recoverFullReportAccess(sid).then((recovered) => {
+      if (!recovered.ok) return;
+      const paidSession = loadSessionFromHistory(recovered.sessionId);
+      if (paidSession) setLatestResult(paidSession);
+    });
+  }, [stage, latestResult?.id]);
+
+  useEffect(() => {
     const onVis = async () => {
       if (document.visibilityState !== 'visible') return;
       setHistory(loadHistory());
@@ -258,16 +288,15 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       if (recovered.ok) {
         const paidSession = loadSessionFromHistory(recovered.sessionId);
         if (paidSession) setLatestResult(paidSession);
-        if (stage === 'result') setStage('full-report');
         return;
       }
-      if (stage === 'full-report' && !recovered.ok && !isReportPaidUnlocked(session.id, serverPaymentsReady)) {
+      if (stage === 'full-report' && !getPaidReportSessionId(session.id)) {
         setStage('result');
       }
     };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
-  }, [stage, latestResult?.id, serverPaymentsReady]);
+  }, [stage, latestResult?.id]);
 
   useEffect(() => {
     if (!hasPaymentReturnInUrl()) return;
@@ -420,8 +449,12 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const refreshApp = useCallback(() => {
+    const paidId = getPaidReportSessionId(latestResult?.id);
+    if (paidId && stage === 'full-report') {
+      markReopenPaidReportAfterReload(paidId);
+    }
     goToIntroFresh();
-  }, []);
+  }, [latestResult?.id, stage]);
 
   const restartApp = useCallback(() => {
     goToIntroFresh();

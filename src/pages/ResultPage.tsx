@@ -128,10 +128,11 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   useEffect(() => {
     if (!latestResult?.id || skipNativePayment || !hasPaymentReturnInUrl()) return;
     void recoverProdamusPaymentFromUrl().then((recovery) => {
-      if (recovery?.product === 'full_report' && recovery.sessionId === latestResult.id) {
-        localStorage.setItem(reportPaidStorageKey(latestResult.id), '1');
-        setStage('full-report');
-      }
+      if (recovery?.product !== 'full_report' || !recovery.sessionId) return;
+      localStorage.setItem(reportPaidStorageKey(recovery.sessionId), '1');
+      const session = loadSessionFromHistory(recovery.sessionId);
+      if (session) setLatestResult(session);
+      setStage('full-report');
     });
   }, [latestResult?.id, skipNativePayment, setStage]);
 
@@ -216,7 +217,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
 
   const openCheckout = () => {
     if (skipNativePayment || reportUnlocked) {
-      unlockFullReport();
+      unlockFullReport(latestResult.id);
       return;
     }
     setPayNotice(null);

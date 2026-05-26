@@ -11,6 +11,7 @@ import {
   pollProdamusOrderPaidQuick,
   prodamusPendingOrderKey,
   recoverFullReportAccess,
+  verifyReportPaymentOnServer,
   type TelegramInvoiceProduct,
 } from '../utils/telegramPayments';
 
@@ -96,7 +97,7 @@ export const PaymentCheckoutSheet = ({
         onClose();
         return;
       }
-      void recoverFullReportAccess(sessionId).then((r) => {
+      void verifyReportPaymentOnServer(sessionId).then((r) => {
         if (r.ok) {
           onPaid(r.sessionId);
           onClose();
@@ -184,7 +185,7 @@ export const PaymentCheckoutSheet = ({
     setCheckBusy(true);
     showNotice('Проверяем оплату на сервере…');
     try {
-      const r = await recoverFullReportAccess(sessionId);
+      const r = await verifyReportPaymentOnServer(sessionId);
       if (r.ok) {
         onPaid(r.sessionId);
         onClose();

@@ -396,50 +396,8 @@ export async function recoverProdamusPaymentFromUrl(): Promise<ProdamusPaymentRe
   return recovery;
 }
 
-/** Последнее прохождение в истории, за которое оплачен отчёт. */
-export function findPaidReportSessionId(): string | null {
-  if (typeof localStorage === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem('alz_history_v1');
-    if (!raw) return null;
-    const history = JSON.parse(raw) as { id: string }[];
-    const newest = history[0]?.id;
-    if (newest && localStorage.getItem(reportPaidStorageKey(newest)) === '1') {
-      return newest;
-    }
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
-
-/**
- * Доступ к полному отчёту: оплачено в localStorage, оплата выключена на сборке или dev-обход.
- */
-export const isReportPaidUnlocked = (sessionId: string, serverPaymentsReady = false): boolean => {
-  if (localStorage.getItem(reportPaidStorageKey(sessionId)) === '1') return true;
-  if (isDevPaymentBypass()) return true;
-  if (!arePaymentsActive(serverPaymentsReady)) return true;
-  return false;
-};
-
-/** Быстрая проверка оплаты (кнопка «Я уже оплатил», без долгого ожидания). */
-async function confirmReportPaymentFast(sessionId: string): Promise<boolean> {
-  for (const orderId of getRememberedOrderIds(sessionId)) {
-    for (let i = 0; i < 6; i++) {
-      const data = await fetchPaidOrder(orderId, 'payment-order-status');
-      if (data?.paid && data.sessionId === sessionId && applyPaidOrder(data)) return true;
-      if (i < 5) await new Promise((r) => setTimeout(r, 1000));
-    }
-  }
-  return false;
-}
-
-export type RecoverReportResult =
-  | { ok: true; sessionId: string }
-  | { ok: false; message: string };
-
-function findAnyReportPaidSessionIdInStorage(): string | null {
+/** Любая сессия с флагом report_paid_* в localStorage. */
+export function findAnyReportPaidSessionIdInStorage(): string | null {
   if (typeof localStorage === 'undefined') return null;
   try {
     for (let i = 0; i < localStorage.length; i++) {
@@ -455,6 +413,134 @@ function findAnyReportPaidSessionIdInStorage(): string | null {
   return null;
 }
 
+/**
+ * ID сессии, за которую оплачен отчёт: сначала preferred, иначе любая оплаченная.
+ */
+export function getPaidReportSessionId(preferredSessionId?: string | null): string | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    if (preferredSessionId && localStorage.getItem(reportPaidStorageKey(preferredSessionId)) === '1') {
+      return preferredSessionId;
+    }
+  } catch {
+    /* ignore */
+  }
+  return findAnyReportPaidSessionIdInStorage();
+}
+
+/** @deprecated Используйте getPaidReportSessionId */
+export function findPaidReportSessionId(): string | null {
+  return getPaidReportSessionId(loadLastSessionIdFromHistory());
+}
+
+function loadLastSessionIdFromHistory(): string | null {
+  try {
+    const raw = localStorage.getItem('alz_history_v1');
+    if (!raw) return null;
+    const history = JSON.parse(raw) as { id: string }[];
+    return history[0]?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Доступ к отчёту именно для этой сессии (одна оплата = одно прохождение теста).
+ */
+export const isReportPaidUnlocked = (sessionId: string, serverPaymentsReady = false): boolean => {
+  if (isDevPaymentBypass()) return true;
+  if (!arePaymentsActive(serverPaymentsReady)) return true;
+  if (typeof localStorage === 'undefined') return false;
+  try {
+    return localStorage.getItem(reportPaidStorageKey(sessionId)) === '1';
+  } catch {
+    return false;
+  }
+};
+
+/** Есть ли оплаченный отчёт за любое прохождение (восстановление / «Я уже оплатил»). */
+export const hasAnyPaidReportInStorage = (): boolean =>
+  findAnyReportPaidSessionIdInStorage() != null;
+
+/** Быстрая проверка оплаты Prodamus (только для своей sessionId). */
+async function confirmReportPaymentFast(sessionId: string): Promise<boolean> {
+  for (const orderId of getRememberedOrderIds(sessionId)) {
+    for (let i = 0; i < 6; i++) {
+      const data = await fetchPaidOrder(orderId, 'payment-order-status');
+      if (data?.paid && data.sessionId === sessionId && applyPaidOrder(data)) return true;
+      if (i < 5) await new Promise((r) => setTimeout(r, 1000));
+    }
+  }
+  return false;
+}
+
+function isReportPaidInStorage(sessionId: string): boolean {
+  if (typeof localStorage === 'undefined') return false;
+  try {
+    return localStorage.getItem(reportPaidStorageKey(sessionId)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+const VERIFY_PAYMENT_FAIL_MSG =
+  'Оплату не нашли по вашему аккаунту Telegram. Если деньги списались — напишите в поддержку: дата и @username.';
+
+/**
+ * «Проверить оплату» — только подтверждение на сервере (или Prodamus-заказ этой сессии).
+ * Не доверяет чужим report_paid_* в localStorage и не открывает отчёт без реальной оплаты.
+ */
+export async function verifyReportPaymentOnServer(sessionId: string): Promise<RecoverReportResult> {
+  if (isDevPaymentBypass()) return { ok: true, sessionId };
+
+  const tg = window.Telegram?.WebApp;
+  if (!tg?.initData) {
+    return { ok: false, message: 'Откройте Corta из Telegram (кнопка у бота), не во внешнем браузере.' };
+  }
+
+  const base = getPaymentsApiUrl();
+  if (!base) {
+    return { ok: false, message: 'Сервер оплаты не настроен. Обновите приложение позже.' };
+  }
+
+  try {
+    const res = await fetch(`${trimApi(base)}/payment-recover-session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData: tg.initData, sessionId, product: 'full_report' }),
+    });
+    const data = (await res.json()) as PaidOrderPayload;
+    if (res.ok && data.paid === true && data.sessionId) {
+      applyPaidOrder(data);
+      return { ok: true, sessionId: data.sessionId };
+    }
+    if (res.status === 404) {
+      return {
+        ok: false,
+        message: 'Сервер ещё без обновления. Обновите Corta и повторите через минуту.',
+      };
+    }
+  } catch {
+    return { ok: false, message: 'Нет связи с сервером. Проверьте интернет и повторите.' };
+  }
+
+  if (await confirmReportPaymentFast(sessionId)) {
+    return { ok: true, sessionId };
+  }
+
+  try {
+    localStorage.removeItem(reportPaidStorageKey(sessionId));
+  } catch {
+    /* ignore */
+  }
+
+  return { ok: false, message: VERIFY_PAYMENT_FAIL_MSG };
+}
+
+export type RecoverReportResult =
+  | { ok: true; sessionId: string }
+  | { ok: false; message: string };
+
 function unlockReportSession(sessionId: string): RecoverReportResult {
   localStorage.setItem(reportPaidStorageKey(sessionId), '1');
   return { ok: true, sessionId };
@@ -462,10 +548,9 @@ function unlockReportSession(sessionId: string): RecoverReportResult {
 
 /** Восстановить доступ к отчёту (Telegram + ЮKassa или Prodamus). */
 export async function recoverFullReportAccess(sessionId: string): Promise<RecoverReportResult> {
-  if (isReportPaidUnlocked(sessionId)) return { ok: true, sessionId };
-
-  const storedPaid = findAnyReportPaidSessionIdInStorage();
-  if (storedPaid) return unlockReportSession(storedPaid);
+  if (isReportPaidInStorage(sessionId)) {
+    return { ok: true, sessionId };
+  }
 
   const tg = window.Telegram?.WebApp;
   if (!tg?.initData) {
