@@ -6,6 +6,7 @@ import { ProgressBar } from '../components/ProgressBar';
 import { StroopConfirmStep } from '../components/StroopConfirmStep';
 import { FlankerDirButtonPreview, TestInstruction } from '../components/TestInstruction';
 import { TestProgressBanner } from '../components/TestProgressBanner';
+import { FaceIllustration } from '../components/faces/FaceIllustration';
 import { InterferenceWaitPanel } from '../components/test/InterferenceWaitPanel';
 import { useApp } from '../context/AppContext';
 import { useFaceNameTest } from '../hooks/useFaceNameTest';
@@ -513,8 +514,8 @@ export const TestPage = () => {
             <ProgressBar value={faceStudyIndex + 1} max={face.trials.length} />
           </div>
         )}
-        <div className="rounded-xl overflow-hidden border-2 border-emerald-900 bg-white">
-          <img src={f.image} alt={f.label} className="h-52 w-full object-cover" />
+        <div className="mx-auto w-full max-w-sm border-2 border-emerald-900/80">
+          <FaceIllustration faceId={f.id} title={f.label} />
         </div>
         <div className="text-center text-2xl">{f.correctName}</div>
         <div className="flex w-full flex-col gap-3">
@@ -650,13 +651,8 @@ export const TestPage = () => {
           </h2>
           <ProgressBar value={faceTestIndex + 1} max={face.trials.length} />
         </div>
-        <div className="overflow-hidden rounded-2xl border-2 border-white/15 bg-white">
-          <img
-            src={f.image}
-            alt={f.label}
-            className="mx-auto h-48 w-full max-w-sm object-cover sm:h-52"
-            decoding="async"
-          />
+        <div className="mx-auto w-full max-w-sm shrink-0 border-2 border-white/20">
+          <FaceIllustration faceId={f.id} title={f.label} />
         </div>
         <div className="grid gap-3">
           {f.options.map((name) => (
