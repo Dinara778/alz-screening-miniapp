@@ -15,15 +15,15 @@ export type PaymentProductMeta = {
 
 export const PAYMENT_PRODUCTS: Record<TelegramInvoiceProduct, PaymentProductMeta> = {
   full_report: {
-    title: 'Расшифровка результата + адресные рекомендации',
+    title: 'Расшифровка результата + рекомендации по улучшению вашего профиля',
     priceRub: 199,
-    subtitle: 'PDF для скачивания на основе вашего когнитивного профиля',
+    subtitle: '',
     bullets: [
       'Карта перегрузки и расшифровка зон',
       'Персональные рекомендации по улучшению состояния',
-      'Отчёт сохраняется на вашем устройстве',
+      'PDF сохраняется на вашем устройстве',
     ],
-    paymentNote: 'Оплата через Telegram (ЮKassa) · чек на email после оплаты',
+    paymentNote: 'Чек на email после оплаты',
     awaitingReturnHint:
       'После успешной оплаты отчёт откроется автоматически. Если этого не произошло — напишите в техподдержку.',
     redirectOpenedMessage:

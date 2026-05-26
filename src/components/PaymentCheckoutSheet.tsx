@@ -222,7 +222,7 @@ export const PaymentCheckoutSheet = ({
               <p className="text-xs font-medium uppercase tracking-wide text-emerald-300/90">Оплата</p>
               <h2 id="payment-checkout-title" className="app-heading mt-1 leading-snug">
                 {reportAlreadyPaidHelp
-                  ? 'Я уже оплатил'
+                  ? 'я уже оплатил(а)'
                   : alreadyPaid && product === 'full_report'
                     ? 'Доступ уже есть'
                     : meta.title}
@@ -296,7 +296,9 @@ export const PaymentCheckoutSheet = ({
             </div>
           ) : (
             <div className="mt-4 space-y-4">
-              <p className="calm-body text-sm text-white/80">{meta.subtitle}</p>
+              {meta.subtitle ? (
+                <p className="calm-body text-sm text-white/80">{meta.subtitle}</p>
+              ) : null}
 
               <ul className="calm-inset space-y-2 text-sm text-white/85">
                 {meta.bullets.map((line) => (
@@ -358,7 +360,7 @@ export const PaymentCheckoutSheet = ({
                 className="w-full shrink-0 rounded-2xl py-3.5 text-sm font-semibold"
                 onClick={handleAlreadyPaidHelp}
               >
-                Я уже оплатил
+                я уже оплатил(а)
               </Button>
             ) : null}
 
