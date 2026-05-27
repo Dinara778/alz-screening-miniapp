@@ -236,11 +236,15 @@ export const openTelegramInvoiceForProduct = async (
   let orderId: string | undefined;
 
   try {
+    const controller = new AbortController();
+    const fetchTimeout = window.setTimeout(() => controller.abort(), 25_000);
     const res = await fetch(`${apiUrl}/invoice`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ initData: tg.initData, product, sessionId }),
+      signal: controller.signal,
     });
+    window.clearTimeout(fetchTimeout);
     const raw = await res.text();
     let data: InvoiceResponse = {};
     try {
@@ -276,6 +280,9 @@ export const openTelegramInvoiceForProduct = async (
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    if (e instanceof Error && e.name === 'AbortError') {
+      return { status: 'error', message: 'Сервер оплаты не ответил. Проверьте интернет и нажмите «Оплатить» ещё раз.' };
+    }
     if (/did not match the expected pattern/i.test(msg)) {
       return {
         status: 'error',
@@ -310,14 +317,54 @@ export const openTelegramInvoiceForProduct = async (
 
   if (!tg.openInvoice) return { status: 'skipped', reason: 'no_open_invoice' };
 
+  try {
+    tg.expand?.();
+  } catch {
+    /* ignore */
+  }
+
   return new Promise((resolve) => {
-    tg.openInvoice!(invoiceUrl!, (st: string) => {
-      if (st === 'paid') {
-        applyPaidOrder({ paid: true, product, sessionId });
-        resolve({ status: 'paid' });
-      } else if (st === 'cancelled') resolve({ status: 'cancelled' });
-      else resolve({ status: 'failed', detail: st || 'unknown' });
-    });
+    let settled = false;
+    let sawHidden = false;
+
+    const finish = (result: OpenInvoiceResult) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(hardTimeout);
+      window.clearTimeout(visibilityUnlockTimer);
+      document.removeEventListener('visibilitychange', onVisibility);
+      resolve(result);
+    };
+
+    const hardTimeout = window.setTimeout(() => {
+      finish({ status: 'failed', detail: 'invoice_timeout' });
+    }, 180_000);
+
+    let visibilityUnlockTimer = 0;
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        sawHidden = true;
+        return;
+      }
+      if (document.visibilityState !== 'visible' || !sawHidden || settled) return;
+      visibilityUnlockTimer = window.setTimeout(() => {
+        if (!settled) finish({ status: 'cancelled' });
+      }, 2000);
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    try {
+      tg.openInvoice!(invoiceUrl!, (st: string) => {
+        if (st === 'paid') {
+          applyPaidOrder({ paid: true, product, sessionId });
+          finish({ status: 'paid' });
+        } else if (st === 'cancelled') finish({ status: 'cancelled' });
+        else finish({ status: 'failed', detail: st || 'unknown' });
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      finish({ status: 'error', message: msg });
+    }
   });
 };
 

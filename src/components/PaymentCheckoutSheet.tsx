@@ -55,13 +55,20 @@ export const PaymentCheckoutSheet = ({
   );
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setPayBusy(false);
+      setCheckBusy(false);
+      payInFlightRef.current = false;
+      return;
+    }
     setAlreadyPaidHelpOpen(false);
-    if (product !== 'full_report') return;
-    setAlreadyPaid(isReportPaidUnlocked(sessionId, serverPaymentsReady));
+    setPayBusy(false);
+    setCheckBusy(false);
     setAwaitingReturn(false);
     setSheetNotice(null);
     payInFlightRef.current = false;
+    if (product !== 'full_report') return;
+    setAlreadyPaid(isReportPaidUnlocked(sessionId, serverPaymentsReady));
   }, [open, product, sessionId, serverPaymentsReady]);
 
   const tryConfirmConsultationPaid = useCallback(async (): Promise<boolean> => {
@@ -110,10 +117,14 @@ export const PaymentCheckoutSheet = ({
 
   if (!open) return null;
 
-  const payBusyOnly = payBusy;
+  const payLabel = payBusy
+    ? 'Открываем оплату…'
+    : awaitingReturn
+      ? `Повторить оплату ${meta.priceRub} ₽`
+      : `Оплатить ${meta.priceRub} ₽`;
 
   const handlePay = async () => {
-    if (payBusyOnly || payInFlightRef.current) return;
+    if (payBusy || payInFlightRef.current) return;
     if (product === 'full_report' && isReportPaidUnlocked(sessionId, serverPaymentsReady)) {
       onPaid(sessionId);
       onClose();
@@ -126,7 +137,13 @@ export const PaymentCheckoutSheet = ({
     }
     payInFlightRef.current = true;
     setPayBusy(true);
+    setAwaitingReturn(false);
     showNotice(null);
+    try {
+      tg.expand?.();
+    } catch {
+      /* ignore */
+    }
     try {
       const r = await openTelegramInvoiceForProduct(product, sessionId);
       if (r.status === 'paid') {
@@ -149,19 +166,20 @@ export const PaymentCheckoutSheet = ({
           payments_disabled:
             'Оплата не настроена на сервере. В Amvera: PAYMENT_PROVIDER=telegram, TELEGRAM_PAYMENT_PROVIDER_TOKEN, пересборка с VITE_PAYMENTS_ENABLED=true',
         };
-        const msg = byReason[r.reason];
-        if (msg) showNotice(msg);
+        showNotice(byReason[r.reason] ?? 'Оплата временно недоступна');
         return;
       }
       if (r.status === 'cancelled') {
-        showNotice('Оплата отменена');
+        showNotice('Оплата отменена. Нажмите «Оплатить» ещё раз, когда будете готовы.');
         return;
       }
       if (r.status === 'failed') {
         showNotice(
-          product === 'full_report'
-            ? 'Оплата не завершена. Попробуйте ещё раз или напишите в техподдержку.'
-            : 'Оплата не завершена. Попробуйте ещё раз.',
+          r.detail === 'invoice_timeout'
+            ? 'Окно оплаты закрылось. Нажмите «Оплатить» ещё раз.'
+            : product === 'full_report'
+              ? 'Оплата не завершена. Попробуйте ещё раз или напишите в техподдержку.'
+              : 'Оплата не завершена. Попробуйте ещё раз.',
         );
         return;
       }
@@ -175,13 +193,13 @@ export const PaymentCheckoutSheet = ({
   };
 
   const handleAlreadyPaidHelp = () => {
-    if (product !== 'full_report' || payBusyOnly) return;
+    if (product !== 'full_report' || payBusy) return;
     showNotice(null);
     setAlreadyPaidHelpOpen(true);
   };
 
   const handleCheckPayment = async () => {
-    if (product !== 'full_report' || payBusyOnly || checkBusy) return;
+    if (product !== 'full_report' || payBusy || checkBusy) return;
     setCheckBusy(true);
     showNotice('Проверяем оплату на сервере…');
     try {
@@ -203,15 +221,21 @@ export const PaymentCheckoutSheet = ({
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4"
+      className="fixed inset-0 z-[80] flex items-end justify-center p-0 pointer-events-none sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="payment-checkout-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
     >
-      <div className="relative z-10 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        aria-label="Закрыть окно оплаты"
+        className="absolute inset-0 pointer-events-auto bg-black/70"
+        onClick={onClose}
+      />
+      <div
+        className="relative z-10 w-full max-w-md pointer-events-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
       <CalmCardShell
         className="flex max-h-[min(92dvh,720px)] w-full flex-col rounded-b-none sm:rounded-3xl"
         innerClassName="flex min-h-0 flex-1 flex-col p-0"
@@ -341,23 +365,30 @@ export const PaymentCheckoutSheet = ({
             </Button>
           </div>
         ) : !alreadyPaid || product !== 'full_report' ? (
-          <div className="shrink-0 space-y-3 border-t border-white/10 px-5 py-4 sm:px-6">
+          <div className="relative z-20 shrink-0 space-y-3 border-t border-white/10 px-5 py-4 sm:px-6">
+            {sheetNotice ? (
+              <p className="text-center text-xs leading-relaxed text-amber-200/95">{sheetNotice}</p>
+            ) : null}
             <Button
               type="button"
               variant="sell"
-              disabled={payBusyOnly || awaitingReturn}
-              className="w-full shrink-0 rounded-2xl py-4 text-[1.0625rem] font-bold sm:text-lg"
+              disabled={payBusy}
+              className="relative z-20 w-full shrink-0 touch-manipulation rounded-2xl py-4 text-[1.0625rem] font-bold sm:text-lg"
               onClick={() => void handlePay()}
+              onPointerDown={(e) => {
+                if (payBusy || payInFlightRef.current) return;
+                e.currentTarget.setPointerCapture?.(e.pointerId);
+              }}
             >
-              {payBusy ? 'Открываем оплату…' : awaitingReturn ? 'Оплата открыта' : `Оплатить ${meta.priceRub} ₽`}
+              {payLabel}
             </Button>
 
             {product === 'full_report' ? (
               <Button
                 type="button"
                 variant="secondary"
-                disabled={payBusyOnly}
-                className="w-full shrink-0 rounded-2xl py-3.5 text-sm font-semibold"
+                disabled={payBusy}
+                className="relative z-20 w-full shrink-0 touch-manipulation rounded-2xl py-3.5 text-sm font-semibold"
                 onClick={handleAlreadyPaidHelp}
               >
                 я уже оплатил(а)
