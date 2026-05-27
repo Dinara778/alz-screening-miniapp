@@ -4,13 +4,13 @@ import { Button } from './Button';
 import { CalmCardShell } from './CalmCardShell';
 import { TELEGRAM_SUPPORT_URL } from './SupportFooter';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
+import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import {
   consultationPaidStorageKey,
   isReportPaidUnlocked,
   openTelegramInvoiceForProduct,
   pollProdamusOrderPaidQuick,
   prodamusPendingOrderKey,
-  recoverFullReportAccess,
   verifyReportPaymentOnServer,
   type TelegramInvoiceProduct,
 } from '../utils/telegramPayments';
@@ -33,7 +33,7 @@ export const PaymentCheckoutSheet = ({
   onPaid,
   onNotice,
 }: Props) => {
-  const { serverPaymentsReady } = useApp();
+  const { serverPaymentsReady, participant } = useApp();
   const meta = PAYMENT_PRODUCTS[product];
   const reportPriceRub = PAYMENT_PRODUCTS.full_report.priceRub;
   const [payBusy, setPayBusy] = useState(false);
@@ -52,6 +52,23 @@ export const PaymentCheckoutSheet = ({
       onNotice(msg);
     },
     [onNotice],
+  );
+
+  const trackPaymentEvent = useCallback(
+    (eventType: string, extra?: Record<string, unknown>) => {
+      void sendAnalyticsEventToSheets({
+        eventType,
+        sessionId,
+        stage: 'result',
+        screen: 'result/report-offer',
+        participant: participant ?? undefined,
+        product,
+        ...extra,
+      }).catch(() => {
+        /* analytics must not break payment UX */
+      });
+    },
+    [sessionId, participant, product],
   );
 
   useEffect(() => {
@@ -139,6 +156,7 @@ export const PaymentCheckoutSheet = ({
     setPayBusy(true);
     setAwaitingReturn(false);
     showNotice(null);
+    trackPaymentEvent('payment_click', { source: 'report_checkout' });
     try {
       tg.expand?.();
     } catch {
@@ -147,16 +165,19 @@ export const PaymentCheckoutSheet = ({
     try {
       const r = await openTelegramInvoiceForProduct(product, sessionId);
       if (r.status === 'paid') {
+        trackPaymentEvent('payment_paid');
         onPaid(sessionId);
         onClose();
         return;
       }
       if (r.status === 'redirected') {
+        trackPaymentEvent('payment_opened', { provider: 'link' });
         setAwaitingReturn(true);
         showNotice(meta.redirectOpenedMessage);
         return;
       }
       if (r.status === 'skipped') {
+        trackPaymentEvent('payment_error', { reason: r.reason });
         const byReason: Record<(typeof r)['reason'], string> = {
           not_telegram: 'Оплата доступна только в Telegram',
           no_api_url: 'Сервер оплаты не настроен',
@@ -170,10 +191,12 @@ export const PaymentCheckoutSheet = ({
         return;
       }
       if (r.status === 'cancelled') {
+        trackPaymentEvent('payment_cancelled');
         showNotice('Оплата отменена. Нажмите «Оплатить» ещё раз, когда будете готовы.');
         return;
       }
       if (r.status === 'failed') {
+        trackPaymentEvent('payment_error', { reason: 'failed', detail: r.detail });
         showNotice(
           r.detail === 'invoice_timeout'
             ? 'Окно оплаты закрылось. Нажмите «Оплатить» ещё раз.'
@@ -184,6 +207,7 @@ export const PaymentCheckoutSheet = ({
         return;
       }
       if (r.status === 'error') {
+        trackPaymentEvent('payment_error', { reason: 'error', detail: r.message });
         showNotice(r.message);
       }
     } finally {
@@ -202,15 +226,19 @@ export const PaymentCheckoutSheet = ({
     if (product !== 'full_report' || payBusy || checkBusy) return;
     setCheckBusy(true);
     showNotice('Проверяем оплату на сервере…');
+    trackPaymentEvent('payment_recover_click');
     try {
       const r = await verifyReportPaymentOnServer(sessionId);
       if (r.ok) {
+        trackPaymentEvent('payment_recover_paid', { paidSessionId: r.sessionId });
         onPaid(r.sessionId);
         onClose();
         return;
       }
+      trackPaymentEvent('payment_recover_not_found');
       showNotice(r.message);
     } catch {
+      trackPaymentEvent('payment_recover_error');
       showNotice('Не удалось связаться с сервером. Проверьте интернет и повторите.');
     } finally {
       setCheckBusy(false);

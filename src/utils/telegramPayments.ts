@@ -234,10 +234,11 @@ export const openTelegramInvoiceForProduct = async (
   let invoiceUrl: string | undefined;
   let paymentUrl: string | undefined;
   let orderId: string | undefined;
+  let fetchTimeout = 0;
 
   try {
     const controller = new AbortController();
-    const fetchTimeout = window.setTimeout(() => controller.abort(), 25_000);
+    fetchTimeout = window.setTimeout(() => controller.abort(), 25_000);
     const res = await fetch(`${apiUrl}/invoice`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -291,6 +292,8 @@ export const openTelegramInvoiceForProduct = async (
       };
     }
     return { status: 'error', message: msg };
+  } finally {
+    if (fetchTimeout) window.clearTimeout(fetchTimeout);
   }
 
   if (paymentUrl && orderId) {
@@ -315,7 +318,21 @@ export const openTelegramInvoiceForProduct = async (
     };
   }
 
-  if (!tg.openInvoice) return { status: 'skipped', reason: 'no_open_invoice' };
+  if (!tg.openInvoice) {
+    if (typeof tg.openLink === 'function') {
+      try {
+        tg.openLink(invoiceUrl!);
+        return {
+          status: 'redirected',
+          orderId: '',
+          message: PAYMENT_PRODUCTS[product].redirectOpenedMessage,
+        };
+      } catch {
+        return { status: 'skipped', reason: 'no_open_invoice' };
+      }
+    }
+    return { status: 'skipped', reason: 'no_open_invoice' };
+  }
 
   try {
     tg.expand?.();
