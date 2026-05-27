@@ -58,6 +58,8 @@ function appendRow_(data) {
       'extra',
     ]);
   }
+  // sessionId: сначала число (sessionSeed), после теста — UUID; колонка только «текст»
+  sheet.getRange('C:C').setNumberFormat('@');
 
   const p = data.participant || {};
   const screen =

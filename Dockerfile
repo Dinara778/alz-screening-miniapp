@@ -7,8 +7,9 @@ COPY package*.json ./
 RUN npm ci
 COPY . .
 
+# Amvera «Сборка» → --build-arg; если не передан — true (раньше default false ломал /health при true в UI)
 ARG VITE_TELEGRAM_PAYMENTS_URL=
-ARG VITE_PAYMENTS_ENABLED=false
+ARG VITE_PAYMENTS_ENABLED=true
 ARG VITE_SHEETS_WEBHOOK_URL=
 ARG VITE_SHARE_BOT_URL=
 ENV VITE_TELEGRAM_PAYMENTS_URL=$VITE_TELEGRAM_PAYMENTS_URL

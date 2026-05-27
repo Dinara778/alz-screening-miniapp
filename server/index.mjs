@@ -387,7 +387,11 @@ async function sendHealthJson(res) {
       webhookActive,
       webhookLastError,
       frontend: buildInfo
-        ? { paymentsEnabled: frontendPaymentsOn, builtAt: buildInfo.builtAt }
+        ? {
+            paymentsEnabled: frontendPaymentsOn,
+            paymentsEnabledEnv: buildInfo.paymentsEnabledEnv ?? null,
+            builtAt: buildInfo.builtAt,
+          }
         : { paymentsEnabled: null, note: 'пересоберите проект' },
       hint: hints.length ? hints.join(' · ') : 'Сервер и вебхук в порядке. Тестируйте оплату только из Telegram.',
     },
