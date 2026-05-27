@@ -4,14 +4,14 @@
 
 | eventType | Когда |
 |-----------|--------|
-| `stage_reached` | Открыл крупный этап (`welcome`, `test`, `result`…) |
-| `screen_view` | Открыл подэкран (`screen` = `result/report-offer` и т.д.) |
-| `app_exit` | Свернул / закрыл Mini App (`screen`, `exitReason`) |
+| `funnel_milestone` | Крупный этап: intro, анкета, старт теста, результат, отчёт |
+| `app_exit` | Свернул / закрыл Mini App; в колонке **screen** — весь путь по экранам |
+| `session_completed` | Завершил тест; в **screen** — путь `intro → … → result` |
 | `form_started` / `form_submitted` | Анкета |
 | `session_completed` | Завершил все задания |
 | `full_report_opened` и др. | Отчёт, оплата |
 
-**Где вышел:** фильтр `eventType = app_exit`, смотрите колонку **`screen`**.
+**Где вышел:** фильтр `eventType = app_exit`, смотрите колонку **`screen`** (полный маршрут через ` → `, не одна строка на каждый шаг теста).
 
 Примеры `screen`:
 

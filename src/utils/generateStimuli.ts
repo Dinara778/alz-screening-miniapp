@@ -17,6 +17,11 @@ function lastWordSig(): string {
   return localStorage.getItem('alz_last_word_sig') || '';
 }
 
+function lastFaceNameSig(): string {
+  if (typeof localStorage === 'undefined') return '';
+  return localStorage.getItem('alz_last_face_name_sig') || '';
+}
+
 /** 5 слов для текущего прохождения: не совпадает с последним сохранённым набором, seed + анти-привыкание. */
 export function pickStudyWordList(sessionSeed: number): string[] {
   const lastSig = lastWordSig();
@@ -182,14 +187,41 @@ export const createStroopTrials = (sessionSeed: number): StroopStimulus[] => {
 export type FaceStimulus = { id: number; label: string; image: string; correctName: string; options: string[] };
 
 export const createFaceTrials = (sessionSeed: number): FaceStimulus[] => {
-  const rng = mulberry32(stimulusSubSeed(sessionSeed, 'face-name'));
-  const base = [
+  const baseFaces = [
     { id: 1, label: 'Лицо 1', image: publicAsset('/faces/man-1.svg'), correctName: 'Михаил' },
     { id: 2, label: 'Лицо 2', image: publicAsset('/faces/man-2.svg'), correctName: 'Иван' },
     { id: 3, label: 'Лицо 3', image: publicAsset('/faces/man-3.svg'), correctName: 'Дмитрий' },
   ];
   const names = ['Михаил', 'Иван', 'Дмитрий'];
-  return shuffle(base, rng).map((f) => ({ ...f, options: shuffle(names, rng) }));
+  const previousSig = lastFaceNameSig();
+
+  for (let bump = 0; bump < 40; bump += 1) {
+    const rng = mulberry32(stimulusSubSeed(sessionSeed, 'face-name', bump));
+    const assignedNames = shuffle([...names], rng);
+    const mapped = baseFaces.map((face, idx) => ({
+      id: face.id,
+      label: face.label,
+      image: face.image,
+      correctName: assignedNames[idx],
+    }));
+    const sig = mapped
+      .slice()
+      .sort((a, b) => a.id - b.id)
+      .map((f) => `${f.id}:${f.correctName}`)
+      .join('|');
+    if (sig === previousSig) continue;
+    return shuffle(mapped, rng).map((f) => ({ ...f, options: shuffle([...names], rng) }));
+  }
+
+  const fallbackRng = mulberry32(stimulusSubSeed(sessionSeed, 'face-name-fallback'));
+  const assignedNames = shuffle([...names], fallbackRng);
+  const fallback = baseFaces.map((face, idx) => ({
+    id: face.id,
+    label: face.label,
+    image: face.image,
+    correctName: assignedNames[idx],
+  }));
+  return shuffle(fallback, fallbackRng).map((f) => ({ ...f, options: shuffle([...names], fallbackRng) }));
 };
 
 /** Задержка перед сигналом простой реакции, мс: [1000, 3000], без близких повторов к последним. */

@@ -61,6 +61,7 @@ function appendRow_(data) {
 
   const p = data.participant || {};
   const screen =
+    data.screensPath ||
     data.screen ||
     (data.screenDetail && data.stage ? data.stage + '/' + data.screenDetail : data.stage || '');
   const row = [

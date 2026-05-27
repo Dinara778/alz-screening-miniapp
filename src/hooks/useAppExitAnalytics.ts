@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { AppStage, ParticipantProfile } from '../types';
-import { sendAnalyticsEventBeacon } from '../utils/sheetsWebhook';
+import { sendFunnelAnalyticsBeacon } from '../utils/sessionFunnelAnalytics';
 
 type Params = {
   stage: AppStage;
   sessionId: string;
+  visitFunnelKey: string;
   screenDetail: string | null;
   participant: ParticipantProfile | null;
 };
@@ -14,7 +15,13 @@ function buildScreen(stage: AppStage, screenDetail: string | null): string {
 }
 
 /** Отправляет app_exit при сворачивании / закрытии Mini App (sendBeacon). */
-export function useAppExitAnalytics({ stage, sessionId, screenDetail, participant }: Params) {
+export function useAppExitAnalytics({
+  stage,
+  sessionId,
+  visitFunnelKey,
+  screenDetail,
+  participant,
+}: Params) {
   const screenRef = useRef(buildScreen(stage, screenDetail));
   const lastSentRef = useRef<{ screen: string; at: number } | null>(null);
 
@@ -28,7 +35,7 @@ export function useAppExitAnalytics({ stage, sessionId, screenDetail, participan
       if (prev && prev.screen === screen && now - prev.at < 2500) return;
       lastSentRef.current = { screen, at: now };
 
-      void sendAnalyticsEventBeacon({
+      void sendFunnelAnalyticsBeacon(visitFunnelKey, {
         eventType: 'app_exit',
         sessionId,
         stage,
@@ -48,7 +55,7 @@ export function useAppExitAnalytics({ stage, sessionId, screenDetail, participan
           : undefined,
       });
     },
-    [sessionId, stage, screenDetail, participant],
+    [sessionId, visitFunnelKey, stage, screenDetail, participant],
   );
 
   useEffect(() => {

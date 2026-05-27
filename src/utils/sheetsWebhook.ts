@@ -1,4 +1,5 @@
 import { SessionResult } from '../types';
+import { getVisitFunnelKey, withFunnelFields } from './sessionFunnelAnalytics';
 import { getPaymentsApiUrl } from './telegramPayments';
 
 const WEBHOOK_URL_RAW = (import.meta.env.VITE_SHEETS_WEBHOOK_URL as string | undefined)?.trim();
@@ -148,8 +149,12 @@ export const sendAnalyticsEventBeacon = async (event: AnalyticsEventPayload): Pr
   return deliverAnalyticsPayload(payload, 'beacon');
 };
 
-export const sendSessionToSheets = async (session: SessionResult): Promise<void> => {
-  const payload: AnalyticsEventPayload = {
+export const sendSessionToSheets = async (
+  session: SessionResult,
+  visitFunnelKey?: string,
+): Promise<void> => {
+  const funnelKey = visitFunnelKey ?? getVisitFunnelKey(Date.now());
+  const payload: AnalyticsEventPayload = withFunnelFields(funnelKey, {
     ...session,
     riskLevel: session.status,
     eventType: 'session_completed',
@@ -157,7 +162,7 @@ export const sendSessionToSheets = async (session: SessionResult): Promise<void>
     stage: 'result',
     screen: 'result',
     timestamp: new Date().toISOString(),
-  };
+  });
 
   await deliverAnalyticsPayload(payload, 'fetch');
 };

@@ -10,9 +10,11 @@ const TEMPORARY_BYPASS_REPORT_PAYMENT = false;
 export const isPaymentsEnabled = (): boolean =>
   import.meta.env.VITE_PAYMENTS_ENABLED !== 'false';
 
-/** Dev-обход или TEMPORARY_BYPASS_REPORT_PAYMENT выше */
+/** Dev-обход только в `npm run dev` (не в production-сборке Amvera). */
 export const isDevPaymentBypass = (): boolean =>
-  TEMPORARY_BYPASS_REPORT_PAYMENT || import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true';
+  !import.meta.env.PROD &&
+  (TEMPORARY_BYPASS_REPORT_PAYMENT ||
+    import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true');
 
 /**
  * Оплата активна: флаг сборки, /health → payments.ready,

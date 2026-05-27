@@ -26,9 +26,23 @@ import {
 } from '../utils/telegramPayments';
 import { consumeReopenPaidReportSessionId, markReopenPaidReportAfterReload } from '../utils/reportReload';
 import { useAppExitAnalytics } from '../hooks/useAppExitAnalytics';
-import { sendAnalyticsEventToSheets, sendSessionToSheets } from '../utils/sheetsWebhook';
+import {
+  getVisitFunnelKey,
+  recordAnalyticsScreen,
+  sendFunnelAnalyticsEvent,
+} from '../utils/sessionFunnelAnalytics';
+import { sendSessionToSheets } from '../utils/sheetsWebhook';
 
 type ConsultationReturnStage = 'result' | 'full-report';
+
+const FUNNEL_MILESTONE_STAGES = new Set([
+  'corta-intro',
+  'welcome',
+  'word-study',
+  'result',
+  'full-report',
+  'consultation-request',
+]);
 
 /** С какого шага открыть ResultPage (например, продажа сессии после отчёта). */
 export type ResultEntryStep = 'hub' | 'session-offer';
@@ -218,14 +232,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const clearResultEntryStep = useCallback(() => {
     setResultEntryStep(null);
   }, []);
-  const sentStageEventsRef = useRef<Set<string>>(new Set());
-  const sentScreenViewEventsRef = useRef<Set<string>>(new Set());
   const reportRecoverKeyRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    sentStageEventsRef.current = new Set();
-    sentScreenViewEventsRef.current = new Set();
-  }, [sessionSeed]);
 
   useEffect(() => {
     const boot = getInitialAppStage();
@@ -362,53 +370,44 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
   const analyticsSessionId = latestResult?.id ?? String(sessionSeed);
 
+  const visitFunnelKey = getVisitFunnelKey(sessionSeed);
+
   useAppExitAnalytics({
     stage,
     sessionId: analyticsSessionId,
+    visitFunnelKey,
     screenDetail: analyticsScreenDetail,
     participant,
   });
 
+  /** Экраны копятся в памяти; в таблицу — одной строкой при выходе / завершении теста. */
   useEffect(() => {
-    const key = `${sessionSeed}:${stage}`;
-    if (sentStageEventsRef.current.has(key)) return;
-    sentStageEventsRef.current.add(key);
+    recordAnalyticsScreen(visitFunnelKey, stage);
+  }, [visitFunnelKey, stage]);
 
-    void sendAnalyticsEventToSheets({
-      eventType: 'stage_reached',
-      sessionId: analyticsSessionId,
-      stage,
-      screen: stage,
-      participant: participant
-        ? {
-            name: participant.name,
-            email: participant.email,
-            phone: participant.phone,
-            sex: participant.sex,
-            age: participant.age,
-            education: participant.education,
-            pcConfidence: participant.pcConfidence,
-          }
-        : undefined,
-    }).catch(() => {
-      // Ignore analytics errors to keep UX stable.
-    });
-  }, [sessionSeed, stage, participant, analyticsSessionId]);
-
-  /** Подэкраны (result/report-offer и т.д.) — отдельная строка в таблице без закрытия приложения. */
   useEffect(() => {
     if (!analyticsScreenDetail) return;
-    const screen = `${stage}/${analyticsScreenDetail}`;
-    const key = `${sessionSeed}:${screen}`;
-    if (sentScreenViewEventsRef.current.has(key)) return;
-    sentScreenViewEventsRef.current.add(key);
+    recordAnalyticsScreen(visitFunnelKey, `${stage}/${analyticsScreenDetail}`);
+  }, [visitFunnelKey, stage, analyticsScreenDetail]);
 
-    void sendAnalyticsEventToSheets({
-      eventType: 'screen_view',
+  /** Крупные этапы воронки — одна строка на этап (не каждый подэкран теста). */
+  const FUNNEL_MILESTONE_STAGES = useRef(
+    new Set([
+      'corta-intro',
+      'welcome',
+      'word-study',
+      'result',
+      'full-report',
+      'consultation-request',
+    ]),
+  ).current;
+
+  useEffect(() => {
+    if (!FUNNEL_MILESTONE_STAGES.has(stage)) return;
+    void sendFunnelAnalyticsEvent(visitFunnelKey, {
+      eventType: 'funnel_milestone',
       sessionId: analyticsSessionId,
       stage,
-      screenDetail: analyticsScreenDetail,
-      screen,
       participant: participant
         ? {
             name: participant.name,
@@ -421,9 +420,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
           }
         : undefined,
     }).catch(() => {
-      // Ignore analytics errors to keep UX stable.
+      /* ignore */
     });
-  }, [sessionSeed, stage, analyticsScreenDetail, analyticsSessionId, participant]);
+  }, [visitFunnelKey, stage, analyticsSessionId, participant]);
 
   const resetSession = useCallback(() => {
     setStage('corta-intro');
@@ -498,15 +497,23 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       if (tw?.length) {
         localStorage.setItem('alz_last_word_sig', [...tw].sort().join('|'));
       }
+      const faceSig = (result.faceName?.answers ?? [])
+        .slice()
+        .sort((a, b) => a.faceId - b.faceId)
+        .map((a) => `${a.faceId}:${a.correct}`)
+        .join('|');
+      if (faceSig) {
+        localStorage.setItem('alz_last_face_name_sig', faceSig);
+      }
     } catch {
       // ignore quota / private mode
     }
-    void sendSessionToSheets(result).catch(() => {
+    void sendSessionToSheets(result, getVisitFunnelKey(sessionSeed)).catch(() => {
       // Ignore webhook errors to keep UX stable.
     });
     setHistory(loadHistory());
     clearProgress();
-  }, []);
+  }, [sessionSeed]);
 
   const value = useMemo(
     () => ({
