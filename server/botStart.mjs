@@ -355,7 +355,17 @@ export async function ensureTelegramWebhook(tgApi, env = process.env) {
             const wh = info.result;
             console.info('[bot] webhook info:', wh?.url, 'pending:', wh?.pending_update_count);
             if (wh?.last_error_message) {
-              console.warn('[bot] webhook last error:', wh.last_error_message);
+              const errAgeSec =
+                wh.last_error_date != null ? Math.max(0, Math.floor(Date.now() / 1000) - wh.last_error_date) : null;
+              const stale = errAgeSec != null && errAgeSec > 900;
+              const line = `[bot] webhook last error: ${wh.last_error_message}${
+                errAgeSec != null ? ` (${errAgeSec}s ago)` : ''
+              }`;
+              if (stale && (wh.pending_update_count ?? 0) === 0) {
+                console.info(`${line} — прошлый сбой доставки, вебхук активен`);
+              } else {
+                console.warn(line);
+              }
             }
           }
         } catch {

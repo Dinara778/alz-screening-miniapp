@@ -876,7 +876,11 @@ app.listen(PORT, () => {
     `Payments API: http://127.0.0.1:${PORT}  provider=${PAYMENT_PROVIDER}  (POST /invoice, /webhook, …)`,
   );
   if (BOT_TOKEN) {
-    void ensureTelegramWebhook(tgApi, { ...process.env, TELEGRAM_BOT_TOKEN: BOT_TOKEN });
+    // После рестарта Amvera дать контейнеру подняться, иначе Telegram часто пишет Connection timed out.
+    const webhookEnv = { ...process.env, TELEGRAM_BOT_TOKEN: BOT_TOKEN };
+    setTimeout(() => {
+      void ensureTelegramWebhook(tgApi, webhookEnv);
+    }, 2500);
     void tgApi('setMyCommands', {
       commands: [{ command: 'start', description: 'Открыть Corta' }],
     });
