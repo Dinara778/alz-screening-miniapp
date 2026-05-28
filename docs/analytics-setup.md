@@ -11,6 +11,28 @@
 | `session_completed` | Завершил все задания |
 | `full_report_opened` и др. | Отчёт, оплата |
 
+### Оплата (без жалоб пользователя)
+
+События с экрана оплаты (клиент) и с сервера Amvera (надёжнее при сбоях сети):
+
+| eventType | Когда |
+|-----------|--------|
+| `payment_click` | Нажали «Оплатить 199 ₽» |
+| `payment_opened` | Открылась оплата (ссылка) |
+| `payment_paid` | Telegram вернул «оплачено» в Mini App |
+| `payment_cancelled` | Отменили оплату |
+| `payment_error` | Ошибка на клиенте (нет Telegram, таймаут и т.д.) |
+| `payment_recover_click` / `payment_recover_not_found` | «Я уже оплатил(а)» — нашли или нет на сервере |
+| `payment_invoice_created` | **Сервер** создал счёт |
+| `payment_invoice_error` | **Сервер** не смог создать счёт |
+| `payment_paid_server` | **Сервер** получил `successful_payment` по вебхуку |
+| `payment_pre_checkout_failed` | **Сервер** не подтвердил pre_checkout |
+
+**Как ловить «зависшие» оплаты в таблице:**  
+фильтр `payment_click` за день → для того же `sessionId` нет ни `payment_paid`, ни `payment_paid_server` → вероятный сбой (отмена, сеть, вебхук).
+
+**Уведомления в Telegram вам:** задайте `TELEGRAM_ADMIN_CHAT_ID` в Amvera → **Запуск** (тот же chat id, что для заявок на разбор). Тогда при `payment_invoice_error` и `payment_pre_checkout_failed` бот пришлёт сообщение.
+
 **Где вышел:** фильтр `eventType = app_exit`, смотрите колонку **`screen`** (полный маршрут через ` → `, не одна строка на каждый шаг теста).
 
 Примеры `screen`:

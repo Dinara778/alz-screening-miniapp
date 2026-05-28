@@ -43,6 +43,7 @@ import {
 } from './prodamus.mjs';
 import { prodamusVerifySignature } from './prodamusHmac.mjs';
 import { buildTelegramYookassaInvoiceParams } from './yookassaReceipt.mjs';
+import { createPaymentAnalytics } from './paymentAnalytics.mjs';
 import {
   findLatestTelegramPaidForUser,
   isTelegramPaidForUser,
@@ -329,6 +330,12 @@ async function forwardToGoogleSheets(payload) {
   return { ok: res.ok, status: res.status, error: res.ok ? null : await res.text().catch(() => 'upstream error') };
 }
 
+const payAnalytics = createPaymentAnalytics({
+  forwardToGoogleSheets,
+  tgApi,
+  botToken: BOT_TOKEN,
+});
+
 async function sendHealthJson(res) {
   const paymentsReady =
     PAYMENT_PROVIDER !== 'none' && Boolean(BOT_TOKEN) && Boolean(PROVIDER_TOKEN?.trim());
@@ -467,25 +474,41 @@ app.get('/health/bot', async (_req, res) => {
 });
 
 app.post('/invoice', async (req, res) => {
+  const { initData, product = 'full_report', sessionId = '' } = req.body ?? {};
+  const sessionKey = String(sessionId).slice(0, 80);
+  const userFromInit = initData && typeof initData === 'string' ? parseTgUser(initData) : null;
+  const payCtx = () => ({
+    sessionId: sessionKey,
+    product,
+    tgUserId: userFromInit?.id ?? null,
+  });
+  const failInvoice = (httpStatus, error, json = { error }) => {
+    payAnalytics.trackInvoiceError({ ...payCtx(), httpStatus, error });
+    return res.status(httpStatus).json(json);
+  };
+
   try {
     if (!BOT_TOKEN) {
-      return res.status(500).json({ error: 'Задайте TELEGRAM_BOT_TOKEN в .env' });
+      return failInvoice(500, 'TELEGRAM_BOT_TOKEN не задан');
     }
-    const { initData, product = 'full_report', sessionId = '' } = req.body ?? {};
     if (!initData || typeof initData !== 'string') {
-      return res.status(400).json({ error: 'initData обязателен' });
+      return failInvoice(400, 'initData обязателен');
     }
     if (!validateInitData(initData, BOT_TOKEN)) {
-      return res.status(401).json({
-        error:
-          'Неверная подпись initData. В Amvera → Переменные запуска TELEGRAM_BOT_TOKEN должен быть токеном того же бота @BotFather, через который открыто мини-приложение Corta (без кавычек и пробелов).',
-      });
+      return failInvoice(
+        401,
+        'Неверная подпись initData',
+        {
+          error:
+            'Неверная подпись initData. В Amvera → Переменные запуска TELEGRAM_BOT_TOKEN должен быть токеном того же бота @BotFather, через который открыто мини-приложение Corta (без кавычек и пробелов).',
+        },
+      );
     }
     const spec = PRODUCTS[product];
-    if (!spec) return res.status(400).json({ error: 'Неизвестный product' });
+    if (!spec) return failInvoice(400, 'Неизвестный product');
 
     if (PAYMENT_PROVIDER === 'none') {
-      return res.status(503).json({
+      return failInvoice(503, 'Оплата временно отключена', {
         error: 'Оплата временно отключена',
         paymentsDisabled: true,
       });
@@ -498,10 +521,7 @@ app.post('/invoice', async (req, res) => {
       const publicBaseRaw = process.env.PAYMENTS_PUBLIC_BASE_URL?.trim();
       const sys = process.env.PRODAMUS_SYS?.trim();
       if (!formUrl || !secretKey || !miniAppUrlRaw || !publicBaseRaw) {
-        return res.status(500).json({
-          error:
-            'Prodamus: задайте PRODAMUS_FORM_URL, PRODAMUS_SECRET_KEY, TELEGRAM_MINI_APP_URL, PAYMENTS_PUBLIC_BASE_URL',
-        });
+        return failInvoice(500, 'Prodamus: не заданы URL/ключи');
       }
       let miniAppUrl;
       let publicBase;
@@ -509,14 +529,12 @@ app.post('/invoice', async (req, res) => {
         miniAppUrl = normalizeHttpsUrl(miniAppUrlRaw, 'TELEGRAM_MINI_APP_URL');
         publicBase = normalizeHttpsUrl(publicBaseRaw, 'PAYMENTS_PUBLIC_BASE_URL');
       } catch (e) {
-        return res.status(500).json({
-          error: e instanceof Error ? e.message : 'Некорректный URL мини-приложения или сервера',
-        });
+        return failInvoice(500, e instanceof Error ? e.message : 'Некорректный URL');
       }
       const tgUser = parseTgUser(initData);
       const tgUserId = tgUser?.id;
       if (tgUserId == null) {
-        return res.status(400).json({ error: 'Не удалось определить пользователя Telegram' });
+        return failInvoice(400, 'Не удалось определить пользователя Telegram');
       }
       const existingPaid = prodamusFindPaidForUserSession(tgUserId, sessionId, product);
       if (existingPaid.paid) {
@@ -563,16 +581,14 @@ app.post('/invoice', async (req, res) => {
         });
       } catch (e) {
         console.error('[prodamus] create link', e);
-        return res.status(502).json({ error: e instanceof Error ? e.message : String(e) });
+        return failInvoice(502, e instanceof Error ? e.message : String(e));
       }
+      payAnalytics.trackInvoiceCreated({ ...payCtx(), tgUserId });
       return res.json({ provider: 'prodamus', paymentUrl, orderId });
     }
 
     if (!PROVIDER_TOKEN) {
-      return res.status(500).json({
-        error:
-          'Задайте TELEGRAM_PAYMENT_PROVIDER_TOKEN в .env для нативной оплаты Telegram (или PAYMENT_PROVIDER=prodamus)',
-      });
+      return failInvoice(500, 'TELEGRAM_PAYMENT_PROVIDER_TOKEN не задан');
     }
 
     const user = parseTgUser(initData);
@@ -599,12 +615,13 @@ app.post('/invoice', async (req, res) => {
     });
 
     if (!result.ok) {
-      return res.status(502).json({ error: result.description || 'createInvoiceLink failed' });
+      return failInvoice(502, result.description || 'createInvoiceLink failed');
     }
+    payAnalytics.trackInvoiceCreated({ ...payCtx(), tgUserId: user?.id ?? null });
     return res.json({ provider: 'telegram', invoiceUrl: result.result });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: e instanceof Error ? e.message : String(e) });
+    return failInvoice(500, e instanceof Error ? e.message : String(e));
   }
 });
 
@@ -788,6 +805,17 @@ async function processTelegramUpdate(update) {
         product: parsed.product,
         payload: sp.invoice_payload,
       });
+      payAnalytics.trackPaidOnServer({
+        sessionId: parsed.sessionId,
+        product: parsed.product,
+        tgUserId,
+        payload: sp.invoice_payload,
+      });
+    } else {
+      payAnalytics.trackPayment('payment_paid_server_unparsed', {
+        tgUserId: tgUserId ?? null,
+        payload: sp.invoice_payload ? String(sp.invoice_payload).slice(0, 128) : null,
+      });
     }
   }
 
@@ -812,9 +840,17 @@ app.post('/webhook', async (req, res) => {
       });
       if (!ans?.ok) {
         console.error('[pre_checkout] answer failed', ans?.description || ans);
+        payAnalytics.trackPreCheckoutFailed({
+          queryId: update.pre_checkout_query.id,
+          error: ans?.description || 'answerPreCheckoutQuery failed',
+        });
       }
     } catch (e) {
       console.error('[pre_checkout]', e);
+      payAnalytics.trackPreCheckoutFailed({
+        queryId: update.pre_checkout_query?.id,
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   }
   res.sendStatus(200);
