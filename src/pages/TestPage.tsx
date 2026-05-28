@@ -548,7 +548,7 @@ export const TestPage = () => {
     return wrapWithTestProgress(
       app.stage,
       <TestInstruction
-        title="Задание 4: Струп"
+        title="Задание 5: Струп"
         text="Сейчас на экране поочередно будут появляться слова «КРАСНЫЙ», «СИНИЙ» или «ЗЕЛЕНЫЙ», написанные цветными буквами."
         onStart={() => app.setStage('stroop-confirm')}
       />,
@@ -614,7 +614,7 @@ export const TestPage = () => {
     return wrapWithTestProgress(
       app.stage,
       <TestInstruction
-        title="Задание 5: Проверка лиц-имен"
+        title="Задание 6: Проверка лиц-имен"
         text="Для каждого лица выберите правильное имя из трёх вариантов. Лица будут показываться по одному."
         onStart={() => {
           setFaceTestIndex(0);

@@ -192,8 +192,16 @@ export const createFaceTrials = (sessionSeed: number): FaceStimulus[] => {
     { id: 2, label: 'Лицо 2', image: publicAsset('/faces/man-2.svg'), correctName: 'Иван' },
     { id: 3, label: 'Лицо 3', image: publicAsset('/faces/man-3.svg'), correctName: 'Дмитрий' },
   ];
-  const names = ['Михаил', 'Иван', 'Дмитрий'];
+  const names = ['Михаил', 'Иван', 'Дмитрий', 'Алексей', 'Сергей', 'Андрей', 'Павел'];
   const previousSig = lastFaceNameSig();
+
+  const pickOptions = (correctName: string, rng: () => number): string[] => {
+    const distractors = shuffle(
+      names.filter((n) => n !== correctName),
+      rng,
+    ).slice(0, 2);
+    return shuffle([correctName, ...distractors], rng);
+  };
 
   for (let bump = 0; bump < 40; bump += 1) {
     const rng = mulberry32(stimulusSubSeed(sessionSeed, 'face-name', bump));
@@ -210,7 +218,7 @@ export const createFaceTrials = (sessionSeed: number): FaceStimulus[] => {
       .map((f) => `${f.id}:${f.correctName}`)
       .join('|');
     if (sig === previousSig) continue;
-    return shuffle(mapped, rng).map((f) => ({ ...f, options: shuffle([...names], rng) }));
+    return shuffle(mapped, rng).map((f) => ({ ...f, options: pickOptions(f.correctName, rng) }));
   }
 
   const fallbackRng = mulberry32(stimulusSubSeed(sessionSeed, 'face-name-fallback'));
@@ -221,7 +229,10 @@ export const createFaceTrials = (sessionSeed: number): FaceStimulus[] => {
     image: face.image,
     correctName: assignedNames[idx],
   }));
-  return shuffle(fallback, fallbackRng).map((f) => ({ ...f, options: shuffle([...names], fallbackRng) }));
+  return shuffle(fallback, fallbackRng).map((f) => ({
+    ...f,
+    options: pickOptions(f.correctName, fallbackRng),
+  }));
 };
 
 /** Задержка перед сигналом простой реакции, мс: [1000, 3000], без близких повторов к последним. */
