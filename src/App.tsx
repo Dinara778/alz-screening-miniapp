@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useScrollToTopOnStage } from './hooks/useScrollToTopOnStage';
 import { useApp } from './context/AppContext';
 import { applyTelegramTheme, attachTelegramThemeListener } from './utils/telegramTheme';
+import { ensureTelegramWebAppScript } from './utils/loadTelegramWebApp';
 import { hasLegalConsent } from './utils/legalConsent';
 import { HistoryPage } from './pages/HistoryPage';
 import { FullReportPage } from './pages/FullReportPage';
@@ -51,21 +52,30 @@ function App() {
   }, [app.stage]);
 
   useEffect(() => {
-    const tg = window.Telegram?.WebApp;
-    if (!tg) return;
-    tg.ready();
-    tg.expand();
-    if (typeof tg.disableVerticalSwipes === 'function') {
-      tg.disableVerticalSwipes();
-    }
-    tg.MainButton?.hide();
-    applyTelegramTheme();
-    requestAnimationFrame(() => applyTelegramTheme());
-    const t = window.setTimeout(() => applyTelegramTheme(), 150);
-    const detachTheme = attachTelegramThemeListener();
+    let cancelled = false;
+    let timeoutId = 0;
+    let detachTheme: (() => void) | undefined;
+
+    void ensureTelegramWebAppScript().then(() => {
+      if (cancelled) return;
+      const tg = window.Telegram?.WebApp;
+      if (!tg) return;
+      tg.ready();
+      tg.expand();
+      if (typeof tg.disableVerticalSwipes === 'function') {
+        tg.disableVerticalSwipes();
+      }
+      tg.MainButton?.hide();
+      applyTelegramTheme();
+      requestAnimationFrame(() => applyTelegramTheme());
+      timeoutId = window.setTimeout(() => applyTelegramTheme(), 150);
+      detachTheme = attachTelegramThemeListener();
+    });
+
     return () => {
-      window.clearTimeout(t);
-      detachTheme();
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+      detachTheme?.();
     };
   }, []);
 

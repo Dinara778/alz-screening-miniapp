@@ -978,8 +978,27 @@ app.post('/webhook', async (req, res) => {
 if (process.env.SERVE_STATIC === 'true') {
   const distDir = path.join(__dirname, '../dist');
   if (fs.existsSync(distDir)) {
-    app.use(express.static(distDir));
+    const manifestPath = path.join(distDir, 'manifest.webmanifest');
+    if (fs.existsSync(manifestPath)) {
+      app.get('/manifest.webmanifest', (_req, res) => {
+        res.type('application/manifest+json');
+        res.sendFile(manifestPath);
+      });
+    }
+    app.use(
+      express.static(distDir, {
+        setHeaders(res, filePath) {
+          if (filePath.endsWith('.html')) {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          }
+          if (filePath.endsWith('.webmanifest')) {
+            res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+          }
+        },
+      }),
+    );
     app.get(/^(?!\/(webhook|invoice|invoice-web|health|api|prodamus|robokassa|consultation-lead|payment-order-status|payment-return-confirm|payment-recover-session|payment-recover-session-web)).*$/, (_req, res) => {
+      res.type('html');
       res.sendFile(path.join(distDir, 'index.html'));
     });
     console.info('[static] dist:', distDir);

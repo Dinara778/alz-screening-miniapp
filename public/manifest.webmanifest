@@ -4,15 +4,21 @@
   "description": "Оценка когнитивного ресурса: тест и персональный отчёт",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f766e",
+  "background_color": "#050807",
+  "theme_color": "#14b5a4",
   "lang": "ru",
   "icons": [
     {
-      "src": "/corta-lab-logo.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/corta-logo.png",
+      "sizes": "260x260",
+      "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/corta-logo.png",
+      "sizes": "260x260",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
