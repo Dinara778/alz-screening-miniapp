@@ -28,8 +28,23 @@ export const MID_TEST_STAGES = new Set<AppStage>([
   'face-test',
 ]);
 
-/** Успешный возврат с Payform (только явный success в URL, не «голый» order_id). */
+/** Успешный возврат с Payform или Робокассы. */
+export function hasRobokassaReturnInUrl(): boolean {
+  if (typeof window === 'undefined') return false;
+  const q = new URLSearchParams(window.location.search);
+  if (q.get('robokassa') === 'fail' || q.get('robokassa') === 'cancel') return false;
+  return q.get('robokassa') === 'success' && Boolean(q.get('sessionId')?.trim());
+}
+
+export function robokassaReturnSessionId(): string | null {
+  if (typeof window === 'undefined') return null;
+  const q = new URLSearchParams(window.location.search);
+  if (q.get('robokassa') !== 'success') return null;
+  return q.get('sessionId')?.trim() || null;
+}
+
 export function hasPaymentReturnInUrl(): boolean {
+  if (hasRobokassaReturnInUrl()) return true;
   if (typeof window === 'undefined') return false;
   const q = new URLSearchParams(window.location.search);
   const orderId = q.get('prodamus_order') || q.get('order_id');

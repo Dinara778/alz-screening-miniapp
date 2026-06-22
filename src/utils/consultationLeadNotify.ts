@@ -9,8 +9,8 @@ export type ConsultationLeadNotifyResult =
 const trimApi = (url: string) => url.replace(/\/$/, '');
 
 /**
- * Уведомление сервера оплат о заявке на разбор (письмо на hello@bookvolon.ru и/или Telegram админу).
- * Только внутри Telegram Mini App с валидным initData — как и /invoice.
+ * Уведомление сервера о заявке на разбор (письмо / Telegram админу).
+ * В Mini App передаётся initData; на сайте — только email и анкета.
  */
 export const notifyConsultationLeadServer = async (
   consultationEmail: string,
@@ -18,21 +18,25 @@ export const notifyConsultationLeadServer = async (
   participant?: ParticipantProfile,
 ): Promise<ConsultationLeadNotifyResult> => {
   const apiUrl = getPaymentsApiUrl();
-  const tg = window.Telegram?.WebApp;
-  if (!apiUrl || !tg?.initData) {
+  if (!apiUrl) {
     return { ok: true, skipped: true };
+  }
+
+  const body: Record<string, unknown> = {
+    consultationEmail,
+    sessionId,
+    participant,
+  };
+  const tg = window.Telegram?.WebApp;
+  if (tg?.initData) {
+    body.initData = tg.initData;
   }
 
   try {
     const res = await fetch(`${trimApi(apiUrl)}/consultation-lead`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        initData: tg.initData,
-        consultationEmail,
-        sessionId,
-        participant,
-      }),
+      body: JSON.stringify(body),
     });
     const data = (await res.json().catch(() => ({}))) as {
       ok?: boolean;

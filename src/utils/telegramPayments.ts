@@ -1,4 +1,6 @@
 import { PAYMENT_PRODUCTS } from './paymentProducts';
+import { isStandaloneWeb } from './runtime';
+import { verifyWebReportPayment } from './webPayments';
 import { arePaymentsActive, isDevPaymentBypass, isPaymentsEnabled } from './paymentStub';
 
 export type TelegramInvoiceProduct = 'full_report' | 'consultation';
@@ -556,6 +558,10 @@ const VERIFY_PAYMENT_FAIL_MSG =
  */
 export async function verifyReportPaymentOnServer(sessionId: string): Promise<RecoverReportResult> {
   if (isDevPaymentBypass()) return { ok: true, sessionId };
+
+  if (isStandaloneWeb()) {
+    return verifyWebReportPayment(sessionId);
+  }
 
   const tg = window.Telegram?.WebApp;
   if (!tg?.initData) {

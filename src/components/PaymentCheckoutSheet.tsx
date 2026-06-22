@@ -4,6 +4,8 @@ import { Button } from './Button';
 import { CalmCardShell } from './CalmCardShell';
 import { TELEGRAM_SUPPORT_URL } from './SupportFooter';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
+import { isStandaloneWeb } from '../utils/runtime';
+import { openWebPayment, verifyWebReportPayment } from '../utils/webPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import {
   consultationPaidStorageKey,
@@ -149,6 +151,38 @@ export const PaymentCheckoutSheet = ({
     }
     const tg = window.Telegram?.WebApp;
     if (!tg?.initData) {
+      if (isStandaloneWeb()) {
+        payInFlightRef.current = true;
+        setPayBusy(true);
+        showNotice(null);
+        trackPaymentEvent('payment_click', { source: 'report_checkout', channel: 'web' });
+        try {
+          const r = await openWebPayment(product, sessionId);
+          if (r.status === 'already_paid') {
+            trackPaymentEvent('payment_paid', { channel: 'web' });
+            onPaid(sessionId);
+            onClose();
+            return;
+          }
+          if (r.status === 'redirected') {
+            trackPaymentEvent('payment_opened', { provider: 'robokassa', channel: 'web' });
+            setAwaitingReturn(true);
+            showNotice('Переход на страницу оплаты…');
+            return;
+          }
+          if (r.status === 'pending_setup') {
+            trackPaymentEvent('payment_error', { reason: 'robokassa_pending', channel: 'web' });
+            showNotice(r.message);
+            return;
+          }
+          trackPaymentEvent('payment_error', { reason: 'error', detail: r.message, channel: 'web' });
+          showNotice(r.message);
+        } finally {
+          setPayBusy(false);
+          payInFlightRef.current = false;
+        }
+        return;
+      }
       showNotice('Откройте Corta из Telegram (кнопка у бота), не во внешнем браузере');
       return;
     }
@@ -228,7 +262,9 @@ export const PaymentCheckoutSheet = ({
     showNotice('Проверяем оплату на сервере…');
     trackPaymentEvent('payment_recover_click');
     try {
-      const r = await verifyReportPaymentOnServer(sessionId);
+      const r = isStandaloneWeb()
+        ? await verifyWebReportPayment(sessionId)
+        : await verifyReportPaymentOnServer(sessionId);
       if (r.ok) {
         trackPaymentEvent('payment_recover_paid', { paidSessionId: r.sessionId });
         onPaid(r.sessionId);

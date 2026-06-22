@@ -45,6 +45,14 @@ import { prodamusVerifySignature } from './prodamusHmac.mjs';
 import { buildTelegramYookassaInvoiceParams } from './yookassaReceipt.mjs';
 import { createPaymentAnalytics } from './paymentAnalytics.mjs';
 import {
+  buildRobokassaPaymentUrl,
+  isRobokassaConfigured,
+  robokassaGetOrder,
+  robokassaRegisterOrder,
+  verifyRobokassaResultSignature,
+} from './robokassa.mjs';
+import { isWebPaidForSession, markWebPaid } from './webPaidStore.mjs';
+import {
   findLatestTelegramPaidForUser,
   isTelegramPaidForUser,
   markTelegramPaid,
@@ -65,6 +73,7 @@ const PORT = Number(process.env.PORT) || 8787;
 function resolvePaymentProvider() {
   const raw = (process.env.PAYMENT_PROVIDER || 'none').toLowerCase();
   if (raw === 'auto') {
+    if (isRobokassaConfigured(process.env)) return 'robokassa';
     if (process.env.TELEGRAM_PAYMENT_PROVIDER_TOKEN?.trim()) return 'telegram';
     if (
       process.env.PRODAMUS_FORM_URL?.trim() &&
@@ -338,7 +347,9 @@ const payAnalytics = createPaymentAnalytics({
 
 async function sendHealthJson(res) {
   const paymentsReady =
-    PAYMENT_PROVIDER !== 'none' && Boolean(BOT_TOKEN) && Boolean(PROVIDER_TOKEN?.trim());
+    PAYMENT_PROVIDER === 'robokassa'
+      ? isRobokassaConfigured(process.env)
+      : PAYMENT_PROVIDER !== 'none' && Boolean(BOT_TOKEN) && Boolean(PROVIDER_TOKEN?.trim());
   const webhookUrl = resolveWebhookUrl({ ...process.env, TELEGRAM_BOT_TOKEN: BOT_TOKEN });
   let webhookActive = false;
   let webhookLastError = null;
@@ -393,6 +404,8 @@ async function sendHealthJson(res) {
       webhookUrl: webhookUrl || null,
       webhookActive,
       webhookLastError,
+      robokassaConfigured: isRobokassaConfigured(process.env),
+      webPayments: PAYMENT_PROVIDER === 'robokassa' || isRobokassaConfigured(process.env),
       frontend: buildInfo
         ? {
             paymentsEnabled: frontendPaymentsOn,
@@ -625,6 +638,110 @@ app.post('/invoice', async (req, res) => {
   }
 });
 
+/** Оплата с сайта (без Telegram initData). Робокасса — когда заданы ROBOKASSA_* в Amvera. */
+app.post('/invoice-web', async (req, res) => {
+  const { sessionId, product = 'full_report' } = req.body ?? {};
+  const sessionKey = String(sessionId ?? '').slice(0, 80);
+  const payCtx = () => ({ sessionId: sessionKey, product, tgUserId: null });
+
+  try {
+    if (!sessionKey) {
+      return res.status(400).json({ error: 'sessionId обязателен' });
+    }
+    const spec = PRODUCTS[product];
+    if (!spec) {
+      return res.status(400).json({ error: 'Неизвестный product' });
+    }
+    if (!isRobokassaConfigured(process.env)) {
+      payAnalytics.trackInvoiceError({
+        ...payCtx(),
+        httpStatus: 503,
+        error: 'robokassa_pending',
+      });
+      return res.status(503).json({
+        error: 'Оплата картой подключается (Робокасса). Попробуйте позже или напишите hello@bookvolon.ru',
+        code: 'robokassa_pending',
+      });
+    }
+    const prior = isWebPaidForSession(sessionKey, product);
+    if (prior.paid) {
+      return res.json({
+        provider: 'robokassa',
+        alreadyPaid: true,
+        sessionId: prior.sessionId,
+        product: prior.product,
+      });
+    }
+    const order = robokassaRegisterOrder({
+      sessionId: sessionKey,
+      product,
+      amountRub: spec.priceRub,
+    });
+    const paymentUrl = buildRobokassaPaymentUrl({
+      invId: order.invId,
+      amountRub: spec.priceRub,
+      description: spec.description,
+      sessionId: sessionKey,
+      product,
+    });
+    payAnalytics.trackInvoiceCreated(payCtx());
+    return res.json({ provider: 'robokassa', paymentUrl, invId: order.invId });
+  } catch (e) {
+    console.error('[invoice-web]', e);
+    payAnalytics.trackInvoiceError({
+      ...payCtx(),
+      httpStatus: 500,
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return res.status(500).json({ error: e instanceof Error ? e.message : String(e) });
+  }
+});
+
+/** Проверка оплаты с сайта по sessionId (после возврата с Робокассы). */
+app.post('/payment-recover-session-web', async (req, res) => {
+  try {
+    const { sessionId, product = 'full_report' } = req.body ?? {};
+    if (!sessionId) return res.status(400).json({ paid: false });
+    return res.json(isWebPaidForSession(String(sessionId), product));
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ paid: false });
+  }
+});
+
+/** Result URL Робокассы (сервер → сервер). */
+app.all('/robokassa/result', async (req, res) => {
+  try {
+    const body = { ...(req.query ?? {}), ...(req.body ?? {}) };
+    if (!verifyRobokassaResultSignature(body, process.env)) {
+      console.warn('[robokassa/result] bad signature', body.InvId ?? body.inv_id);
+      return res.status(400).send('bad signature');
+    }
+    const invId = String(body.InvId ?? body.inv_id ?? '');
+    const order = robokassaGetOrder(invId);
+    if (!order) {
+      console.warn('[robokassa/result] unknown invId', invId);
+      return res.status(404).send('unknown order');
+    }
+    markWebPaid({
+      sessionId: order.sessionId,
+      product: order.product,
+      invId: order.invId,
+    });
+    payAnalytics.trackPaidOnServer({
+      sessionId: order.sessionId,
+      product: order.product,
+      tgUserId: null,
+      payload: `robokassa:${invId}`,
+    });
+    console.info('[robokassa/result] paid', invId, order.sessionId);
+    return res.send(`OK${invId}`);
+  } catch (e) {
+    console.error('[robokassa/result]', e);
+    return res.status(500).send('error');
+  }
+});
+
 app.post('/payment-order-status', async (req, res) => {
   try {
     if (PAYMENT_PROVIDER !== 'prodamus') {
@@ -734,22 +851,22 @@ app.post(
 
 app.post('/consultation-lead', async (req, res) => {
   try {
-    if (!BOT_TOKEN) {
-      return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN не задан' });
-    }
     const { initData, consultationEmail, sessionId = '', participant } = req.body ?? {};
-    if (!initData || typeof initData !== 'string') {
-      return res.status(400).json({ error: 'initData обязателен' });
-    }
-    if (!validateInitData(initData, BOT_TOKEN)) {
-      return res.status(401).json({ error: 'Неверная подпись initData' });
-    }
     const email = typeof consultationEmail === 'string' ? consultationEmail.trim() : '';
     if (!email || !EMAIL_RE.test(email) || email.length > 254) {
       return res.status(400).json({ error: 'Некорректный consultationEmail' });
     }
 
-    const tgUser = parseTgUser(initData);
+    let tgUser = null;
+    if (initData && typeof initData === 'string') {
+      if (!BOT_TOKEN) {
+        return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN не задан' });
+      }
+      if (!validateInitData(initData, BOT_TOKEN)) {
+        return res.status(401).json({ error: 'Неверная подпись initData' });
+      }
+      tgUser = parseTgUser(initData);
+    }
 
     let emailSent = false;
     let telegramSent = false;
@@ -862,7 +979,7 @@ if (process.env.SERVE_STATIC === 'true') {
   const distDir = path.join(__dirname, '../dist');
   if (fs.existsSync(distDir)) {
     app.use(express.static(distDir));
-    app.get(/^(?!\/(webhook|invoice|health|api|prodamus|consultation-lead|payment-order-status|payment-return-confirm|payment-recover-session)).*$/, (_req, res) => {
+    app.get(/^(?!\/(webhook|invoice|invoice-web|health|api|prodamus|robokassa|consultation-lead|payment-order-status|payment-return-confirm|payment-recover-session|payment-recover-session-web)).*$/, (_req, res) => {
       res.sendFile(path.join(distDir, 'index.html'));
     });
     console.info('[static] dist:', distDir);

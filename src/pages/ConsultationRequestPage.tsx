@@ -112,7 +112,7 @@ export const ConsultationRequestPage = () => {
         return;
       }
       if (r.skipped) {
-        setNotice('Откройте приложение из Telegram и повторите отправку.');
+        setNotice('Сервер заявок не настроен. Напишите на hello@bookvolon.ru');
         return;
       }
       setLeadSent(true);

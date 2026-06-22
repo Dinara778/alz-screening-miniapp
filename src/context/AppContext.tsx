@@ -24,6 +24,7 @@ import {
   recoverFullReportAccess,
   recoverProdamusPaymentFromUrl,
 } from '../utils/telegramPayments';
+import { recoverRobokassaPaymentFromUrl } from '../utils/webPayments';
 import { consumeReopenPaidReportSessionId, markReopenPaidReportAfterReload } from '../utils/reportReload';
 import { useAppExitAnalytics } from '../hooks/useAppExitAnalytics';
 import {
@@ -310,7 +311,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     if (!hasPaymentReturnInUrl()) return;
     if (!arePaymentsActive(serverPaymentsReady)) return;
     const run = async () => {
-      const recovery = await recoverProdamusPaymentFromUrl();
+      const recovery =
+        (await recoverRobokassaPaymentFromUrl()) ?? (await recoverProdamusPaymentFromUrl());
       if (!recovery) return;
       const session = loadHistory().find((h) => h.id === recovery.sessionId) ?? null;
       if (session) setLatestResult(session);
