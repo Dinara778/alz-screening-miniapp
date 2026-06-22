@@ -4,6 +4,7 @@ import {
   INTERPRETATION_LABEL_IN_LIFE,
   INTERPRETATION_LABEL_MANIFESTATION,
 } from '../copy/interpretationLabels';
+import type { CognitiveDomainKey } from '../types';
 
 /** Тексты для UI и PDF (историческое именование полей). */
 export type DomainInterpretationCopy = {

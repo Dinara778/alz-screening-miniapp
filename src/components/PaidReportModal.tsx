@@ -7,6 +7,7 @@ import {
   INTERPRETATION_LABEL_FEELING,
   INTERPRETATION_LABEL_IN_LIFE,
 } from '../copy/interpretationLabels';
+import type { PaidReportData } from '../utils/paidReport';
 
 type Props = {
   open: boolean;

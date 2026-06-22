@@ -14,6 +14,7 @@ import { getFreeIndexInterpretation } from '../utils/freeIndexInterpretation';
 import { formatParticipantFirstName } from '../utils/participantDisplayName';
 import { shareResultWithCard } from '../utils/shareResult';
 import { shouldBypassReportPayment } from '../utils/paymentStub';
+import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
 import {
   INTERPRETATION_LABEL_ABOUT_RESULT,
   INTERPRETATION_LABEL_FEELING,
@@ -111,6 +112,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     setStep('report-offer');
     void sendAnalyticsEventToSheets({
       eventType: 'payment_cancelled',
+      sessionId: latestResult?.id ?? 'unknown',
       stage: 'result',
       screen: 'result/report-offer',
       participant: participant ?? undefined,
@@ -120,7 +122,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     }).catch(() => {
       /* ignore */
     });
-  }, [participant]);
+  }, [participant, latestResult?.id]);
 
   useEffect(() => {
     if (resultEntryStep === 'session-offer') {

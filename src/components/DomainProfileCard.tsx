@@ -3,6 +3,7 @@ import {
   INTERPRETATION_LABEL_IN_LIFE,
   INTERPRETATION_LABEL_MANIFESTATION,
 } from '../copy/interpretationLabels';
+import type { DomainScore } from '../utils/cognitiveAnalytics';
 
 type Props = { domain: DomainScore };
 
