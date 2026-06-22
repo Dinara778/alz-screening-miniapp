@@ -15,6 +15,8 @@ import { formatParticipantFirstName } from '../utils/participantDisplayName';
 import { shareResultWithCard } from '../utils/shareResult';
 import { shouldBypassReportPayment } from '../utils/paymentStub';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
+import { consumePaymentFailNotice, PAYMENT_FAIL_NOTICE_TEXT } from '../utils/paymentReturn';
+import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
 import { hasPaymentReturnInUrl, loadSessionFromHistory } from '../utils/storage';
 import {
@@ -107,6 +109,23 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   useEffect(() => {
     setAnalyticsScreenDetail(step);
   }, [step, setAnalyticsScreenDetail]);
+
+  useEffect(() => {
+    if (!consumePaymentFailNotice()) return;
+    setPayNotice(PAYMENT_FAIL_NOTICE_TEXT);
+    setStep('report-offer');
+    void sendAnalyticsEventToSheets({
+      eventType: 'payment_cancelled',
+      stage: 'result',
+      screen: 'result/report-offer',
+      participant: participant ?? undefined,
+      product: 'full_report',
+      channel: 'web',
+      reason: 'robokassa_fail_return',
+    }).catch(() => {
+      /* ignore */
+    });
+  }, [participant]);
 
   useEffect(() => {
     if (resultEntryStep === 'session-offer') {

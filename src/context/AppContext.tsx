@@ -15,6 +15,10 @@ import {
   loadProgress,
 } from '../utils/storage';
 import { goToIntroFresh, stripPaymentQueryFromUrl } from '../utils/appReload';
+import {
+  capturePaymentFailFromUrl,
+  shouldBootToResultAfterPaymentFail,
+} from '../utils/paymentReturn';
 import { MID_TEST_STAGES } from '../utils/storage';
 import { pickStudyWordList } from '../utils/generateStimuli';
 import { arePaymentsActive, isPaymentsEnabled } from '../utils/paymentStub';
@@ -74,8 +78,10 @@ function hasPendingProdamusPayment(): boolean {
 
 /** Стартовый экран: только intro или продолжение теста; не result/full-report. */
 export function getInitialAppStage(): AppStage {
+  capturePaymentFailFromUrl();
   stripPaymentQueryFromUrl();
   purgeStalePostTestProgress();
+  if (shouldBootToResultAfterPaymentFail()) return 'result';
   if (isRestartBoot() || isPageReload()) {
     if (!hasPaymentReturnInUrl()) return 'corta-intro';
   }
@@ -238,7 +244,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const boot = getInitialAppStage();
-    if (hasPaymentReturnInUrl() || hasPendingProdamusPayment()) return;
+    if (hasPaymentReturnInUrl() || hasPendingProdamusPayment() || shouldBootToResultAfterPaymentFail()) {
+      return;
+    }
     if (stage === boot) return;
     if (MID_TEST_STAGES.has(stage) && MID_TEST_STAGES.has(boot)) return;
     setStage(boot);
