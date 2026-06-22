@@ -11,8 +11,8 @@ describe('paymentStub prod gating', () => {
       './paymentStub'
     );
 
-    expect(isDevPaymentBypass()).toBe(true);
-    expect(arePaymentsActive(true)).toBe(false);
-    expect(shouldBypassReportPayment(true)).toBe(true);
+    expect(isDevPaymentBypass()).toBe(false);
+    expect(arePaymentsActive(true)).toBe(true);
+    expect(shouldBypassReportPayment(true)).toBe(false);
   });
 });

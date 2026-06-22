@@ -10,7 +10,7 @@ import { ParticipantProfile } from '../types';
 import { TEST_DURATION_LABEL } from '../constants/testDuration';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
-type Props = { onStart: (profile: ParticipantProfile) => void; onHistory: () => void };
+type Props = { onStart: (profile: ParticipantProfile) => void };
 
 /** Знакомство → имя → пол → возраст → старт оценки. */
 const FIELD_STEP_MAX = 4;
@@ -25,7 +25,7 @@ const scrollFieldIntoView = (e: FocusEvent<HTMLInputElement>) => {
   });
 };
 
-export const WelcomePage = ({ onStart, onHistory }: Props) => {
+export const WelcomePage = ({ onStart }: Props) => {
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
   const [sex, setSex] = useState<ParticipantProfile['sex']>('Женский');
@@ -278,13 +278,6 @@ export const WelcomePage = ({ onStart, onHistory }: Props) => {
           stackFooter={stackForm}
           contentAlign={introStep ? 'center' : 'start'}
           footer={stepFooter}
-          footerExtra={
-            step === 0 ? (
-              <Button type="button" variant="secondary" onClick={onHistory} className="w-full">
-                📚 История прохождений
-              </Button>
-            ) : undefined
-          }
         >
           {stepBody}
         </ScreenBottomCta>

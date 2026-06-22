@@ -4,8 +4,8 @@
  * на проде с API Amvera оплата включена, если сервер payments.ready или задан URL API.
  */
 
-/** QA: true — отчёт без оплаты на всех сборках (временно). Вернуть false после проверки. */
-const TEMPORARY_BYPASS_REPORT_PAYMENT = true;
+/** QA: true — отчёт без оплаты (только для локальной проверки). На проде: false. */
+const TEMPORARY_BYPASS_REPORT_PAYMENT = false;
 
 export const isPaymentsEnabled = (): boolean =>
   import.meta.env.VITE_PAYMENTS_ENABLED !== 'false';

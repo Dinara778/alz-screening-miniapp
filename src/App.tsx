@@ -109,10 +109,7 @@ function App() {
             <IntroTestOfferPage onContinue={() => app.setStage('welcome')} />
           )}
           {app.stage === 'welcome' && (
-            <WelcomePage
-              onStart={(profile) => app.beginNewAssessment(profile)}
-              onHistory={() => app.setStage('history')}
-            />
+            <WelcomePage onStart={(profile) => app.beginNewAssessment(profile)} />
           )}
           {app.stage === 'history' && <HistoryPage onBack={() => app.setStage('welcome')} />}
           {[

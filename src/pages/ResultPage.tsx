@@ -43,7 +43,7 @@ const sessionUpsellFeatures = [
 const reportOfferBullets = [
   'подробную расшифровку вашего текущего статуса',
   'Объяснение, почему именно сейчас проседают эти показатели',
-  'краткие персональные рекомендации, которые помогут снять перегрузку и быстрее вернуть когнитивный ресурс',
+  'Краткие персональные рекомендации, которые помогут снять перегрузку и быстрее вернуть когнитивный ресурс',
 ] as const;
 
 const calmBtnClass = CTA_BUTTON_CLASS;
@@ -412,7 +412,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
               <Button type="button" variant="sell" className={calmBtnClass} onClick={openCheckout}>
                 {reportUnlocked
                   ? 'Открыть расшифровку'
-                  : `Получить быстрый план — ${reportPriceRub} руб`}
+                  : `Узнать полный план — ${reportPriceRub} р →`}
               </Button>
             </div>
           }
@@ -434,6 +434,11 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
                   </li>
                 ))}
               </ul>
+            </div>
+            <div className="flex justify-center pt-1">
+              <SketchHighlightTitle accent="#f97316" generousOutline>
+                Узнать, что делать прямо сейчас
+              </SketchHighlightTitle>
             </div>
           </div>
         </CalmScreen>
