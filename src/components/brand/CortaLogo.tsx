@@ -1,17 +1,17 @@
+import { publicAsset } from '../../utils/publicAsset';
+
 type Props = {
   className?: string;
 };
 
-/** Логотип Corta — надпись как в бренд-файле (#14b5a4), без фона. */
+/** Логотип Corta — PNG из бренд-файла, без фона. */
 export const CortaLogo = ({ className = '' }: Props) => (
-  <span
-    className={`select-none text-[1.35rem] font-black lowercase text-[#14b5a4] sm:text-[1.5rem] ${className}`}
-    style={{
-      fontFamily: 'Nunito, Plus Jakarta Sans, system-ui, sans-serif',
-      letterSpacing: '-0.04em',
-    }}
-    aria-label="Corta"
-  >
-    corta
-  </span>
+  <img
+    src={publicAsset('/corta-logo-mark.png')}
+    alt="Corta"
+    width={104}
+    height={28}
+    className={`h-7 w-auto max-w-[260px] select-none sm:h-8 ${className}`}
+    draggable={false}
+  />
 );

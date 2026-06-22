@@ -9,13 +9,13 @@
   "lang": "ru",
   "icons": [
     {
-      "src": "/corta-logo.png",
+      "src": "/corta-logo-mark.png",
       "sizes": "260x260",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/corta-logo.png",
+      "src": "/corta-logo-mark.png",
       "sizes": "260x260",
       "type": "image/png",
       "purpose": "maskable"
