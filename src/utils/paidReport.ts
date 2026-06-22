@@ -1,5 +1,6 @@
 import type { CognitiveDomainKey } from '../types';
 import { getGranularIndexInterpretation } from './indexInterpretationBands';
+import { getIndexCategory } from './indexCategory';
 import type { CognitivePattern, OverloadMapItem } from './cognitiveAnalytics';
 import { scoreAccentFromValue } from '../components/results/scoreAccent';
 import {
@@ -305,14 +306,14 @@ export function getPaidReportData(
     ? {
         inLife: band.description,
         feeling:
-          'В целом ресурс внимания ровный; отдельные «узкие места» могут проявляться при усталости или длинных блоках нагрузки — без тревоги.',
+          'Сейчас ресурс внимания в целом ровный; отдельные «узкие места» могут проявляться при усталости или длинных блоках нагрузки.',
         aboutResult: band.overloadMapIntro,
       }
     : leadingKey
       ? EXTENDED_BY_DEFICIT[leadingKey]
       : {
           inLife: band.description,
-          feeling: 'Ощущения зависят от вашего ритма дня и нагрузки — это ориентир, а не приговор.',
+          feeling: 'Сейчас ощущения зависят от ритма дня и нагрузки — это снимок момента, а не приговор.',
           aboutResult: band.overloadMapIntro,
         };
 
@@ -330,7 +331,7 @@ export function getPaidReportData(
       year: 'numeric',
     }),
     indexValue,
-    indexLabel: band.label,
+    indexLabel: getIndexCategory(indexValue).category,
     indexAccent: scoreAccentFromValue(indexValue),
     extendedInterpretation,
     leadingDeficitTitle: leadingKey ? LEADING_DEFICIT_TITLES[leadingKey] : 'Сбалансированный профиль',

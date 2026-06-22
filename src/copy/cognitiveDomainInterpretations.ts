@@ -1,4 +1,9 @@
-import type { CognitiveDomainKey } from '../types';
+import {
+  INTERPRETATION_LABEL_ABOUT_RESULT,
+  INTERPRETATION_LABEL_FEELING,
+  INTERPRETATION_LABEL_IN_LIFE,
+  INTERPRETATION_LABEL_MANIFESTATION,
+} from '../copy/interpretationLabels';
 
 /** Тексты для UI и PDF (историческое именование полей). */
 export type DomainInterpretationCopy = {
@@ -33,10 +38,15 @@ function resolveScoreTier(score: number): ScoreTierId {
   return 't0';
 }
 
+function toPresentMomentText(text: string): string {
+  if (/^(Сейчас|Прямо сейчас|Скорее всего)/i.test(text)) return text;
+  return `Сейчас ${text.charAt(0).toLowerCase()}${text.slice(1)}`;
+}
+
 function toCopy(tier: DomainInterpretationTier): DomainInterpretationCopy {
   return {
-    inLife: tier.inLife,
-    manifestations: tier.manifestation,
+    inLife: toPresentMomentText(tier.inLife),
+    manifestations: toPresentMomentText(tier.manifestation),
     aboutResult: tier.insight,
   };
 }
@@ -305,7 +315,7 @@ export function getDomainInterpretationForKey(
 /** Для PDF и строковых полей профиля. */
 export const formatDomainInterpretationPlain = (copy: DomainInterpretationCopy): string =>
   [
-    `В жизни: ${copy.inLife}`,
-    `Как проявляется: ${copy.manifestations}`,
-    `О чём говорит результат: ${copy.aboutResult}`,
+    `${INTERPRETATION_LABEL_IN_LIFE} ${copy.inLife}`,
+    `${INTERPRETATION_LABEL_MANIFESTATION} ${copy.manifestations}`,
+    `${INTERPRETATION_LABEL_ABOUT_RESULT} ${copy.aboutResult}`,
   ].join('\n');

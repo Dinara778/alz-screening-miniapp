@@ -1,3 +1,8 @@
+import {
+  INTERPRETATION_LABEL_ABOUT_RESULT,
+  INTERPRETATION_LABEL_FEELING,
+  INTERPRETATION_LABEL_IN_LIFE,
+} from '../copy/interpretationLabels';
 import type { PaidReportData } from './paidReport';
 
 /** Текстовое представление платного отчёта (заглушка до полноценного PDF). */
@@ -9,9 +14,9 @@ export function formatPaidReportPlainText(report: PaidReportData): string {
     `Индекс когнитивной устойчивости: ${report.indexValue}/100 — ${report.indexLabel}`,
     '',
     'Расширенная интерпретация',
-    `В жизни: ${report.extendedInterpretation.inLife}`,
-    `Как это ощущается: ${report.extendedInterpretation.feeling}`,
-    `О чём говорит результат: ${report.extendedInterpretation.aboutResult}`,
+    `${INTERPRETATION_LABEL_IN_LIFE} ${report.extendedInterpretation.inLife}`,
+    `${INTERPRETATION_LABEL_FEELING} ${report.extendedInterpretation.feeling}`,
+    `${INTERPRETATION_LABEL_ABOUT_RESULT} ${report.extendedInterpretation.aboutResult}`,
     '',
     `Ведущий дефицит: ${report.leadingDeficitTitle}`,
   ];

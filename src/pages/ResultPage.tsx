@@ -14,7 +14,11 @@ import { getFreeIndexInterpretation } from '../utils/freeIndexInterpretation';
 import { formatParticipantFirstName } from '../utils/participantDisplayName';
 import { shareResultWithCard } from '../utils/shareResult';
 import { shouldBypassReportPayment } from '../utils/paymentStub';
-import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
+import {
+  INTERPRETATION_LABEL_ABOUT_RESULT,
+  INTERPRETATION_LABEL_FEELING,
+  INTERPRETATION_LABEL_IN_LIFE,
+} from '../copy/interpretationLabels';
 import { consumePaymentFailNotice, PAYMENT_FAIL_NOTICE_TEXT } from '../utils/paymentReturn';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
@@ -36,18 +40,10 @@ const sessionUpsellFeatures = [
 ] as const;
 
 const reportOfferBullets = [
-  {
-    title: 'Как это проявляется именно в вашей жизни',
-    detail: null,
-  },
-  {
-    title: 'Что именно сейчас перегружает ваш мозг',
-    detail: '(внимание, удержание информации, скорость или устойчивость под нагрузкой)',
-  },
-  {
-    title: 'Что поможет улучшить состояние уже сегодня',
-    detail: '(персональные рекомендации по вашему профилю)',
-  },
+  'почему мозг сейчас работает именно так',
+  'что именно расходует ресурс мозга больше всего',
+  'какие ошибки сейчас только усиливают перегрузку',
+  'что конкретно поможет вам восстановиться',
 ] as const;
 
 const calmBtnClass = CTA_BUTTON_CLASS;
@@ -67,18 +63,18 @@ const FreeIndexInterpretationBody = ({
     <SketchHighlightTitle accent={accent}>{title}</SketchHighlightTitle>
     <div className="calm-inset space-y-4 text-left text-base leading-relaxed text-white sm:text-lg">
       <p>
-        <span className="font-semibold">В жизни: </span>
+        <span className="font-semibold">{INTERPRETATION_LABEL_IN_LIFE} </span>
         {interpretation.inLife}
       </p>
       {interpretation.feeling ? (
         <p>
-          <span className="font-semibold">Как это ощущается: </span>
+          <span className="font-semibold">{INTERPRETATION_LABEL_FEELING} </span>
           {interpretation.feeling}
         </p>
       ) : null}
       {interpretation.insight ? (
         <p>
-          <span className="font-semibold">О чём говорит результат: </span>
+          <span className="font-semibold">{INTERPRETATION_LABEL_ABOUT_RESULT} </span>
           {interpretation.insight}
         </p>
       ) : null}
@@ -415,36 +411,29 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
               <Button type="button" variant="sell" className={calmBtnClass} onClick={openCheckout}>
                 {reportUnlocked
                   ? 'Открыть расшифровку'
-                  : `Разобрать результат → ${reportPriceRub} ₽`}
+                  : `Получить быстрый план — ${reportPriceRub} руб`}
               </Button>
             </div>
           }
         >
           <div className="mx-auto w-full max-w-md space-y-5 pb-4">
             <p className="app-heading leading-snug text-white/95">
-              Вы уже видите, какие показатели сейчас просели. Но важно понять:
+              Вы уже увидели свой текущий когнитивный статус. Теперь получите главное — что делать с
+              этим состоянием прямо сейчас:
             </p>
             <ul className="calm-inset space-y-3 text-base leading-relaxed text-white/88 sm:text-lg">
               {reportOfferBullets.map((item) => (
-                <li key={item.title} className="flex gap-2">
+                <li key={item} className="flex gap-2">
                   <span className="shrink-0 text-emerald-400" aria-hidden>
                     ✓
                   </span>
-                  <span>
-                    {item.title}
-                    {item.detail ? (
-                      <>
-                        <br />
-                        <span className="text-white/65">{item.detail}</span>
-                      </>
-                    ) : null}
-                  </span>
+                  <span>{item}</span>
                 </li>
               ))}
             </ul>
             <div className="flex justify-center pt-1">
               <SketchHighlightTitle accent={accent} generousOutline>
-                Персональная расшифровка результата — {reportPriceRub} ₽
+                Узнать, что делать прямо сейчас — {reportPriceRub} руб
               </SketchHighlightTitle>
             </div>
           </div>

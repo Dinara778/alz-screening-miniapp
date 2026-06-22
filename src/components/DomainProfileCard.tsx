@@ -1,4 +1,8 @@
-import type { DomainScore } from '../utils/cognitiveAnalytics';
+import {
+  INTERPRETATION_LABEL_ABOUT_RESULT,
+  INTERPRETATION_LABEL_IN_LIFE,
+  INTERPRETATION_LABEL_MANIFESTATION,
+} from '../copy/interpretationLabels';
 
 type Props = { domain: DomainScore };
 
@@ -16,15 +20,15 @@ export const DomainProfileCard = ({ domain }: Props) => {
       </div>
       <div className="mt-3 space-y-2 results-body">
         <p>
-          <span className="font-semibold text-white/95">В жизни: </span>
+          <span className="font-semibold text-white/95">{INTERPRETATION_LABEL_IN_LIFE} </span>
           {i.inLife}
         </p>
         <p>
-          <span className="font-semibold text-white/95">Как проявляется: </span>
+          <span className="font-semibold text-white/95">{INTERPRETATION_LABEL_MANIFESTATION} </span>
           {i.manifestations}
         </p>
         <p>
-          <span className="font-semibold text-white/95">О чём говорит результат: </span>
+          <span className="font-semibold text-white/95">{INTERPRETATION_LABEL_ABOUT_RESULT} </span>
           {i.aboutResult}
         </p>
       </div>

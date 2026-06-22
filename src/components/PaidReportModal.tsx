@@ -2,7 +2,11 @@ import type { ReactNode } from 'react';
 import { Button } from './Button';
 import { CalmCardShell } from './CalmCardShell';
 import { PaidReportTemporalBlocks } from './PaidReportTemporalBlocks';
-import type { PaidReportData } from '../utils/paidReport';
+import {
+  INTERPRETATION_LABEL_ABOUT_RESULT,
+  INTERPRETATION_LABEL_FEELING,
+  INTERPRETATION_LABEL_IN_LIFE,
+} from '../copy/interpretationLabels';
 
 type Props = {
   open: boolean;
@@ -65,15 +69,15 @@ export const PaidReportModal = ({ open, data, onClose }: Props) => {
             <SectionTitle>Расширенная интерпретация</SectionTitle>
             <div className="space-y-3 results-body text-sm leading-relaxed text-white/88">
               <p>
-                <span className="font-semibold text-white/95">В жизни: </span>
+                <span className="font-semibold text-white/95">{INTERPRETATION_LABEL_IN_LIFE} </span>
                 {data.extendedInterpretation.inLife}
               </p>
               <p>
-                <span className="font-semibold text-white/95">Как это ощущается: </span>
+                <span className="font-semibold text-white/95">{INTERPRETATION_LABEL_FEELING} </span>
                 {data.extendedInterpretation.feeling}
               </p>
               <p>
-                <span className="font-semibold text-white/95">О чём говорит результат: </span>
+                <span className="font-semibold text-white/95">{INTERPRETATION_LABEL_ABOUT_RESULT} </span>
                 {data.extendedInterpretation.aboutResult}
               </p>
             </div>
