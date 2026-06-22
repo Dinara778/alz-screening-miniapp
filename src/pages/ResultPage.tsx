@@ -40,10 +40,9 @@ const sessionUpsellFeatures = [
 ] as const;
 
 const reportOfferBullets = [
-  'почему мозг сейчас работает именно так',
-  'что именно расходует ресурс мозга больше всего',
-  'какие ошибки сейчас только усиливают перегрузку',
-  'что конкретно поможет вам восстановиться',
+  'подробную расшифровку вашего текущего статуса',
+  'Объяснение, почему именно сейчас проседают эти показатели',
+  'краткие персональные рекомендации, которые помогут снять перегрузку и быстрее вернуть когнитивный ресурс',
 ] as const;
 
 const calmBtnClass = CTA_BUTTON_CLASS;
@@ -418,23 +417,21 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         >
           <div className="mx-auto w-full max-w-md space-y-5 pb-4">
             <p className="app-heading leading-snug text-white/95">
-              Вы уже увидели свой текущий когнитивный статус. Теперь получите главное — что делать с
-              этим состоянием прямо сейчас:
+              Узнайте, почему сейчас мозг работает именно так и что поможет быстрее восстановить
+              ресурс
             </p>
-            <ul className="calm-inset space-y-3 text-base leading-relaxed text-white/88 sm:text-lg">
-              {reportOfferBullets.map((item) => (
-                <li key={item} className="flex gap-2">
-                  <span className="shrink-0 text-emerald-400" aria-hidden>
-                    ✓
-                  </span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="flex justify-center pt-1">
-              <SketchHighlightTitle accent={accent} generousOutline>
-                Узнать, что делать прямо сейчас — {reportPriceRub} руб
-              </SketchHighlightTitle>
+            <div className="calm-inset space-y-3 text-base leading-relaxed text-white/88 sm:text-lg">
+              <p>Внутри вы получите:</p>
+              <ul className="space-y-3">
+                {reportOfferBullets.map((item) => (
+                  <li key={item} className="flex gap-2">
+                    <span className="shrink-0 text-emerald-400" aria-hidden>
+                      ✓
+                    </span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </CalmScreen>

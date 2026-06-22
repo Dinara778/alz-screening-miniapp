@@ -62,6 +62,7 @@ export const TestPage = () => {
   const [faceTestIndex, setFaceTestIndex] = useState(0);
   const [finishBusy, setFinishBusy] = useState(false);
   const finishBusyRef = useRef(false);
+  const faceAnswersRef = useRef<Record<number, string>>({});
   const [reactionPrompt, setReactionPrompt] = useState('Ждите сигнал');
   const [isStimulusVisible, setIsStimulusVisible] = useState(false);
   const [attemptTick, setAttemptTick] = useState(0);
@@ -229,7 +230,8 @@ export const TestPage = () => {
     app.setStage('flanker-instruction');
   };
 
-  const finish = useCallback(() => {
+  const finish = useCallback((faceAnswersOverride?: Record<number, string>) => {
+    const answers = faceAnswersOverride ?? face.answers;
     const targets =
       app.studyWordList.length >= 5 ? app.studyWordList : pickStudyWordList(app.sessionSeed);
     const wm = scoreWordMemory(app.immediateWords, app.delayedWords, targets);
@@ -241,7 +243,7 @@ export const TestPage = () => {
 
     const mappedAnswers = face.trials.map((trial) => ({
       faceId: trial.id,
-      selected: face.answers[trial.id] ?? '',
+      selected: answers[trial.id] ?? '',
       correct: trial.correctName,
     }));
     const faceScore = mappedAnswers.filter((a) => a.selected === a.correct).length;
@@ -293,20 +295,26 @@ export const TestPage = () => {
     setStage('result');
   }, [app, face.trials, face.answers, reaction.anticipations, flanker.results, flanker.total, setStage]);
 
-  const runFinish = useCallback(() => {
-    const allAnswered = face.trials.every((t) => Boolean(face.answers[t.id]));
-    if (finishBusyRef.current || !allAnswered) return;
+  const runFinish = useCallback((answersSnapshot: Record<number, string>) => {
+    const allAnswered = face.trials.every((t) => Boolean(answersSnapshot[t.id]));
+    if (finishBusyRef.current || !allAnswered) {
+      if (import.meta.env.DEV && !allAnswered) {
+        console.warn('[face-test] не все ответы записаны', answersSnapshot, face.trials);
+      }
+      return;
+    }
     finishBusyRef.current = true;
     setFinishBusy(true);
     window.setTimeout(() => {
       try {
-        finish();
-      } finally {
+        finish(answersSnapshot);
+      } catch (e) {
+        console.error('[face-test] finish failed', e);
         finishBusyRef.current = false;
         setFinishBusy(false);
       }
     }, 0);
-  }, [face.trials, face.answers, finish]);
+  }, [face.trials, finish]);
 
   useEffect(() => {
     if (app.stage !== 'word-study') return;
@@ -615,8 +623,9 @@ export const TestPage = () => {
       app.stage,
       <TestInstruction
         title="Задание 6: Проверка лиц-имен"
-        text="Для каждого лица выберите правильное имя из трёх вариантов. Лица будут показываться по одному."
+        text="Для каждого лица нажмите на правильное имя из трёх вариантов. Лица показываются по одному."
         onStart={() => {
+          faceAnswersRef.current = {};
           setFaceTestIndex(0);
           setStage('face-test');
         }}
@@ -633,10 +642,13 @@ export const TestPage = () => {
     const selected = face.answers[f.id];
     const isLast = faceTestIndex >= face.trials.length - 1;
 
-    const goNextFace = () => {
-      if (!selected || finishBusy) return;
+    const pickName = (name: string) => {
+      if (finishBusy) return;
+      const mergedAnswers = { ...faceAnswersRef.current, [f.id]: name };
+      faceAnswersRef.current = mergedAnswers;
+      face.setAnswer(f.id, name);
       if (isLast) {
-        runFinish();
+        runFinish(mergedAnswers);
         return;
       }
       setFaceTestIndex((i) => i + 1);
@@ -654,32 +666,26 @@ export const TestPage = () => {
         <div className="mx-auto w-full max-w-sm shrink-0 border-2 border-white/20">
           <FaceIllustration faceId={f.id} title={f.label} />
         </div>
-        <div className="grid gap-3">
-          {f.options.map((name) => (
-            <button
-              key={name}
-              type="button"
-              onClick={() => face.setAnswer(f.id, name)}
-              className={`rounded-2xl border-2 px-3 py-4 text-center text-sm font-bold transition ${
-                selected === name
-                  ? 'border-teal-400/80 bg-teal-500/30 text-white shadow-md ring-2 ring-teal-400/40'
-                  : 'border-white/15 bg-white/5 text-white/80 hover:border-white/25 hover:bg-white/10'
-              }`}
-            >
-              {name}
-            </button>
-          ))}
-        </div>
-        <div className="mt-auto shrink-0 pt-2">
-          <Button
-            type="button"
-            disabled={!selected || finishBusy}
-            className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug sm:rounded-3xl sm:py-[1.125rem] sm:text-xl"
-            onClick={goNextFace}
-          >
-            {finishBusy ? 'Считаем результат…' : isLast ? 'Завершить анализ' : 'Далее'}
-          </Button>
-        </div>
+        {finishBusy ? (
+          <p className="text-center calm-caption text-white/70">Считаем результат…</p>
+        ) : (
+          <div className="grid gap-3">
+            {f.options.map((name) => (
+              <button
+                key={name}
+                type="button"
+                onClick={() => pickName(name)}
+                className={`rounded-2xl border-2 px-3 py-4 text-center text-sm font-bold transition ${
+                  selected === name
+                    ? 'border-teal-400/80 bg-teal-500/30 text-white shadow-md ring-2 ring-teal-400/40'
+                    : 'border-white/15 bg-white/5 text-white/80 hover:border-white/25 hover:bg-white/10'
+                }`}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>,
       faceTestIndex > 0 ? (
         <BackArrowButton onClick={() => setFaceTestIndex((i) => i - 1)} aria-label="Назад" />

@@ -4,17 +4,16 @@
  * на проде с API Amvera оплата включена, если сервер payments.ready или задан URL API.
  */
 
-/** QA: true — отчёт без оплаты. Прод: false (оплата через Telegram + ЮKassa). */
+/** QA: true — отчёт без оплаты (только для локальной проверки). На проде: false. */
 const TEMPORARY_BYPASS_REPORT_PAYMENT = false;
 
 export const isPaymentsEnabled = (): boolean =>
   import.meta.env.VITE_PAYMENTS_ENABLED !== 'false';
 
-/** Dev-обход только в `npm run dev` (не в production-сборке Amvera). */
+/** Обход оплаты отчёта: QA-флаг или локально VITE_DEV_BYPASS_REPORT_PAYMENT=true */
 export const isDevPaymentBypass = (): boolean =>
-  !import.meta.env.PROD &&
-  (TEMPORARY_BYPASS_REPORT_PAYMENT ||
-    import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true');
+  TEMPORARY_BYPASS_REPORT_PAYMENT ||
+  (!import.meta.env.PROD && import.meta.env.VITE_DEV_BYPASS_REPORT_PAYMENT === 'true');
 
 /**
  * Оплата активна: флаг сборки, /health → payments.ready,

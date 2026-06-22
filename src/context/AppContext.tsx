@@ -15,13 +15,13 @@ import {
   loadProgress,
 } from '../utils/storage';
 import { goToIntroFresh, stripPaymentQueryFromUrl } from '../utils/appReload';
+import { arePaymentsActive, isDevPaymentBypass, isPaymentsEnabled } from '../utils/paymentStub';
 import {
   capturePaymentFailFromUrl,
   shouldBootToResultAfterPaymentFail,
 } from '../utils/paymentReturn';
 import { MID_TEST_STAGES } from '../utils/storage';
 import { pickStudyWordList } from '../utils/generateStimuli';
-import { arePaymentsActive, isPaymentsEnabled } from '../utils/paymentStub';
 import {
   getPaidReportSessionId,
   getPaymentsApiUrl,
@@ -243,10 +243,10 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
 
   useEffect(() => {
-    const boot = getInitialAppStage();
     if (hasPaymentReturnInUrl() || hasPendingProdamusPayment() || shouldBootToResultAfterPaymentFail()) {
       return;
     }
+    const boot = getInitialAppStage();
     if (stage === boot) return;
     if (MID_TEST_STAGES.has(stage) && MID_TEST_STAGES.has(boot)) return;
     setStage(boot);
@@ -307,7 +307,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         if (paidSession) setLatestResult(paidSession);
         return;
       }
-      if (stage === 'full-report' && !getPaidReportSessionId(session.id)) {
+      if (stage === 'full-report' && !isDevPaymentBypass() && !getPaidReportSessionId(session.id)) {
         setStage('result');
       }
     };
