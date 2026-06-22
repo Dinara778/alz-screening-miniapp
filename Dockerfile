@@ -7,7 +7,11 @@ COPY package*.json ./
 RUN npm ci
 COPY . .
 
-# Amvera «Сборка» → --build-arg; если не передан — true (раньше default false ломал /health при true в UI)
+# Сброс кэша слоя сборки при смене revision (public/build-revision.txt)
+ARG BUILD_REVISION=dev
+RUN echo "build revision: ${BUILD_REVISION}"
+
+# Amvera «Сборка» → --build-arg; fallback — .env.production
 ARG VITE_TELEGRAM_PAYMENTS_URL=
 ARG VITE_PAYMENTS_ENABLED=true
 ARG VITE_SHEETS_WEBHOOK_URL=
@@ -17,7 +21,7 @@ ENV VITE_PAYMENTS_ENABLED=$VITE_PAYMENTS_ENABLED
 ENV VITE_SHEETS_WEBHOOK_URL=$VITE_SHEETS_WEBHOOK_URL
 ENV VITE_SHARE_BOT_URL=$VITE_SHARE_BOT_URL
 
-RUN npm run build
+RUN echo "VITE_TELEGRAM_PAYMENTS_URL=${VITE_TELEGRAM_PAYMENTS_URL}" && npm run build
 
 FROM node:20-alpine
 WORKDIR /app/server

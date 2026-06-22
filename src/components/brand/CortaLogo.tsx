@@ -1,13 +1,13 @@
-import { publicAsset } from '../../utils/publicAsset';
+import logoMark from '../../assets/corta-logo-mark.png';
 
 type Props = {
   className?: string;
 };
 
-/** Логотип Corta — PNG из бренд-файла, без фона. */
+/** Логотип Corta — PNG в бандле Vite (обновляется вместе с JS). */
 export const CortaLogo = ({ className = '' }: Props) => (
   <img
-    src={publicAsset('/corta-logo-mark.png')}
+    src={logoMark}
     alt="Corta"
     width={104}
     height={28}

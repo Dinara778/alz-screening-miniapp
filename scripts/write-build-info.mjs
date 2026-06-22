@@ -1,6 +1,21 @@
 import fs from 'fs';
 import path from 'path';
 
+function loadEnvFile(filePath) {
+  if (!fs.existsSync(filePath)) return;
+  for (const line of fs.readFileSync(filePath, 'utf8').split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq <= 0) continue;
+    const key = trimmed.slice(0, eq).trim();
+    const value = trimmed.slice(eq + 1).trim();
+    if (!(key in process.env)) process.env[key] = value;
+  }
+}
+
+loadEnvFile(path.resolve('.env.production'));
+
 const outDir = path.resolve('dist');
 fs.mkdirSync(outDir, { recursive: true });
 fs.writeFileSync(
