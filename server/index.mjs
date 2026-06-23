@@ -690,6 +690,7 @@ app.post('/invoice-web', async (req, res) => {
       invId: order.invId,
       amountRub: spec.priceRub,
       description: spec.description,
+      receiptItemName: spec.title,
       sessionId: sessionKey,
       product,
     });
