@@ -28,19 +28,32 @@ export const MID_TEST_STAGES = new Set<AppStage>([
   'face-test',
 ]);
 
+function robokassaSessionFromQuery(q: URLSearchParams): string | null {
+  return (
+    q.get('sessionId')?.trim() ||
+    q.get('Shp_sessionId')?.trim() ||
+    q.get('Shp_sessionid')?.trim() ||
+    null
+  );
+}
+
 /** Успешный возврат с Payform или Робокассы. */
 export function hasRobokassaReturnInUrl(): boolean {
   if (typeof window === 'undefined') return false;
   const q = new URLSearchParams(window.location.search);
   if (q.get('robokassa') === 'fail' || q.get('robokassa') === 'cancel') return false;
-  return q.get('robokassa') === 'success' && Boolean(q.get('sessionId')?.trim());
+  if (q.get('robokassa') === 'success' && Boolean(robokassaSessionFromQuery(q))) return true;
+  // Кабинет: Success URL = https://cortaapp.ru/ (GET, без ?). Робокасса дописывает OutSum, InvId, Shp_*.
+  return Boolean(q.get('OutSum') && q.get('InvId') && robokassaSessionFromQuery(q));
 }
 
 export function robokassaReturnSessionId(): string | null {
   if (typeof window === 'undefined') return null;
   const q = new URLSearchParams(window.location.search);
-  if (q.get('robokassa') !== 'success') return null;
-  return q.get('sessionId')?.trim() || null;
+  if (q.get('robokassa') === 'success' || (q.get('OutSum') && q.get('InvId'))) {
+    return robokassaSessionFromQuery(q);
+  }
+  return null;
 }
 
 export function hasPaymentReturnInUrl(): boolean {

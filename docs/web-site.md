@@ -24,10 +24,16 @@ ROBOKASSA_IS_TEST=1
 PAYMENTS_PUBLIC_BASE_URL=https://ваш-домен.amvera.io
 ```
 
-В кабинете Робокассы:
+В кабинете Робокассы (**Технические настройки**):
 
-- **Result URL**: `https://ваш-домен.amvera.io/robokassa/result`
-- **Success URL** и **Fail URL** задаются автоматически из `PAYMENTS_PUBLIC_BASE_URL`
+| Поле | Значение | Метод |
+|------|----------|--------|
+| **Result URL** | `https://cortaapp.ru/robokassa/result` | POST |
+| **Success URL** | `https://cortaapp.ru/` | **GET** (без `?` и параметров!) |
+| **Fail URL** | `https://cortaapp.ru/` | **GET** (без `?` и параметров!) |
+
+Не указывайте `?robokassa=success` в Success URL — Робокасса выдаст ошибку валидации.  
+`sessionId` и продукт передаются через `Shp_sessionId` / `Shp_product` при создании счёта; после оплаты Робокасса сама допишет их в query.
 
 Пересоберите проект после смены переменных.
 
