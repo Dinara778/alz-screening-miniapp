@@ -42,8 +42,8 @@ const sessionUpsellFeatures = [
 ] as const;
 
 const reportOfferBullets = [
-  'подробную расшифровку вашего текущего статуса',
-  'Объяснение, почему именно сейчас проседают эти показатели',
+  'Расшифровку вашего когнитивного статуса',
+  'Понятный план по снижению перегрузки и быстрому восстановлению когнитивного ресурса именно под ваши показатели',
   'Краткие персональные рекомендации, которые помогут снять перегрузку и быстрее вернуть когнитивный ресурс',
 ] as const;
 
@@ -428,14 +428,12 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
                 <p className="text-center text-xs leading-relaxed text-amber-200/90">{payNotice}</p>
               ) : null}
               <Button type="button" variant="sell" className={calmBtnClass} onClick={openCheckout}>
-                {reportUnlocked
-                  ? 'Открыть расшифровку'
-                  : `Узнать полный план — ${reportPriceRub} р →`}
+                {reportUnlocked ? 'Открыть расшифровку' : 'Восстановить ресурс - 199 руб'}
               </Button>
             </div>
           }
         >
-          <div className="mx-auto w-full max-w-md space-y-5 pb-4">
+          <div className="mx-auto my-auto w-full max-w-md space-y-5">
             <p className="app-heading leading-snug text-white/95">
               Узнайте, почему сейчас мозг работает именно так и что поможет быстрее восстановить
               ресурс
@@ -452,11 +450,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
                   </li>
                 ))}
               </ul>
-            </div>
-            <div className="flex justify-center pt-1">
-              <SketchHighlightTitle accent="#f97316" generousOutline>
-                Узнать, что делать прямо сейчас
-              </SketchHighlightTitle>
             </div>
           </div>
         </CalmScreen>

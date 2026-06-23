@@ -405,11 +405,6 @@ export const PaymentCheckoutSheet = ({
                 </p>
               ) : null}
 
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-center">
-                <p className="text-3xl font-bold tabular-nums leading-none text-white">{meta.priceRub} ₽</p>
-                <p className="mt-2 text-xs leading-relaxed text-white/55">{meta.paymentNote}</p>
-              </div>
-
               {sheetNotice ? (
                 <p className="text-center text-xs leading-relaxed text-amber-200/90">{sheetNotice}</p>
               ) : null}
