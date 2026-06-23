@@ -1,6 +1,9 @@
 import type { TelegramInvoiceProduct } from './telegramPayments';
 import { getPaymentsApiUrl, reportPaidStorageKey } from './telegramPayments';
-import { robokassaReturnSessionId } from './storage';
+import {
+  clearRobokassaReturnSession,
+  peekRobokassaReturnSessionId,
+} from './paymentReturn';
 import { stripPaymentQueryFromUrl } from './appReload';
 
 export type WebPaymentResult =
@@ -88,15 +91,31 @@ export async function verifyWebReportPayment(sessionId: string): Promise<
   }
 }
 
-/** Возврат с Робокассы: ?robokassa=success&sessionId=… */
+/** Возврат с Робокассы: ?robokassa=success&sessionId=… — ждём подтверждение на сервере. */
 export async function recoverRobokassaPaymentFromUrl(): Promise<{
   sessionId: string;
   product: 'full_report';
 } | null> {
-  const sessionId = robokassaReturnSessionId();
+  const sessionId = peekRobokassaReturnSessionId();
   if (!sessionId) return null;
-  const verified = await verifyWebReportPayment(sessionId);
+
+  const delaysMs = [0, 500, 1000, 1500, 2200, 3000, 4000, 5500, 7500, 10000];
+  let waited = 0;
+  for (let i = 0; i < delaysMs.length; i++) {
+    const waitMore = delaysMs[i] - waited;
+    if (waitMore > 0) {
+      await new Promise((r) => setTimeout(r, waitMore));
+      waited = delaysMs[i];
+    }
+    const verified = await verifyWebReportPayment(sessionId);
+    if (verified.ok) {
+      clearRobokassaReturnSession();
+      stripPaymentQueryFromUrl();
+      return { sessionId: verified.sessionId, product: 'full_report' };
+    }
+  }
+
+  clearRobokassaReturnSession();
   stripPaymentQueryFromUrl();
-  if (!verified.ok) return null;
-  return { sessionId: verified.sessionId, product: 'full_report' };
+  return null;
 }

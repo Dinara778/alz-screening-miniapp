@@ -20,10 +20,11 @@ import {
   INTERPRETATION_LABEL_FEELING,
   INTERPRETATION_LABEL_IN_LIFE,
 } from '../copy/interpretationLabels';
-import { consumePaymentFailNotice, PAYMENT_FAIL_NOTICE_TEXT } from '../utils/paymentReturn';
+import { consumePaymentFailNotice, hasPendingRobokassaReturn, PAYMENT_FAIL_NOTICE_TEXT } from '../utils/paymentReturn';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
 import { hasPaymentReturnInUrl, loadSessionFromHistory } from '../utils/storage';
+import { recoverRobokassaPaymentFromUrl } from '../utils/webPayments';
 import {
   consultationPaidStorageKey,
   isReportPaidUnlocked,
@@ -142,14 +143,23 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const skipNativePayment = shouldBypassReportPayment(serverPaymentsReady);
 
   useEffect(() => {
-    if (!latestResult?.id || skipNativePayment || !hasPaymentReturnInUrl()) return;
-    void recoverProdamusPaymentFromUrl().then((recovery) => {
+    if (
+      !latestResult?.id ||
+      skipNativePayment ||
+      (!hasPaymentReturnInUrl() && !hasPendingRobokassaReturn())
+    ) {
+      return;
+    }
+    const run = async () => {
+      const recovery =
+        (await recoverRobokassaPaymentFromUrl()) ?? (await recoverProdamusPaymentFromUrl());
       if (recovery?.product !== 'full_report' || !recovery.sessionId) return;
       localStorage.setItem(reportPaidStorageKey(recovery.sessionId), '1');
       const session = loadSessionFromHistory(recovery.sessionId);
       if (session) setLatestResult(session);
       setStage('full-report');
-    });
+    };
+    void run();
   }, [latestResult?.id, skipNativePayment, setStage]);
 
   if (!latestResult) {

@@ -14,10 +14,12 @@ import {
   shouldRestoreProgress,
   loadProgress,
 } from '../utils/storage';
-import { goToIntroFresh, stripPaymentQueryFromUrl } from '../utils/appReload';
+import { goToIntroFresh } from '../utils/appReload';
 import { arePaymentsActive, isDevPaymentBypass, isPaymentsEnabled } from '../utils/paymentStub';
 import {
   capturePaymentFailFromUrl,
+  captureRobokassaSuccessFromUrl,
+  hasPendingRobokassaReturn,
   shouldBootToResultAfterPaymentFail,
 } from '../utils/paymentReturn';
 import { MID_TEST_STAGES } from '../utils/storage';
@@ -79,13 +81,14 @@ function hasPendingProdamusPayment(): boolean {
 /** Стартовый экран: только intro или продолжение теста; не result/full-report. */
 export function getInitialAppStage(): AppStage {
   capturePaymentFailFromUrl();
-  stripPaymentQueryFromUrl();
+  captureRobokassaSuccessFromUrl();
   purgeStalePostTestProgress();
+  const paymentReturn = hasPaymentReturnInUrl() || hasPendingRobokassaReturn();
   if (shouldBootToResultAfterPaymentFail()) return 'result';
   if (isRestartBoot() || isPageReload()) {
-    if (!hasPaymentReturnInUrl()) return 'corta-intro';
+    if (!paymentReturn) return 'corta-intro';
   }
-  if (hasPaymentReturnInUrl()) return 'result';
+  if (paymentReturn) return 'result';
   const raw = loadProgress();
   if (raw && shouldRestoreProgress(raw)) return raw.stage;
   return 'corta-intro';
@@ -243,7 +246,12 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
 
   useEffect(() => {
-    if (hasPaymentReturnInUrl() || hasPendingProdamusPayment() || shouldBootToResultAfterPaymentFail()) {
+    if (
+      hasPaymentReturnInUrl() ||
+      hasPendingRobokassaReturn() ||
+      hasPendingProdamusPayment() ||
+      shouldBootToResultAfterPaymentFail()
+    ) {
       return;
     }
     const boot = getInitialAppStage();
@@ -316,7 +324,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   }, [stage, latestResult?.id]);
 
   useEffect(() => {
-    if (!hasPaymentReturnInUrl()) return;
+    if (!hasPaymentReturnInUrl() && !hasPendingRobokassaReturn()) return;
     if (!arePaymentsActive(serverPaymentsReady)) return;
     const run = async () => {
       const recovery =
@@ -597,13 +605,6 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       saveResultFn,
     ],
   );
-
-  useEffect(() => {
-    stripPaymentQueryFromUrl();
-    if (!hasPaymentReturnInUrl()) return;
-    const t = window.setTimeout(() => stripPaymentQueryFromUrl(), 800);
-    return () => window.clearTimeout(t);
-  }, []);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };

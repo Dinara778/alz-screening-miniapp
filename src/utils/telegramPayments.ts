@@ -616,10 +616,16 @@ function unlockReportSession(sessionId: string): RecoverReportResult {
   return { ok: true, sessionId };
 }
 
-/** Восстановить доступ к отчёту (Telegram + ЮKassa или Prodamus). */
+/** Восстановить доступ к отчёту (сайт / Telegram / Prodamus). */
 export async function recoverFullReportAccess(sessionId: string): Promise<RecoverReportResult> {
   if (isReportPaidInStorage(sessionId)) {
     return { ok: true, sessionId };
+  }
+
+  if (isStandaloneWeb()) {
+    const verified = await verifyWebReportPayment(sessionId);
+    if (verified.ok) return unlockReportSession(verified.sessionId);
+    return { ok: false, message: verified.message };
   }
 
   const tg = window.Telegram?.WebApp;
