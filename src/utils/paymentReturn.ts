@@ -21,18 +21,36 @@ export function rememberRobokassaPendingProduct(product: TelegramInvoiceProduct)
   }
 }
 
-/** Сохранить sessionId и product из ?robokassa=success до очистки URL. */
+/** Сохранить sessionId и product из URL возврата Робокассы до очистки query. */
 export function captureRobokassaSuccessFromUrl(): void {
   if (typeof window === 'undefined') return;
   try {
     const q = new URLSearchParams(window.location.search);
-    if (q.get('robokassa') !== 'success') return;
-    const sessionId = q.get('sessionId')?.trim();
+    const isRobokassaSuccess =
+      q.get('robokassa') === 'success' || Boolean(q.get('OutSum') && q.get('InvId'));
+    if (!isRobokassaSuccess) return;
+
+    const sessionId =
+      q.get('sessionId')?.trim() ||
+      q.get('Shp_sessionId')?.trim() ||
+      q.get('Shp_sessionid')?.trim();
     if (sessionId) sessionStorage.setItem(ROBOKASSA_RETURN_SESSION_KEY, sessionId);
+
     const product =
       parseRobokassaProduct(q.get('product')) ??
+      parseRobokassaProduct(q.get('Shp_product')) ??
+      parseRobokassaProduct(q.get('Shp_Product')) ??
       parseRobokassaProduct(sessionStorage.getItem(ROBOKASSA_PENDING_PRODUCT_KEY));
     if (product) sessionStorage.setItem(ROBOKASSA_RETURN_PRODUCT_KEY, product);
+
+    if (q.get('robokassa') !== 'success' && sessionId) {
+      const next = new URLSearchParams(q);
+      next.set('robokassa', 'success');
+      if (!next.get('sessionId')) next.set('sessionId', sessionId);
+      if (product && !next.get('product')) next.set('product', product);
+      const path = `${window.location.pathname}?${next}${window.location.hash}`;
+      window.history.replaceState({}, '', path);
+    }
   } catch {
     /* ignore */
   }
@@ -43,8 +61,11 @@ export function peekRobokassaReturnSessionId(): string | null {
   if (typeof window === 'undefined') return null;
   try {
     const q = new URLSearchParams(window.location.search);
-    if (q.get('robokassa') === 'success') {
-      const fromUrl = q.get('sessionId')?.trim();
+    if (q.get('robokassa') === 'success' || (q.get('OutSum') && q.get('InvId'))) {
+      const fromUrl =
+        q.get('sessionId')?.trim() ||
+        q.get('Shp_sessionId')?.trim() ||
+        q.get('Shp_sessionid')?.trim();
       if (fromUrl) return fromUrl;
     }
     return sessionStorage.getItem(ROBOKASSA_RETURN_SESSION_KEY)?.trim() || null;
@@ -57,7 +78,10 @@ export function peekRobokassaReturnProduct(): TelegramInvoiceProduct {
   if (typeof window === 'undefined') return 'full_report';
   try {
     const q = new URLSearchParams(window.location.search);
-    const fromUrl = parseRobokassaProduct(q.get('product'));
+    const fromUrl =
+      parseRobokassaProduct(q.get('product')) ??
+      parseRobokassaProduct(q.get('Shp_product')) ??
+      parseRobokassaProduct(q.get('Shp_Product'));
     if (fromUrl) return fromUrl;
     const stored = parseRobokassaProduct(sessionStorage.getItem(ROBOKASSA_RETURN_PRODUCT_KEY));
     if (stored) return stored;

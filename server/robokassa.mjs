@@ -205,8 +205,8 @@ export function getRobokassaHealthInfo(env = process.env) {
     receiptSno: envStr(env, 'ROBOKASSA_RECEIPT_SNO') || 'usn_income',
     receiptTax: envStr(env, 'ROBOKASSA_RECEIPT_TAX') || 'none',
     paymentSignatureFormula: receiptEnabled
-      ? 'MerchantLogin:OutSum:InvId:Receipt(urlencode):SuccessUrl2:SuccessUrl2Method:FailUrl2:FailUrl2Method:Password1'
-      : 'MerchantLogin:OutSum:InvId:SuccessUrl2:SuccessUrl2Method:FailUrl2:FailUrl2Method:Password1',
+      ? 'MerchantLogin:OutSum:InvId:Receipt(urlencode):Password1:Shp_product:Shp_sessionId'
+      : 'MerchantLogin:OutSum:InvId:Password1:Shp_product:Shp_sessionId',
     docsError29:
       'Неверный SignatureValue — проверьте Пароль#1, алгоритм хэша (MD5) и Receipt при фискализации',
   };
@@ -225,25 +225,11 @@ export function buildRobokassaPaymentUrl({ invId, amountRub, description, sessio
     ? buildRobokassaReceipt({ itemName: description, amountRub }, env)
     : '';
 
-  const publicBase = (envStr(env, 'PAYMENTS_PUBLIC_BASE_URL') || envStr(env, 'TELEGRAM_MINI_APP_URL'))
-    .replace(/\/$/, '');
-  const successUrlRaw = publicBase
-    ? `${publicBase}/?${new URLSearchParams({
-        robokassa: 'success',
-        sessionId: String(sessionId),
-        product: String(product),
-      })}`
-    : '';
-  const failUrlRaw = publicBase ? `${publicBase}/?robokassa=fail` : '';
-  const redirect =
-    publicBase && successUrlRaw && failUrlRaw
-      ? {
-          successUrl2: encodeURIComponent(successUrlRaw),
-          successUrl2Method: 'GET',
-          failUrl2: encodeURIComponent(failUrlRaw),
-          failUrl2Method: 'GET',
-        }
-      : null;
+  // Shp_* возвращаются на SuccessURL из настроек кабинета (без SuccessUrl2 в подписи).
+  const shp = {
+    Shp_product: String(product),
+    Shp_sessionId: String(sessionId),
+  };
 
   const sigBase = buildPaymentSignatureBase({
     login,
@@ -251,7 +237,7 @@ export function buildRobokassaPaymentUrl({ invId, amountRub, description, sessio
     invId,
     pass1,
     receiptJson,
-    redirect,
+    shp,
   });
   const signatureValue = computeHash(sigBase, hashAlgorithm);
 
@@ -261,15 +247,11 @@ export function buildRobokassaPaymentUrl({ invId, amountRub, description, sessio
     InvId: String(invId),
     Description: String(description).slice(0, 100),
     SignatureValue: signatureValue,
+    Shp_product: shp.Shp_product,
+    Shp_sessionId: shp.Shp_sessionId,
   });
   if (receiptJson) {
     params.set('Receipt', receiptJson);
-  }
-  if (redirect) {
-    params.set('SuccessUrl2', successUrlRaw);
-    params.set('SuccessUrl2Method', redirect.successUrl2Method);
-    params.set('FailUrl2', failUrlRaw);
-    params.set('FailUrl2Method', redirect.failUrl2Method);
   }
   if (isRobokassaTestMode(env)) {
     params.set('IsTest', '1');
