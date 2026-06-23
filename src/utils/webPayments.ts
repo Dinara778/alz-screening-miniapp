@@ -1,8 +1,14 @@
 import type { TelegramInvoiceProduct } from './telegramPayments';
-import { getPaymentsApiUrl, reportPaidStorageKey } from './telegramPayments';
+import {
+  consultationPaidStorageKey,
+  getPaymentsApiUrl,
+  reportPaidStorageKey,
+} from './telegramPayments';
 import {
   clearRobokassaReturnSession,
+  peekRobokassaReturnProduct,
   peekRobokassaReturnSessionId,
+  rememberRobokassaPendingProduct,
 } from './paymentReturn';
 import { stripPaymentQueryFromUrl } from './appReload';
 
@@ -12,7 +18,21 @@ export type WebPaymentResult =
   | { status: 'pending_setup'; message: string }
   | { status: 'error'; message: string };
 
+export type RobokassaPaymentRecovery = {
+  sessionId: string;
+  product: TelegramInvoiceProduct;
+};
+
 const trimApi = (url: string) => url.replace(/\/$/, '');
+
+function markWebProductPaid(sessionId: string, product: TelegramInvoiceProduct): void {
+  if (product === 'full_report') {
+    localStorage.setItem(reportPaidStorageKey(sessionId), '1');
+    return;
+  }
+  localStorage.setItem(consultationPaidStorageKey(sessionId), '1');
+  window.dispatchEvent(new Event('consultation-paid'));
+}
 
 export async function openWebPayment(
   product: TelegramInvoiceProduct,
@@ -48,10 +68,11 @@ export async function openWebPayment(
       return { status: 'error', message: data.error || `Ошибка сервера (${res.status})` };
     }
     if (data.alreadyPaid) {
-      localStorage.setItem(reportPaidStorageKey(sessionId), '1');
+      markWebProductPaid(sessionId, product);
       return { status: 'already_paid' };
     }
     if (data.paymentUrl) {
+      rememberRobokassaPendingProduct(product);
       window.location.assign(data.paymentUrl);
       return { status: 'redirected', paymentUrl: data.paymentUrl };
     }
@@ -61,10 +82,10 @@ export async function openWebPayment(
   }
 }
 
-export async function verifyWebReportPayment(sessionId: string): Promise<
-  | { ok: true; sessionId: string }
-  | { ok: false; message: string }
-> {
+export async function verifyWebProductPayment(
+  sessionId: string,
+  product: TelegramInvoiceProduct,
+): Promise<{ ok: true; sessionId: string } | { ok: false; message: string }> {
   const api = getPaymentsApiUrl();
   if (!api) {
     return { ok: false, message: 'Сервер оплаты не настроен.' };
@@ -74,11 +95,11 @@ export async function verifyWebReportPayment(sessionId: string): Promise<
     const res = await fetch(`${trimApi(api)}/payment-recover-session-web`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId, product: 'full_report' }),
+      body: JSON.stringify({ sessionId, product }),
     });
     const data = (await res.json()) as { paid?: boolean; sessionId?: string };
     if (res.ok && data.paid && data.sessionId) {
-      localStorage.setItem(reportPaidStorageKey(data.sessionId), '1');
+      markWebProductPaid(data.sessionId, product);
       return { ok: true, sessionId: data.sessionId };
     }
     return {
@@ -91,13 +112,19 @@ export async function verifyWebReportPayment(sessionId: string): Promise<
   }
 }
 
-/** Возврат с Робокассы: ?robokassa=success&sessionId=… — ждём подтверждение на сервере. */
-export async function recoverRobokassaPaymentFromUrl(): Promise<{
-  sessionId: string;
-  product: 'full_report';
-} | null> {
+/** @deprecated используйте verifyWebProductPayment */
+export async function verifyWebReportPayment(sessionId: string): Promise<
+  | { ok: true; sessionId: string }
+  | { ok: false; message: string }
+> {
+  return verifyWebProductPayment(sessionId, 'full_report');
+}
+
+/** Возврат с Робокассы: ?robokassa=success&sessionId=…&product=… */
+export async function recoverRobokassaPaymentFromUrl(): Promise<RobokassaPaymentRecovery | null> {
   const sessionId = peekRobokassaReturnSessionId();
   if (!sessionId) return null;
+  const product = peekRobokassaReturnProduct();
 
   const delaysMs = [0, 500, 1000, 1500, 2200, 3000, 4000, 5500, 7500, 10000];
   let waited = 0;
@@ -107,11 +134,11 @@ export async function recoverRobokassaPaymentFromUrl(): Promise<{
       await new Promise((r) => setTimeout(r, waitMore));
       waited = delaysMs[i];
     }
-    const verified = await verifyWebReportPayment(sessionId);
+    const verified = await verifyWebProductPayment(sessionId, product);
     if (verified.ok) {
       clearRobokassaReturnSession();
       stripPaymentQueryFromUrl();
-      return { sessionId: verified.sessionId, product: 'full_report' };
+      return { sessionId: verified.sessionId, product };
     }
   }
 

@@ -25,6 +25,7 @@ import {
 import { MID_TEST_STAGES } from '../utils/storage';
 import { pickStudyWordList } from '../utils/generateStimuli';
 import {
+  consultationPaidStorageKey,
   getPaidReportSessionId,
   getPaymentsApiUrl,
   recoverFullReportAccess,
@@ -337,6 +338,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
       if (recovery.product === 'consultation') {
+        localStorage.setItem(consultationPaidStorageKey(recovery.sessionId), '1');
+        window.dispatchEvent(new Event('consultation-paid'));
         openResultAtStep('session-offer');
       }
     };

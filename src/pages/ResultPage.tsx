@@ -20,7 +20,7 @@ import {
   INTERPRETATION_LABEL_FEELING,
   INTERPRETATION_LABEL_IN_LIFE,
 } from '../copy/interpretationLabels';
-import { consumePaymentFailNotice, hasPendingRobokassaReturn, PAYMENT_FAIL_NOTICE_TEXT } from '../utils/paymentReturn';
+import { consumePaymentFailNotice, CONSULTATION_PAID_THANKS_TEXT, hasPendingRobokassaReturn, PAYMENT_FAIL_NOTICE_TEXT } from '../utils/paymentReturn';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
 import { hasPaymentReturnInUrl, loadSessionFromHistory } from '../utils/storage';
@@ -153,10 +153,18 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     const run = async () => {
       const recovery =
         (await recoverRobokassaPaymentFromUrl()) ?? (await recoverProdamusPaymentFromUrl());
-      if (recovery?.product !== 'full_report' || !recovery.sessionId) return;
-      localStorage.setItem(reportPaidStorageKey(recovery.sessionId), '1');
+      if (!recovery?.sessionId) return;
       const session = loadSessionFromHistory(recovery.sessionId);
       if (session) setLatestResult(session);
+      if (recovery.product === 'consultation') {
+        localStorage.setItem(consultationPaidStorageKey(recovery.sessionId), '1');
+        window.dispatchEvent(new Event('consultation-paid'));
+        setSessionPaid(true);
+        setStep('session-offer');
+        return;
+      }
+      if (recovery.product !== 'full_report') return;
+      localStorage.setItem(reportPaidStorageKey(recovery.sessionId), '1');
       setStage('full-report');
     };
     void run();
@@ -466,7 +474,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
             <div className="flex flex-col gap-3">
               {sessionPaid ? (
                 <Button type="button" className={calmBtnClass} onClick={() => setStep('hub')}>
-                  Назад к результатам
+                  Вернуться
                 </Button>
               ) : (
                 <>
@@ -489,12 +497,9 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         >
           <div className="mx-auto w-full max-w-md space-y-5">
             {sessionPaid ? (
-              <>
-                <p className="text-lg font-semibold text-emerald-200">Спасибо за оплату!</p>
-                <p className="results-body leading-relaxed">
-                  Мы свяжемся с вами в течение 15 минут для записи на сессию.
-                </p>
-              </>
+              <p className="text-lg font-semibold leading-relaxed text-emerald-200">
+                {CONSULTATION_PAID_THANKS_TEXT}
+              </p>
             ) : (
               <>
                 <SketchHighlightTitle accent={accent} generousOutline tuckBottomOutline className="mb-3">

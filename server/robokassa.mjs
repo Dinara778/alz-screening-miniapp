@@ -118,6 +118,7 @@ export function buildRobokassaPaymentUrl({ invId, amountRub, description, sessio
     const returnQs = new URLSearchParams({
       robokassa: 'success',
       sessionId: String(sessionId),
+      product: String(product),
     });
     params.set('SuccessURL', `${publicBase}/?${returnQs}`);
     params.set('FailURL', `${publicBase}/?robokassa=fail`);

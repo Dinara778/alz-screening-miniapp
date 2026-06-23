@@ -17,6 +17,7 @@ export function stripPaymentQueryFromUrl(): void {
     'boot',
     'robokassa',
     'sessionId',
+    'product',
   ];
   let changed = false;
   for (const key of drop) {

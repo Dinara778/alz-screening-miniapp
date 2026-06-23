@@ -17,6 +17,7 @@ import {
   prodamusPendingOrderKey,
 } from '../utils/telegramPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
+import { CONSULTATION_PAID_THANKS_TEXT } from '../utils/paymentReturn';
 
 export const ConsultationRequestPage = () => {
   const { setStage, consultationReturnTo, setConsultationReturnTo, participant, latestResult } = useApp();
@@ -170,13 +171,12 @@ export const ConsultationRequestPage = () => {
             <p className="mt-3 calm-body dark:text-slate-200">Нет данных прохождения. Вернитесь назад.</p>
           ) : paidOk ? (
             <>
-              <p className="mt-3 text-lg font-semibold text-emerald-200">Спасибо за оплату!</p>
-              <p className="mt-2 calm-body leading-relaxed">
-                Мы свяжемся с вами по указанной вами почте в течение 15 минут.
+              <p className="mt-3 text-lg font-semibold leading-relaxed text-emerald-200">
+                {CONSULTATION_PAID_THANKS_TEXT}
               </p>
               <div className="mt-5">
                 <Button type="button" className="w-full rounded-2xl py-4 font-bold sm:max-w-sm" onClick={goBack}>
-                  Вернуться в приложение
+                  Вернуться
                 </Button>
               </div>
             </>
