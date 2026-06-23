@@ -4,11 +4,22 @@ const PAYMENT_FAIL_NOTICE_KEY = 'alz_payment_fail_notice';
 const PAYMENT_FAIL_BOOT_KEY = 'alz_payment_fail_boot_result';
 const ROBOKASSA_RETURN_SESSION_KEY = 'alz_robokassa_return_session';
 const ROBOKASSA_RETURN_PRODUCT_KEY = 'alz_robokassa_return_product';
+const ROBOKASSA_RETURN_INV_KEY = 'alz_robokassa_return_inv';
 const ROBOKASSA_PENDING_PRODUCT_KEY = 'alz_robokassa_pending_product';
 
 function parseRobokassaProduct(raw: string | null | undefined): TelegramInvoiceProduct | null {
   if (raw === 'full_report' || raw === 'consultation') return raw;
   return null;
+}
+
+/** Перед уходом на Робокассу — запомнить InvId для возврата без Shp_* в URL. */
+export function rememberRobokassaPendingInvId(invId: number | string): void {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    sessionStorage.setItem(ROBOKASSA_RETURN_INV_KEY, String(invId));
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Перед уходом на Робокассу — запомнить product (на случай старого Success URL без product). */
@@ -29,6 +40,9 @@ export function captureRobokassaSuccessFromUrl(): void {
     const isRobokassaSuccess =
       q.get('robokassa') === 'success' || Boolean(q.get('OutSum') && q.get('InvId'));
     if (!isRobokassaSuccess) return;
+
+    const invId = q.get('InvId')?.trim();
+    if (invId) sessionStorage.setItem(ROBOKASSA_RETURN_INV_KEY, invId);
 
     const sessionId =
       q.get('sessionId')?.trim() ||
@@ -53,6 +67,18 @@ export function captureRobokassaSuccessFromUrl(): void {
     }
   } catch {
     /* ignore */
+  }
+}
+
+export function peekRobokassaReturnInvId(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const q = new URLSearchParams(window.location.search);
+    const fromUrl = q.get('InvId')?.trim();
+    if (fromUrl) return fromUrl;
+    return sessionStorage.getItem(ROBOKASSA_RETURN_INV_KEY)?.trim() || null;
+  } catch {
+    return null;
   }
 }
 
@@ -98,6 +124,7 @@ export function clearRobokassaReturnSession(): void {
   try {
     sessionStorage.removeItem(ROBOKASSA_RETURN_SESSION_KEY);
     sessionStorage.removeItem(ROBOKASSA_RETURN_PRODUCT_KEY);
+    sessionStorage.removeItem(ROBOKASSA_RETURN_INV_KEY);
     sessionStorage.removeItem(ROBOKASSA_PENDING_PRODUCT_KEY);
   } catch {
     /* ignore */
@@ -105,7 +132,7 @@ export function clearRobokassaReturnSession(): void {
 }
 
 export function hasPendingRobokassaReturn(): boolean {
-  return Boolean(peekRobokassaReturnSessionId());
+  return Boolean(peekRobokassaReturnSessionId() || peekRobokassaReturnInvId());
 }
 
 /** Считать ?robokassa=fail до очистки URL (вызывать один раз при старте). */

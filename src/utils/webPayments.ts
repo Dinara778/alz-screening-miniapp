@@ -6,8 +6,10 @@ import {
 } from './telegramPayments';
 import {
   clearRobokassaReturnSession,
+  peekRobokassaReturnInvId,
   peekRobokassaReturnProduct,
   peekRobokassaReturnSessionId,
+  rememberRobokassaPendingInvId,
   rememberRobokassaPendingProduct,
 } from './paymentReturn';
 import { stripPaymentQueryFromUrl } from './appReload';
@@ -54,6 +56,7 @@ export async function openWebPayment(
       code?: string;
       alreadyPaid?: boolean;
       paymentUrl?: string;
+      invId?: number;
     };
 
     if (res.status === 503 && data.code === 'robokassa_pending') {
@@ -73,6 +76,7 @@ export async function openWebPayment(
     }
     if (data.paymentUrl) {
       rememberRobokassaPendingProduct(product);
+      if (data.invId != null) rememberRobokassaPendingInvId(data.invId);
       window.location.assign(data.paymentUrl);
       return { status: 'redirected', paymentUrl: data.paymentUrl };
     }
@@ -112,6 +116,33 @@ export async function verifyWebProductPayment(
   }
 }
 
+async function verifyWebPaymentByInvId(
+  invId: string,
+): Promise<{ ok: true; sessionId: string; product: TelegramInvoiceProduct } | { ok: false }> {
+  const api = getPaymentsApiUrl();
+  if (!api) return { ok: false };
+
+  try {
+    const res = await fetch(`${trimApi(api)}/payment-recover-inv-web`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invId }),
+    });
+    const data = (await res.json()) as {
+      paid?: boolean;
+      sessionId?: string;
+      product?: TelegramInvoiceProduct;
+    };
+    if (res.ok && data.paid && data.sessionId && data.product) {
+      markWebProductPaid(data.sessionId, data.product);
+      return { ok: true, sessionId: data.sessionId, product: data.product };
+    }
+  } catch {
+    /* ignore */
+  }
+  return { ok: false };
+}
+
 /** @deprecated используйте verifyWebProductPayment */
 export async function verifyWebReportPayment(sessionId: string): Promise<
   | { ok: true; sessionId: string }
@@ -120,11 +151,12 @@ export async function verifyWebReportPayment(sessionId: string): Promise<
   return verifyWebProductPayment(sessionId, 'full_report');
 }
 
-/** Возврат с Робокассы: ?robokassa=success&sessionId=…&product=… */
+/** Возврат с Робокассы: OutSum+InvId или ?robokassa=success&sessionId=… */
 export async function recoverRobokassaPaymentFromUrl(): Promise<RobokassaPaymentRecovery | null> {
+  const invId = peekRobokassaReturnInvId();
   const sessionId = peekRobokassaReturnSessionId();
-  if (!sessionId) return null;
   const product = peekRobokassaReturnProduct();
+  if (!invId && !sessionId) return null;
 
   const delaysMs = [0, 500, 1000, 1500, 2200, 3000, 4000, 5500, 7500, 10000];
   let waited = 0;
@@ -134,11 +166,21 @@ export async function recoverRobokassaPaymentFromUrl(): Promise<RobokassaPayment
       await new Promise((r) => setTimeout(r, waitMore));
       waited = delaysMs[i];
     }
-    const verified = await verifyWebProductPayment(sessionId, product);
-    if (verified.ok) {
-      clearRobokassaReturnSession();
-      stripPaymentQueryFromUrl();
-      return { sessionId: verified.sessionId, product };
+    if (invId) {
+      const byInv = await verifyWebPaymentByInvId(invId);
+      if (byInv.ok) {
+        clearRobokassaReturnSession();
+        stripPaymentQueryFromUrl();
+        return { sessionId: byInv.sessionId, product: byInv.product };
+      }
+    }
+    if (sessionId) {
+      const verified = await verifyWebProductPayment(sessionId, product);
+      if (verified.ok) {
+        clearRobokassaReturnSession();
+        stripPaymentQueryFromUrl();
+        return { sessionId: verified.sessionId, product };
+      }
     }
   }
 

@@ -42,9 +42,9 @@ export function hasRobokassaReturnInUrl(): boolean {
   if (typeof window === 'undefined') return false;
   const q = new URLSearchParams(window.location.search);
   if (q.get('robokassa') === 'fail' || q.get('robokassa') === 'cancel') return false;
-  if (q.get('robokassa') === 'success' && Boolean(robokassaSessionFromQuery(q))) return true;
-  // Кабинет: Success URL = https://cortaapp.ru/ (GET, без ?). Робокасса дописывает OutSum, InvId, Shp_*.
-  return Boolean(q.get('OutSum') && q.get('InvId') && robokassaSessionFromQuery(q));
+  if (q.get('robokassa') === 'success') return true;
+  // Кабинет: Success URL = https://cortaapp.ru/ (GET). Робокасса дописывает OutSum, InvId.
+  return Boolean(q.get('OutSum') && q.get('InvId'));
 }
 
 export function robokassaReturnSessionId(): string | null {

@@ -25,7 +25,7 @@ function stripEnvQuotes(raw) {
 }
 
 function envStr(env, key) {
-  return stripEnvQuotes(env[key]);
+  return stripEnvQuotes(env[key]).replace(/[\r\n\uFEFF]/g, '');
 }
 
 function md5(text) {
@@ -113,23 +113,23 @@ function sortedShpSignaturePart(params) {
  * Фискальный чек (54-ФЗ). Без Receipt при включённой фискализации в кабинете — ошибка 29.
  * @see https://docs.robokassa.ru/ru/fiscalization/
  */
+/** Минимальный JSON чека как в примере docs.robokassa.ru/ru/pay-interface */
 export function buildRobokassaReceipt({ itemName, amountRub }, env = process.env) {
-  const sno = envStr(env, 'ROBOKASSA_RECEIPT_SNO') || 'usn_income';
   const tax = envStr(env, 'ROBOKASSA_RECEIPT_TAX') || 'none';
   const sum = Number(Number(amountRub).toFixed(2));
-  return JSON.stringify({
-    sno,
+  const receipt = {
     items: [
       {
         name: String(itemName).slice(0, 128),
         quantity: 1,
         sum,
-        payment_method: 'full_payment',
-        payment_object: 'service',
         tax,
       },
     ],
-  });
+  };
+  const sno = envStr(env, 'ROBOKASSA_RECEIPT_SNO');
+  if (sno) receipt.sno = sno;
+  return JSON.stringify(receipt);
 }
 
 /**
@@ -210,10 +210,11 @@ export function getRobokassaHealthInfo(env = process.env) {
     receiptSno: envStr(env, 'ROBOKASSA_RECEIPT_SNO') || 'usn_income',
     receiptTax: envStr(env, 'ROBOKASSA_RECEIPT_TAX') || 'none',
     paymentSignatureFormula: receiptEnabled
-      ? 'MerchantLogin:OutSum:InvId:Receipt(uri-encode):Password1:Shp_product:Shp_sessionId'
-      : 'MerchantLogin:OutSum:InvId:Password1:Shp_product:Shp_sessionId',
+      ? 'MerchantLogin:OutSum:InvId:Receipt(uri-encode):Password1'
+      : 'MerchantLogin:OutSum:InvId:Password1',
+    password1Md5: pass1 ? md5(pass1) : null,
     docsError29:
-      'Неверный SignatureValue — проверьте Пароль#1, алгоритм хэша (MD5) и Receipt при фискализации',
+      'Неверный SignatureValue — сверьте password1Md5 с md5(Пароль#1), алгоритм хэша и Receipt',
   };
 }
 
@@ -233,35 +234,28 @@ export function buildRobokassaPaymentUrl(
     ? buildRobokassaReceipt({ itemName: receiptItemName || description, amountRub }, env)
     : '';
 
-  // Shp_* возвращаются на SuccessURL из настроек кабинета (без SuccessUrl2 в подписи).
-  const shp = {
-    Shp_product: String(product),
-    Shp_sessionId: String(sessionId),
-  };
-
   const sigBase = buildPaymentSignatureBase({
     login,
     outSum,
     invId,
     pass1,
     receiptJson,
-    shp,
   });
   const signatureValue = computeHash(sigBase, hashAlgorithm);
 
+  // SignatureValue — последний параметр (рекомендация Robokassa).
   let qs = appendQueryParam('', 'MerchantLogin', login);
   qs = appendQueryParam(qs, 'OutSum', outSum);
   qs = appendQueryParam(qs, 'InvId', String(invId));
   qs = appendQueryParam(qs, 'Description', String(description).slice(0, 100));
-  qs = appendQueryParam(qs, 'SignatureValue', signatureValue);
-  qs = appendQueryParam(qs, 'Shp_product', shp.Shp_product);
-  qs = appendQueryParam(qs, 'Shp_sessionId', shp.Shp_sessionId);
+  qs = appendQueryParam(qs, 'Culture', 'ru');
   if (receiptJson) {
     qs = `${qs}&Receipt=${encodeReceiptForSignature(receiptJson)}`;
   }
   if (isRobokassaTestMode(env)) {
     qs = appendQueryParam(qs, 'IsTest', '1');
   }
+  qs = appendQueryParam(qs, 'SignatureValue', signatureValue);
 
   return `https://auth.robokassa.ru/Merchant/Index.aspx?${qs}`;
 }

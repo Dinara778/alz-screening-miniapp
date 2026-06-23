@@ -434,6 +434,42 @@ app.get('/health/robokassa', (_req, res) => {
   res.json({ ok: true, ...getRobokassaHealthInfo(process.env) });
 });
 
+/** Полная ссылка на оплату для проверки в поддержке Робокассы (с SignatureValue). */
+app.get('/health/robokassa/payment-url', (req, res) => {
+  try {
+    if (!isRobokassaConfigured(process.env)) {
+      return res.status(503).json({ ok: false, error: 'robokassa not configured' });
+    }
+    const sessionId = String(req.query.sessionId ?? 'health-check').slice(0, 80);
+    const product = String(req.query.product ?? 'full_report');
+    const spec = PRODUCTS[product];
+    if (!spec) return res.status(400).json({ ok: false, error: 'unknown product' });
+    const order = robokassaRegisterOrder({
+      sessionId,
+      product,
+      amountRub: spec.priceRub,
+    });
+    const paymentUrl = buildRobokassaPaymentUrl({
+      invId: order.invId,
+      amountRub: spec.priceRub,
+      description: spec.description,
+      receiptItemName: spec.title,
+      sessionId,
+      product,
+    });
+    const hasSignature = paymentUrl.includes('SignatureValue=');
+    return res.json({
+      ok: true,
+      invId: order.invId,
+      hasSignatureValue: hasSignature,
+      paymentUrl,
+      hint: 'Скопируйте paymentUrl целиком в поддержку Робокассы — параметр SignatureValue обязателен.',
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
+  }
+});
+
 app.post('/api/sheets-event', async (req, res) => {
   try {
     const result = await forwardToGoogleSheets(req.body ?? {});
@@ -713,6 +749,26 @@ app.post('/payment-recover-session-web', async (req, res) => {
     const { sessionId, product = 'full_report' } = req.body ?? {};
     if (!sessionId) return res.status(400).json({ paid: false });
     return res.json(isWebPaidForSession(String(sessionId), product));
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ paid: false });
+  }
+});
+
+/** Восстановление сессии по InvId после возврата с Робокассы (без Shp_* в ссылке). */
+app.post('/payment-recover-inv-web', async (req, res) => {
+  try {
+    const invId = String(req.body?.invId ?? '').trim();
+    if (!invId) return res.status(400).json({ paid: false, error: 'invId required' });
+    const order = robokassaGetOrder(invId);
+    if (!order) return res.json({ paid: false, error: 'unknown invId' });
+    const paid = isWebPaidForSession(order.sessionId, order.product);
+    return res.json({
+      ...paid,
+      sessionId: order.sessionId,
+      product: order.product,
+      invId: order.invId,
+    });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ paid: false });
@@ -1007,7 +1063,7 @@ if (process.env.SERVE_STATIC === 'true') {
         },
       }),
     );
-    app.get(/^(?!\/(webhook|invoice|invoice-web|health|api|prodamus|robokassa|consultation-lead|payment-order-status|payment-return-confirm|payment-recover-session|payment-recover-session-web)).*$/, (_req, res) => {
+    app.get(/^(?!\/(webhook|invoice|invoice-web|health|api|prodamus|robokassa|consultation-lead|payment-order-status|payment-return-confirm|payment-recover-session|payment-recover-session-web|payment-recover-inv-web)).*$/, (_req, res) => {
       res.type('html');
       res.sendFile(path.join(distDir, 'index.html'));
     });
