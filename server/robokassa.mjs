@@ -132,10 +132,41 @@ export function buildRobokassaReceipt({ itemName, amountRub }, env = process.env
   });
 }
 
-/** Строка для SignatureValue при инициализации оплаты. */
-export function buildPaymentSignatureBase({ login, outSum, invId, pass1, receipt = '', shp = {} }) {
-  const modifiers = receipt ? `:${receipt}` : '';
-  return `${login}:${outSum}:${invId}${modifiers}:${pass1}${sortedShpSignaturePart(shp)}`;
+/**
+ * Receipt в подписи — URL-encoded JSON (как в примерах docs.robokassa.ru).
+ * @see https://docs.robokassa.ru/ru/pay-interface/#сборка-подписи-signaturevalue
+ */
+export function encodeReceiptForSignature(receiptJson) {
+  return encodeURIComponent(receiptJson);
+}
+
+/**
+ * Строка для SignatureValue при инициализации оплаты.
+ * Модификаторы строго по порядку: Receipt → SuccessUrl2 → SuccessUrl2Method → FailUrl2 → FailUrl2Method.
+ */
+export function buildPaymentSignatureBase({
+  login,
+  outSum,
+  invId,
+  pass1,
+  receiptJson = '',
+  redirect = null,
+  shp = {},
+}) {
+  const parts = [login, outSum, String(invId)];
+  if (receiptJson) {
+    parts.push(encodeReceiptForSignature(receiptJson));
+  }
+  if (redirect) {
+    parts.push(
+      redirect.successUrl2,
+      redirect.successUrl2Method,
+      redirect.failUrl2,
+      redirect.failUrl2Method,
+    );
+  }
+  parts.push(pass1);
+  return `${parts.join(':')}${sortedShpSignaturePart(shp)}`;
 }
 
 export function robokassaRegisterOrder({ sessionId, product, amountRub }) {
@@ -174,8 +205,8 @@ export function getRobokassaHealthInfo(env = process.env) {
     receiptSno: envStr(env, 'ROBOKASSA_RECEIPT_SNO') || 'usn_income',
     receiptTax: envStr(env, 'ROBOKASSA_RECEIPT_TAX') || 'none',
     paymentSignatureFormula: receiptEnabled
-      ? 'MerchantLogin:OutSum:InvId:Receipt:Password1'
-      : 'MerchantLogin:OutSum:InvId:Password1',
+      ? 'MerchantLogin:OutSum:InvId:Receipt(urlencode):SuccessUrl2:SuccessUrl2Method:FailUrl2:FailUrl2Method:Password1'
+      : 'MerchantLogin:OutSum:InvId:SuccessUrl2:SuccessUrl2Method:FailUrl2:FailUrl2Method:Password1',
     docsError29:
       'Неверный SignatureValue — проверьте Пароль#1, алгоритм хэша (MD5) и Receipt при фискализации',
   };
@@ -190,11 +221,38 @@ export function buildRobokassaPaymentUrl({ invId, amountRub, description, sessio
   const outSum = Number(amountRub).toFixed(2);
   const hashAlgorithm = getRobokassaHashAlgorithm(env);
   const receiptEnabled = isRobokassaReceiptEnabled(env);
-  const receipt = receiptEnabled
+  const receiptJson = receiptEnabled
     ? buildRobokassaReceipt({ itemName: description, amountRub }, env)
     : '';
 
-  const sigBase = buildPaymentSignatureBase({ login, outSum, invId, pass1, receipt });
+  const publicBase = (envStr(env, 'PAYMENTS_PUBLIC_BASE_URL') || envStr(env, 'TELEGRAM_MINI_APP_URL'))
+    .replace(/\/$/, '');
+  const successUrlRaw = publicBase
+    ? `${publicBase}/?${new URLSearchParams({
+        robokassa: 'success',
+        sessionId: String(sessionId),
+        product: String(product),
+      })}`
+    : '';
+  const failUrlRaw = publicBase ? `${publicBase}/?robokassa=fail` : '';
+  const redirect =
+    publicBase && successUrlRaw && failUrlRaw
+      ? {
+          successUrl2: encodeURIComponent(successUrlRaw),
+          successUrl2Method: 'GET',
+          failUrl2: encodeURIComponent(failUrlRaw),
+          failUrl2Method: 'GET',
+        }
+      : null;
+
+  const sigBase = buildPaymentSignatureBase({
+    login,
+    outSum,
+    invId,
+    pass1,
+    receiptJson,
+    redirect,
+  });
   const signatureValue = computeHash(sigBase, hashAlgorithm);
 
   const params = new URLSearchParams({
@@ -204,23 +262,17 @@ export function buildRobokassaPaymentUrl({ invId, amountRub, description, sessio
     Description: String(description).slice(0, 100),
     SignatureValue: signatureValue,
   });
-  if (receipt) {
-    params.set('Receipt', receipt);
+  if (receiptJson) {
+    params.set('Receipt', receiptJson);
+  }
+  if (redirect) {
+    params.set('SuccessUrl2', successUrlRaw);
+    params.set('SuccessUrl2Method', redirect.successUrl2Method);
+    params.set('FailUrl2', failUrlRaw);
+    params.set('FailUrl2Method', redirect.failUrl2Method);
   }
   if (isRobokassaTestMode(env)) {
     params.set('IsTest', '1');
-  }
-
-  const publicBase = (envStr(env, 'PAYMENTS_PUBLIC_BASE_URL') || envStr(env, 'TELEGRAM_MINI_APP_URL'))
-    .replace(/\/$/, '');
-  if (publicBase) {
-    const returnQs = new URLSearchParams({
-      robokassa: 'success',
-      sessionId: String(sessionId),
-      product: String(product),
-    });
-    params.set('SuccessURL', `${publicBase}/?${returnQs}`);
-    params.set('FailURL', `${publicBase}/?robokassa=fail`);
   }
 
   return `https://auth.robokassa.ru/Merchant/Index.aspx?${params}`;
