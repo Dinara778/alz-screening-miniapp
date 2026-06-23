@@ -1,6 +1,7 @@
 /**
  * Робокасса: ссылка на оплату и проверка Result URL.
- * @see https://docs.robokassa.ru/
+ * @see https://docs.robokassa.ru/ru/pay-interface/
+ * Подпись оплаты: MerchantLogin:OutSum:InvId:Пароль#1[:Shp_key=value…]
  */
 import crypto from 'crypto';
 import fs from 'fs';
@@ -60,12 +61,22 @@ export function isRobokassaConfigured(env = process.env) {
   );
 }
 
+export function isRobokassaTestMode(env = process.env) {
+  return env.ROBOKASSA_IS_TEST === 'true' || env.ROBOKASSA_IS_TEST === '1';
+}
+
+/** Shp_* из callback — в подписи строго по алфавиту, формат :Shp_key=value */
 function sortedShpSignaturePart(params) {
   const keys = Object.keys(params)
     .filter((k) => k.startsWith('Shp_'))
     .sort();
   if (!keys.length) return '';
   return `:${keys.map((k) => `${k}=${params[k]}`).join(':')}`;
+}
+
+/** Строка для SignatureValue при инициализации оплаты (без Shp — sessionId храним по InvId). */
+export function buildPaymentSignatureBase({ login, outSum, invId, pass1, shp = {} }) {
+  return `${login}:${outSum}:${invId}:${pass1}${sortedShpSignaturePart(shp)}`;
 }
 
 export function robokassaRegisterOrder({ sessionId, product, amountRub }) {
@@ -87,6 +98,23 @@ export function robokassaGetOrder(invId) {
   return ordersByInvId.get(String(invId)) ?? null;
 }
 
+export function getRobokassaHealthInfo(env = process.env) {
+  const login = env.ROBOKASSA_MERCHANT_LOGIN?.trim() || '';
+  const pass1 = env.ROBOKASSA_PASSWORD1?.trim() || '';
+  const pass2 = env.ROBOKASSA_PASSWORD2?.trim() || '';
+  return {
+    configured: isRobokassaConfigured(env),
+    merchantLogin: login || null,
+    password1Length: pass1.length,
+    password2Length: pass2.length,
+    isTestMode: isRobokassaTestMode(env),
+    hashAlgorithm: 'MD5',
+    paymentSignatureFormula: 'MerchantLogin:OutSum:InvId:Password1',
+    docsError29:
+      'Неверный SignatureValue — проверьте MerchantLogin, Пароль#1 и формулу подписи (docs.robokassa.ru/ru/pay-interface/#errors)',
+  };
+}
+
 export function buildRobokassaPaymentUrl({ invId, amountRub, description, sessionId, product }, env = process.env) {
   if (!isRobokassaConfigured(env)) {
     throw new Error('ROBOKASSA не настроена');
@@ -94,11 +122,8 @@ export function buildRobokassaPaymentUrl({ invId, amountRub, description, sessio
   const login = env.ROBOKASSA_MERCHANT_LOGIN.trim();
   const pass1 = env.ROBOKASSA_PASSWORD1.trim();
   const outSum = Number(amountRub).toFixed(2);
-  const shp = {
-    Shp_sessionId: String(sessionId).slice(0, 64),
-    Shp_product: String(product).slice(0, 32),
-  };
-  const sigBase = `${login}:${outSum}:${invId}:${pass1}${sortedShpSignaturePart(shp)}`;
+  // Без Shp_* в ссылке: заказ уже привязан к InvId на сервере (см. docs — меньше риска ошибки 29).
+  const sigBase = buildPaymentSignatureBase({ login, outSum, invId, pass1 });
   const signatureValue = md5(sigBase);
 
   const params = new URLSearchParams({
@@ -107,9 +132,8 @@ export function buildRobokassaPaymentUrl({ invId, amountRub, description, sessio
     InvId: String(invId),
     Description: String(description).slice(0, 100),
     SignatureValue: signatureValue,
-    ...shp,
   });
-  if (env.ROBOKASSA_IS_TEST === 'true' || env.ROBOKASSA_IS_TEST === '1') {
+  if (isRobokassaTestMode(env)) {
     params.set('IsTest', '1');
   }
 

@@ -46,6 +46,7 @@ import { buildTelegramYookassaInvoiceParams } from './yookassaReceipt.mjs';
 import { createPaymentAnalytics } from './paymentAnalytics.mjs';
 import {
   buildRobokassaPaymentUrl,
+  getRobokassaHealthInfo,
   isRobokassaConfigured,
   robokassaGetOrder,
   robokassaRegisterOrder,
@@ -405,6 +406,7 @@ async function sendHealthJson(res) {
       webhookActive,
       webhookLastError,
       robokassaConfigured: isRobokassaConfigured(process.env),
+      robokassa: getRobokassaHealthInfo(process.env),
       webPayments: PAYMENT_PROVIDER === 'robokassa' || isRobokassaConfigured(process.env),
       frontend: buildInfo
         ? {
@@ -413,7 +415,11 @@ async function sendHealthJson(res) {
             builtAt: buildInfo.builtAt,
           }
         : { paymentsEnabled: null, note: 'пересоберите проект' },
-      hint: hints.length ? hints.join(' · ') : 'Сервер и вебхук в порядке. Тестируйте оплату только из Telegram.',
+      hint: hints.length
+        ? hints.join(' · ')
+        : PAYMENT_PROVIDER === 'robokassa'
+          ? 'Робокасса настроена. Тестируйте оплату на cortaapp.ru в браузере.'
+          : 'Сервер и вебхук в порядке. Тестируйте оплату только из Telegram.',
     },
   });
 }
@@ -423,6 +429,9 @@ app.get('/health', (req, res) => {
 });
 app.get('/health/payments', (req, res) => {
   void sendHealthJson(res);
+});
+app.get('/health/robokassa', (_req, res) => {
+  res.json({ ok: true, ...getRobokassaHealthInfo(process.env) });
 });
 
 app.post('/api/sheets-event', async (req, res) => {
