@@ -133,11 +133,15 @@ export function buildRobokassaReceipt({ itemName, amountRub }, env = process.env
 }
 
 /**
- * Receipt в подписи — URL-encoded JSON (как в примерах docs.robokassa.ru).
- * @see https://docs.robokassa.ru/ru/pay-interface/#сборка-подписи-signaturevalue
+ * Receipt в подписи должен совпадать с тем, как он уходит в URL (application/x-www-form-urlencoded).
+ * URLSearchParams кодирует пробелы как «+», encodeURIComponent — как «%20»; для кириллицы в названии это ломает подпись.
+ * @see https://docs.robokassa.ru/ru/pay-interface/
  */
 export function encodeReceiptForSignature(receiptJson) {
-  return encodeURIComponent(receiptJson);
+  const params = new URLSearchParams();
+  params.set('Receipt', receiptJson);
+  const qs = params.toString();
+  return qs.startsWith('Receipt=') ? qs.slice('Receipt='.length) : qs;
 }
 
 /**
@@ -205,7 +209,7 @@ export function getRobokassaHealthInfo(env = process.env) {
     receiptSno: envStr(env, 'ROBOKASSA_RECEIPT_SNO') || 'usn_income',
     receiptTax: envStr(env, 'ROBOKASSA_RECEIPT_TAX') || 'none',
     paymentSignatureFormula: receiptEnabled
-      ? 'MerchantLogin:OutSum:InvId:Receipt(urlencode):Password1:Shp_product:Shp_sessionId'
+      ? 'MerchantLogin:OutSum:InvId:Receipt(form-urlencoded):Password1:Shp_product:Shp_sessionId'
       : 'MerchantLogin:OutSum:InvId:Password1:Shp_product:Shp_sessionId',
     docsError29:
       'Неверный SignatureValue — проверьте Пароль#1, алгоритм хэша (MD5) и Receipt при фискализации',
