@@ -133,10 +133,10 @@ export function buildRobokassaReceipt({ itemName, amountRub }, env = process.env
 }
 
 /**
- * Receipt в URL и в подписи — один и тот же encodeURIComponent (%20 для пробелов).
- * @see https://docs.robokassa.ru/ru/pay-interface/
+ * Receipt в подписи — сырой JSON; в URL — encodeURIComponent.
+ * (Док-пример с url-encode в подписи для cortaru даёт ошибку 29.)
  */
-export function encodeReceiptForSignature(receiptJson) {
+export function encodeReceiptForUrl(receiptJson) {
   return encodeURIComponent(receiptJson);
 }
 
@@ -160,7 +160,7 @@ export function buildPaymentSignatureBase({
 }) {
   const parts = [login, outSum, String(invId)];
   if (receiptJson) {
-    parts.push(encodeReceiptForSignature(receiptJson));
+    parts.push(receiptJson);
   }
   if (redirect) {
     parts.push(
@@ -210,7 +210,7 @@ export function getRobokassaHealthInfo(env = process.env) {
     receiptSno: envStr(env, 'ROBOKASSA_RECEIPT_SNO') || 'usn_income',
     receiptTax: envStr(env, 'ROBOKASSA_RECEIPT_TAX') || 'none',
     paymentSignatureFormula: receiptEnabled
-      ? 'MerchantLogin:OutSum:InvId:Receipt(uri-encode):Password1'
+      ? 'MerchantLogin:OutSum:InvId:Receipt(raw-json):Password1'
       : 'MerchantLogin:OutSum:InvId:Password1',
     password1Md5: pass1 ? md5(pass1) : null,
     docsError29:
@@ -250,7 +250,7 @@ export function buildRobokassaPaymentUrl(
   qs = appendQueryParam(qs, 'Description', String(description).slice(0, 100));
   qs = appendQueryParam(qs, 'Culture', 'ru');
   if (receiptJson) {
-    qs = `${qs}&Receipt=${encodeReceiptForSignature(receiptJson)}`;
+    qs = `${qs}&Receipt=${encodeReceiptForUrl(receiptJson)}`;
   }
   if (isRobokassaTestMode(env)) {
     qs = appendQueryParam(qs, 'IsTest', '1');
