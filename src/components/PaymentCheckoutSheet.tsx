@@ -5,7 +5,7 @@ import { CalmCardShell } from './CalmCardShell';
 import { TELEGRAM_SUPPORT_URL } from './SupportFooter';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
 import { isStandaloneWeb } from '../utils/runtime';
-import { openWebPayment, recoverRobokassaPaymentFromUrl, verifyWebReportPayment } from '../utils/webPayments';
+import { openWebPayment, recoverRobokassaPaymentFromUrl, verifyWebProductPayment, verifyWebReportPayment } from '../utils/webPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import {
   consultationPaidStorageKey,
@@ -92,6 +92,22 @@ export const PaymentCheckoutSheet = ({
 
   const tryConfirmConsultationPaid = useCallback(async (): Promise<boolean> => {
     if (product !== 'consultation') return false;
+    if (isStandaloneWeb()) {
+      const fromUrl = await recoverRobokassaPaymentFromUrl();
+      if (fromUrl?.product === 'consultation') {
+        setAwaitingReturn(false);
+        onPaid();
+        onClose();
+        return true;
+      }
+      const verified = await verifyWebProductPayment(sessionId, 'consultation');
+      if (verified.ok) {
+        setAwaitingReturn(false);
+        onPaid();
+        onClose();
+        return true;
+      }
+    }
     const pending = sessionStorage.getItem(prodamusPendingOrderKey(sessionId));
     if (!pending) return false;
     const paid = await pollProdamusOrderPaidQuick(pending, sessionId);

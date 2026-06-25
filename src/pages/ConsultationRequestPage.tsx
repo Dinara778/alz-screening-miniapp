@@ -17,7 +17,8 @@ import {
   prodamusPendingOrderKey,
 } from '../utils/telegramPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
-import { CONSULTATION_PAID_THANKS_TEXT } from '../utils/paymentReturn';
+import { CONSULTATION_PAID_THANKS_TEXT, hasPendingRobokassaReturn } from '../utils/paymentReturn';
+import { recoverRobokassaPaymentFromUrl } from '../utils/webPayments';
 
 export const ConsultationRequestPage = () => {
   const { setStage, consultationReturnTo, setConsultationReturnTo, participant, latestResult } = useApp();
@@ -56,6 +57,27 @@ export const ConsultationRequestPage = () => {
       }
     });
   }, [latestResult?.id, paymentsOn]);
+
+  useEffect(() => {
+    if (!paymentsOn || !latestResult?.id || isDevPaymentBypass()) return;
+    if (!hasPendingRobokassaReturn()) return;
+    const sessionId = latestResult.id;
+    const run = async () => {
+      const recovery = await recoverRobokassaPaymentFromUrl();
+      if (recovery?.product !== 'consultation' || recovery.sessionId !== sessionId) return;
+      localStorage.setItem(consultationPaidStorageKey(sessionId), '1');
+      window.dispatchEvent(new Event('consultation-paid'));
+      setPaidOk(true);
+      void sendAnalyticsEventToSheets({
+        eventType: 'consultation_paid',
+        sessionId,
+        stage: 'consultation-request',
+        participant: participant ?? undefined,
+        product: 'consultation',
+      }).catch(() => {});
+    };
+    void run();
+  }, [latestResult?.id, paymentsOn, participant]);
 
   const goBack = () => {
     const target = consultationReturnTo ?? 'welcome';

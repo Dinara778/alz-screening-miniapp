@@ -20,7 +20,13 @@ import {
   INTERPRETATION_LABEL_FEELING,
   INTERPRETATION_LABEL_IN_LIFE,
 } from '../copy/interpretationLabels';
-import { consumePaymentFailNotice, CONSULTATION_PAID_THANKS_TEXT, hasPendingRobokassaReturn, PAYMENT_FAIL_NOTICE_TEXT } from '../utils/paymentReturn';
+import {
+  consumePaymentFailNotice,
+  CONSULTATION_PAID_THANKS_TEXT,
+  hasPendingRobokassaReturn,
+  PAYMENT_FAIL_NOTICE_TEXT,
+  peekRobokassaReturnProduct,
+} from '../utils/paymentReturn';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
 import { hasPaymentReturnInUrl, loadSessionFromHistory } from '../utils/storage';
@@ -110,15 +116,16 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
 
   useEffect(() => {
     if (!consumePaymentFailNotice()) return;
+    const failedProduct = peekRobokassaReturnProduct();
     setPayNotice(PAYMENT_FAIL_NOTICE_TEXT);
-    setStep('report-offer');
+    setStep(failedProduct === 'consultation' ? 'session-offer' : 'report-offer');
     void sendAnalyticsEventToSheets({
       eventType: 'payment_cancelled',
       sessionId: latestResult?.id ?? 'unknown',
       stage: 'result',
-      screen: 'result/report-offer',
+      screen: failedProduct === 'consultation' ? 'result/session-offer' : 'result/report-offer',
       participant: participant ?? undefined,
-      product: 'full_report',
+      product: failedProduct,
       channel: 'web',
       reason: 'robokassa_fail_return',
     }).catch(() => {
@@ -156,10 +163,11 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         (await recoverRobokassaPaymentFromUrl()) ?? (await recoverProdamusPaymentFromUrl());
       if (!recovery?.sessionId) {
         if (hasPaymentReturnInUrl() || hasPendingRobokassaReturn()) {
+          const pendingProduct = peekRobokassaReturnProduct();
           setPayNotice(
             'Оплата ещё не подтвердилась на сервере. Подождите минуту и нажмите «Проверить оплату» — или напишите hello@bookvolon.ru',
           );
-          setStep('report-offer');
+          setStep(pendingProduct === 'consultation' ? 'session-offer' : 'report-offer');
         }
         return;
       }
@@ -278,6 +286,13 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         setStage('full-report');
         return;
       }
+      if (recovery.product === 'consultation') {
+        localStorage.setItem(consultationPaidStorageKey(recovery.sessionId), '1');
+        window.dispatchEvent(new Event('consultation-paid'));
+        setSessionPaid(true);
+        setStep('session-offer');
+        setPayNotice(null);
+      }
     } finally {
       setRecoverBusy(false);
     }
@@ -302,6 +317,14 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     window.dispatchEvent(new Event('consultation-paid'));
     setSessionPaid(true);
     setSessionCheckoutOpen(false);
+    void sendAnalyticsEventToSheets({
+      eventType: 'consultation_paid',
+      sessionId: latestResult.id,
+      stage: 'result',
+      screen: 'result/session-offer',
+      participant: participant ?? undefined,
+      product: 'consultation',
+    }).catch(() => {});
   };
 
   const reportCheckoutSheet = (
@@ -516,6 +539,17 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
                 </Button>
               ) : (
                 <>
+                  {!sessionPaid && (hasPaymentReturnInUrl() || hasPendingRobokassaReturn()) ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className={calmBtnGhost}
+                      disabled={recoverBusy}
+                      onClick={() => void retryPaymentRecovery()}
+                    >
+                      {recoverBusy ? 'Проверяем оплату…' : 'Проверить оплату сессии'}
+                    </Button>
+                  ) : null}
                   <p className="text-center text-sm leading-relaxed text-white/55">
                     После оформления заказа мы с вами свяжемся в течение 15 минут.
                   </p>
