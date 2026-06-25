@@ -210,8 +210,8 @@ export function getRobokassaHealthInfo(env = process.env) {
     receiptSno: envStr(env, 'ROBOKASSA_RECEIPT_SNO') || 'usn_income',
     receiptTax: envStr(env, 'ROBOKASSA_RECEIPT_TAX') || 'none',
     paymentSignatureFormula: receiptEnabled
-      ? 'MerchantLogin:OutSum:InvId:Receipt(raw-json):Password1'
-      : 'MerchantLogin:OutSum:InvId:Password1',
+      ? 'MerchantLogin:OutSum:InvId:Receipt(raw-json):Password1[:Shp_*]'
+      : 'MerchantLogin:OutSum:InvId:Password1[:Shp_*]',
     password1Md5: pass1 ? md5(pass1) : null,
     docsError29:
       'Неверный SignatureValue — сверьте password1Md5 с md5(Пароль#1), алгоритм хэша и Receipt',
@@ -234,12 +234,17 @@ export function buildRobokassaPaymentUrl(
     ? buildRobokassaReceipt({ itemName: receiptItemName || description, amountRub }, env)
     : '';
 
+  const shp = {};
+  if (sessionId) shp.Shp_sessionId = String(sessionId).slice(0, 80);
+  if (product) shp.Shp_product = String(product);
+
   const sigBase = buildPaymentSignatureBase({
     login,
     outSum,
     invId,
     pass1,
     receiptJson,
+    shp,
   });
   const signatureValue = computeHash(sigBase, hashAlgorithm);
 
@@ -254,6 +259,9 @@ export function buildRobokassaPaymentUrl(
   }
   if (isRobokassaTestMode(env)) {
     qs = appendQueryParam(qs, 'IsTest', '1');
+  }
+  for (const key of Object.keys(shp).sort()) {
+    qs = appendQueryParam(qs, key, shp[key]);
   }
   qs = appendQueryParam(qs, 'SignatureValue', signatureValue);
 

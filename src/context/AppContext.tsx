@@ -331,8 +331,14 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       const recovery =
         (await recoverRobokassaPaymentFromUrl()) ?? (await recoverProdamusPaymentFromUrl());
       if (!recovery) return;
-      const session = loadHistory().find((h) => h.id === recovery.sessionId) ?? null;
-      if (session) setLatestResult(session);
+      const session =
+        loadSessionFromHistory(recovery.sessionId) ??
+        loadHistory().find((h) => h.id === recovery.sessionId) ??
+        null;
+      if (session) {
+        setLatestResult(session);
+        saveLastSessionId(session.id);
+      }
       if (recovery.product === 'full_report') {
         setStage('full-report');
         return;

@@ -102,6 +102,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const [sessionCheckoutOpen, setSessionCheckoutOpen] = useState(false);
   const [sessionPaid, setSessionPaid] = useState(false);
   const [payNotice, setPayNotice] = useState<string | null>(null);
+  const [recoverBusy, setRecoverBusy] = useState(false);
 
   useEffect(() => {
     setAnalyticsScreenDetail(step);
@@ -153,7 +154,15 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     const run = async () => {
       const recovery =
         (await recoverRobokassaPaymentFromUrl()) ?? (await recoverProdamusPaymentFromUrl());
-      if (!recovery?.sessionId) return;
+      if (!recovery?.sessionId) {
+        if (hasPaymentReturnInUrl() || hasPendingRobokassaReturn()) {
+          setPayNotice(
+            'Оплата ещё не подтвердилась на сервере. Подождите минуту и нажмите «Проверить оплату» — или напишите hello@bookvolon.ru',
+          );
+          setStep('report-offer');
+        }
+        return;
+      }
       const session = loadSessionFromHistory(recovery.sessionId);
       if (session) setLatestResult(session);
       if (recovery.product === 'consultation') {
@@ -248,6 +257,31 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   };
 
   const reportUnlocked = isReportPaidUnlocked(latestResult.id, serverPaymentsReady);
+
+  const retryPaymentRecovery = async () => {
+    if (recoverBusy || !latestResult?.id) return;
+    setRecoverBusy(true);
+    setPayNotice('Проверяем оплату на сервере…');
+    try {
+      const recovery =
+        (await recoverRobokassaPaymentFromUrl()) ?? (await recoverProdamusPaymentFromUrl());
+      if (!recovery?.sessionId) {
+        setPayNotice(
+          'Оплату пока не видим. Если деньги списались — напишите hello@bookvolon.ru с датой и email из чека.',
+        );
+        return;
+      }
+      const session = loadSessionFromHistory(recovery.sessionId);
+      if (session) setLatestResult(session);
+      if (recovery.product === 'full_report') {
+        localStorage.setItem(reportPaidStorageKey(recovery.sessionId), '1');
+        setStage('full-report');
+        return;
+      }
+    } finally {
+      setRecoverBusy(false);
+    }
+  };
 
   const openCheckout = () => {
     if (skipNativePayment || reportUnlocked) {
@@ -426,6 +460,17 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
             <div className="space-y-3">
               {payNotice ? (
                 <p className="text-center text-xs leading-relaxed text-amber-200/90">{payNotice}</p>
+              ) : null}
+              {!reportUnlocked && (hasPaymentReturnInUrl() || hasPendingRobokassaReturn()) ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className={calmBtnGhost}
+                  disabled={recoverBusy}
+                  onClick={() => void retryPaymentRecovery()}
+                >
+                  {recoverBusy ? 'Проверяем оплату…' : 'Проверить оплату и открыть отчёт'}
+                </Button>
               ) : null}
               <Button type="button" variant="sell" className={calmBtnClass} onClick={openCheckout}>
                 {reportUnlocked ? 'Открыть расшифровку' : 'Восстановить ресурс - 199 ₽'}

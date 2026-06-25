@@ -5,7 +5,7 @@ import { CalmCardShell } from './CalmCardShell';
 import { TELEGRAM_SUPPORT_URL } from './SupportFooter';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
 import { isStandaloneWeb } from '../utils/runtime';
-import { openWebPayment, verifyWebReportPayment } from '../utils/webPayments';
+import { openWebPayment, recoverRobokassaPaymentFromUrl, verifyWebReportPayment } from '../utils/webPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import {
   consultationPaidStorageKey,
@@ -262,6 +262,15 @@ export const PaymentCheckoutSheet = ({
     showNotice('Проверяем оплату на сервере…');
     trackPaymentEvent('payment_recover_click');
     try {
+      if (isStandaloneWeb()) {
+        const fromUrl = await recoverRobokassaPaymentFromUrl();
+        if (fromUrl?.product === 'full_report') {
+          trackPaymentEvent('payment_recover_paid', { paidSessionId: fromUrl.sessionId });
+          onPaid(fromUrl.sessionId);
+          onClose();
+          return;
+        }
+      }
       const r = isStandaloneWeb()
         ? await verifyWebReportPayment(sessionId)
         : await verifyReportPaymentOnServer(sessionId);
