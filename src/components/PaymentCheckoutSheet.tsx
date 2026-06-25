@@ -329,7 +329,7 @@ export const PaymentCheckoutSheet = ({
           {reportAlreadyPaidHelp ? (
             <div className="mt-4 space-y-4">
               <p className="calm-body text-sm leading-relaxed text-white/90">
-                Если вы оплатили {reportPriceRub} руб. за один расширенный отчёт, а он вам не открылся,
+                Если вы оплатили {reportPriceRub} ₽ за один расширенный отчёт, а он вам не открылся,
                 пожалуйста, напишите нам в{' '}
                 <a
                   href={TELEGRAM_SUPPORT_URL}
@@ -349,7 +349,7 @@ export const PaymentCheckoutSheet = ({
                 .
               </p>
               <p className="text-xs leading-relaxed text-white/55">
-                Одна сессия оценки когнитивного профиля стоит {reportPriceRub} руб. Это разовый платёж за
+                Одна сессия оценки когнитивного профиля стоит {reportPriceRub} ₽. Это разовый платёж за
                 расширенный отчёт, не подписка.
               </p>
               <Button

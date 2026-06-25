@@ -428,7 +428,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
                 <p className="text-center text-xs leading-relaxed text-amber-200/90">{payNotice}</p>
               ) : null}
               <Button type="button" variant="sell" className={calmBtnClass} onClick={openCheckout}>
-                {reportUnlocked ? 'Открыть расшифровку' : 'Восстановить ресурс - 199 руб'}
+                {reportUnlocked ? 'Открыть расшифровку' : 'Восстановить ресурс - 199 ₽'}
               </Button>
             </div>
           }
@@ -475,7 +475,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
                     После оформления заказа мы с вами свяжемся в течение 15 минут.
                   </p>
                   <Button type="button" variant="sell" className={calmBtnClass} onClick={openSessionCheckout}>
-                    Купить сессию - 5 490 руб.
+                    Купить сессию - 5 490 ₽
                   </Button>
                   <button type="button" className={calmBtnGhost} onClick={() => setStep('hub')}>
                     Назад к результатам
