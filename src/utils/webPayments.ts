@@ -170,7 +170,7 @@ export async function recoverRobokassaPaymentFromUrl(): Promise<RobokassaPayment
   const product = peekRobokassaReturnProduct();
   if (!invId && !sessionId) return null;
 
-  const delaysMs = [0, 500, 1000, 1500, 2200, 3000, 4000, 5500, 7500, 10000, 15000, 20000];
+  const delaysMs = [0, 500, 1000, 1500, 2200, 3000, 4000, 5500, 7500, 10000];
   let waited = 0;
   for (let i = 0; i < delaysMs.length; i++) {
     const waitMore = delaysMs[i] - waited;

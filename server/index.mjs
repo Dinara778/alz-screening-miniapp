@@ -391,6 +391,31 @@ const payAnalytics = createPaymentAnalytics({
   botToken: BOT_TOKEN,
 });
 
+/** Amvera и фронт часто дергают /health — не ходим в Telegram API на каждый запрос. */
+const WEBHOOK_HEALTH_CACHE_MS = 10 * 60 * 1000;
+let webhookHealthCache = { expiresAt: 0, webhookUrl: '', active: false, lastError: null };
+
+async function getCachedTelegramWebhookHealth(expectedUrl) {
+  const now = Date.now();
+  if (webhookHealthCache.expiresAt > now && webhookHealthCache.webhookUrl === expectedUrl) {
+    return { webhookActive: webhookHealthCache.active, webhookLastError: webhookHealthCache.lastError };
+  }
+  const info = await tgApi('getWebhookInfo', {});
+  let active = false;
+  let lastError = null;
+  if (info?.ok) {
+    active = info.result?.url === expectedUrl;
+    lastError = info.result?.last_error_message ?? null;
+  }
+  webhookHealthCache = {
+    expiresAt: now + WEBHOOK_HEALTH_CACHE_MS,
+    webhookUrl: expectedUrl,
+    active,
+    lastError,
+  };
+  return { webhookActive: active, webhookLastError: lastError };
+}
+
 async function sendHealthJson(res) {
   const paymentsReady =
     PAYMENT_PROVIDER === 'robokassa'
@@ -399,12 +424,11 @@ async function sendHealthJson(res) {
   const webhookUrl = resolveWebhookUrl({ ...process.env, TELEGRAM_BOT_TOKEN: BOT_TOKEN });
   let webhookActive = false;
   let webhookLastError = null;
-  if (BOT_TOKEN && webhookUrl) {
-    const info = await tgApi('getWebhookInfo', {});
-    if (info?.ok) {
-      webhookActive = info.result?.url === webhookUrl;
-      webhookLastError = info.result?.last_error_message ?? null;
-    }
+  const skipWebhookProbe = PAYMENT_PROVIDER === 'robokassa';
+  if (!skipWebhookProbe && BOT_TOKEN && webhookUrl) {
+    const wh = await getCachedTelegramWebhookHealth(webhookUrl);
+    webhookActive = wh.webhookActive;
+    webhookLastError = wh.webhookLastError;
   }
   const buildInfo = readFrontendBuildInfo();
   const frontendPaymentsOn = buildInfo?.paymentsEnabled !== false;
@@ -414,7 +438,7 @@ async function sendHealthJson(res) {
   }
   if (!webhookUrl) {
     hints.push('Задайте TELEGRAM_WEBHOOK_URL или TELEGRAM_MINI_APP_URL (для /webhook)');
-  } else if (!webhookActive) {
+  } else if (!skipWebhookProbe && !webhookActive) {
     hints.push(`Вебхук не на ${webhookUrl} — оплата в Telegram может отменяться`);
   }
   if (buildInfo && !frontendPaymentsOn) {
