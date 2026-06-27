@@ -1,4 +1,8 @@
 import { PAYMENT_PRODUCTS } from './paymentProducts';
+import {
+  rememberRobokassaPendingInvId,
+  rememberRobokassaPendingProduct,
+} from './paymentReturn';
 import { isStandaloneWeb } from './runtime';
 import { verifyWebReportPayment } from './webPayments';
 import { arePaymentsActive, isDevPaymentBypass, isPaymentsEnabled } from './paymentStub';
@@ -226,6 +230,8 @@ export const openTelegramInvoiceForProduct = async (
     invoiceUrl?: string;
     paymentUrl?: string;
     orderId?: string;
+    invId?: number;
+    provider?: string;
     alreadyPaid?: boolean;
     sessionId?: string;
     product?: string;
@@ -236,6 +242,7 @@ export const openTelegramInvoiceForProduct = async (
   let invoiceUrl: string | undefined;
   let paymentUrl: string | undefined;
   let orderId: string | undefined;
+  let invId: number | undefined;
   let fetchTimeout = 0;
 
   try {
@@ -277,6 +284,7 @@ export const openTelegramInvoiceForProduct = async (
     }
     paymentUrl = data.paymentUrl;
     orderId = data.orderId;
+    invId = data.invId;
     invoiceUrl = data.invoiceUrl;
     if (!paymentUrl && !invoiceUrl) {
       return { status: 'error', message: 'Сервер не вернул ссылку на оплату' };
@@ -298,8 +306,14 @@ export const openTelegramInvoiceForProduct = async (
     if (fetchTimeout) window.clearTimeout(fetchTimeout);
   }
 
-  if (paymentUrl && orderId) {
-    rememberInvoiceOrder(sessionId, orderId);
+  if (paymentUrl && (orderId || invId != null)) {
+    if (orderId) {
+      rememberInvoiceOrder(sessionId, orderId);
+    }
+    if (invId != null) {
+      rememberRobokassaPendingInvId(invId);
+      rememberRobokassaPendingProduct(product);
+    }
     if (typeof tg.openLink !== 'function') {
       return { status: 'skipped', reason: 'no_open_link' };
     }
@@ -315,7 +329,7 @@ export const openTelegramInvoiceForProduct = async (
     }
     return {
       status: 'redirected',
-      orderId,
+      orderId: orderId ?? String(invId),
       message: PAYMENT_PRODUCTS[product].redirectOpenedMessage,
     };
   }

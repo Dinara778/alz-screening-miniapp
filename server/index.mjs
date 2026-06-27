@@ -645,6 +645,42 @@ app.post('/invoice', async (req, res) => {
       return res.json({ provider: 'prodamus', paymentUrl, orderId });
     }
 
+    if (PAYMENT_PROVIDER === 'robokassa') {
+      if (!isRobokassaConfigured(process.env)) {
+        return failInvoice(503, 'robokassa_pending', {
+          error: 'Оплата картой подключается (Робокасса). Попробуйте позже или напишите hello@bookvolon.ru',
+          paymentsDisabled: true,
+        });
+      }
+      if (!sessionKey) {
+        return failInvoice(400, 'sessionId обязателен');
+      }
+      const prior = isWebPaidForSession(sessionKey, product);
+      if (prior.paid) {
+        return res.json({
+          provider: 'robokassa',
+          alreadyPaid: true,
+          sessionId: prior.sessionId,
+          product: prior.product,
+        });
+      }
+      const order = robokassaRegisterOrder({
+        sessionId: sessionKey,
+        product,
+        amountRub: spec.priceRub,
+      });
+      const paymentUrl = buildRobokassaPaymentUrl({
+        invId: order.invId,
+        amountRub: spec.priceRub,
+        description: spec.description,
+        receiptItemName: spec.title,
+        sessionId: sessionKey,
+        product,
+      });
+      payAnalytics.trackInvoiceCreated({ ...payCtx(), tgUserId: userFromInit?.id ?? null });
+      return res.json({ provider: 'robokassa', paymentUrl, invId: order.invId });
+    }
+
     if (!PROVIDER_TOKEN) {
       return failInvoice(500, 'TELEGRAM_PAYMENT_PROVIDER_TOKEN не задан');
     }
