@@ -109,6 +109,50 @@ const PRODUCTS = {
   },
 };
 
+function extractRobokassaShp(body) {
+  const shp = {};
+  for (const [k, v] of Object.entries(body ?? {})) {
+    if (k.startsWith('Shp_')) shp[k] = String(v);
+  }
+  return shp;
+}
+
+/** sessionId + product из Shp_* когда robokassa-orders.json потерян после перезапуска. */
+function resolveRobokassaPaidFromShp(outSum, shp) {
+  const sessionId = String(shp.Shp_sessionId ?? '').slice(0, 80);
+  const product = String(shp.Shp_product ?? '');
+  const spec = PRODUCTS[product];
+  if (!sessionId || !spec) return null;
+  if (Number(outSum).toFixed(2) !== Number(spec.priceRub).toFixed(2)) return null;
+  return { sessionId, product, amountRub: spec.priceRub };
+}
+
+function confirmRobokassaSuccessReturn({ invId, outSum, signatureValue, shp, order, source }) {
+  if (!outSum || !signatureValue || !isRobokassaConfigured(process.env)) return null;
+  const sigBody = { OutSum: outSum, InvId: String(invId), SignatureValue: signatureValue, ...shp };
+  if (!verifyRobokassaSuccessSignature(sigBody, process.env)) return null;
+
+  const resolved = order
+    ? { sessionId: order.sessionId, product: order.product, amountRub: order.amountRub }
+    : resolveRobokassaPaidFromShp(outSum, shp);
+  if (!resolved) return null;
+  if (Number(outSum).toFixed(2) !== Number(resolved.amountRub).toFixed(2)) return null;
+
+  markWebPaid({
+    sessionId: resolved.sessionId,
+    product: resolved.product,
+    invId: String(invId),
+  });
+  payAnalytics.trackPaidOnServer({
+    sessionId: resolved.sessionId,
+    product: resolved.product,
+    tgUserId: null,
+    payload: `${source}:${invId}`,
+  });
+  console.info(`[${source}] confirmed`, invId, resolved.sessionId, resolved.product);
+  return resolved;
+}
+
 function normalizeHttpsUrl(raw, label) {
   const trimmed = String(raw ?? '').trim();
   if (!trimmed) throw new Error(`${label}: пустой URL`);
@@ -797,44 +841,37 @@ app.post('/payment-recover-inv-web', async (req, res) => {
   try {
     const invId = String(req.body?.invId ?? '').trim();
     if (!invId) return res.status(400).json({ paid: false, error: 'invId required' });
+
+    const outSum = String(req.body?.outSum ?? '').trim();
+    const signatureValue = String(req.body?.signatureValue ?? '').trim();
+    const shp = req.body?.shp && typeof req.body.shp === 'object' ? req.body.shp : {};
     const order = robokassaGetOrder(invId);
+
+    if (outSum && signatureValue) {
+      const confirmed = confirmRobokassaSuccessReturn({
+        invId,
+        outSum,
+        signatureValue,
+        shp,
+        order,
+        source: 'payment-recover-inv-web',
+      });
+      if (confirmed) {
+        return res.json({
+          paid: true,
+          sessionId: confirmed.sessionId,
+          product: confirmed.product,
+          invId,
+        });
+      }
+    }
+
     if (!order) return res.json({ paid: false, error: 'unknown invId' });
 
     const prior = isWebPaidForSession(order.sessionId, order.product);
     if (prior.paid) {
       return res.json({
         ...prior,
-        sessionId: order.sessionId,
-        product: order.product,
-        invId: order.invId,
-      });
-    }
-
-    const outSum = String(req.body?.outSum ?? '').trim();
-    const signatureValue = String(req.body?.signatureValue ?? '').trim();
-    if (outSum && signatureValue && isRobokassaConfigured(process.env)) {
-      const shp = req.body?.shp && typeof req.body.shp === 'object' ? req.body.shp : {};
-      const sigBody = { OutSum: outSum, InvId: invId, SignatureValue: signatureValue, ...shp };
-      if (!verifyRobokassaSuccessSignature(sigBody, process.env)) {
-        return res.json({ paid: false, error: 'bad signature', sessionId: order.sessionId, product: order.product });
-      }
-      if (Number(outSum).toFixed(2) !== Number(order.amountRub).toFixed(2)) {
-        return res.json({ paid: false, error: 'amount mismatch', sessionId: order.sessionId, product: order.product });
-      }
-      markWebPaid({
-        sessionId: order.sessionId,
-        product: order.product,
-        invId: order.invId,
-      });
-      payAnalytics.trackPaidOnServer({
-        sessionId: order.sessionId,
-        product: order.product,
-        tgUserId: null,
-        payload: `robokassa_success:${invId}`,
-      });
-      console.info('[payment-recover-inv-web] confirmed via Success URL', invId, order.sessionId);
-      return res.json({
-        paid: true,
         sessionId: order.sessionId,
         product: order.product,
         invId: order.invId,
@@ -862,10 +899,21 @@ app.all('/robokassa/result', async (req, res) => {
       return res.status(400).send('bad signature');
     }
     const invId = String(body.InvId ?? body.inv_id ?? '');
-    const order = robokassaGetOrder(invId);
+    let order = robokassaGetOrder(invId);
     if (!order) {
-      console.warn('[robokassa/result] unknown invId', invId);
-      return res.status(404).send('unknown order');
+      const outSum = String(body.OutSum ?? body.out_summ ?? '');
+      const shp = extractRobokassaShp(body);
+      const resolved = resolveRobokassaPaidFromShp(outSum, shp);
+      if (!resolved) {
+        console.warn('[robokassa/result] unknown invId', invId);
+        return res.status(404).send('unknown order');
+      }
+      order = {
+        invId: Number(invId) || invId,
+        sessionId: resolved.sessionId,
+        product: resolved.product,
+        amountRub: resolved.amountRub,
+      };
     }
     markWebPaid({
       sessionId: order.sessionId,
