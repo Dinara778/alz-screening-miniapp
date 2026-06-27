@@ -175,6 +175,8 @@ export function buildPaymentSignatureBase({
 }
 
 export function robokassaRegisterOrder({ sessionId, product, amountRub }) {
+  const minFromTime = Math.floor(Date.now() / 1000);
+  if (nextInvId < minFromTime) nextInvId = minFromTime;
   const invId = nextInvId;
   nextInvId += 1;
   const row = {
@@ -266,6 +268,24 @@ export function buildRobokassaPaymentUrl(
   qs = appendQueryParam(qs, 'SignatureValue', signatureValue);
 
   return `https://auth.robokassa.ru/Merchant/Index.aspx?${qs}`;
+}
+
+/** Проверка подписи Success URL (редирект пользователя после оплаты). Password1. */
+export function verifyRobokassaSuccessSignature(body, env = process.env) {
+  if (!isRobokassaConfigured(env)) return false;
+  const pass1 = envStr(env, 'ROBOKASSA_PASSWORD1');
+  const hashAlgorithm = getRobokassaHashAlgorithm(env);
+  const outSum = String(body.OutSum ?? body.out_summ ?? '');
+  const invId = String(body.InvId ?? body.inv_id ?? '');
+  const signatureValue = String(body.SignatureValue ?? body.crc ?? '');
+  if (!outSum || !invId || !signatureValue) return false;
+
+  const shp = {};
+  for (const [k, v] of Object.entries(body)) {
+    if (k.startsWith('Shp_')) shp[k] = String(v);
+  }
+  const expected = computeHash(`${outSum}:${invId}:${pass1}${sortedShpSignaturePart(shp)}`, hashAlgorithm);
+  return expected.toLowerCase() === signatureValue.toLowerCase();
 }
 
 /** Проверка подписи Result URL (POST/GET от Робокассы). */

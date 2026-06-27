@@ -278,14 +278,12 @@ export const PaymentCheckoutSheet = ({
     showNotice('Проверяем оплату на сервере…');
     trackPaymentEvent('payment_recover_click');
     try {
-      if (isStandaloneWeb()) {
-        const fromUrl = await recoverRobokassaPaymentFromUrl();
-        if (fromUrl?.product === 'full_report') {
-          trackPaymentEvent('payment_recover_paid', { paidSessionId: fromUrl.sessionId });
-          onPaid(fromUrl.sessionId);
-          onClose();
-          return;
-        }
+      const fromUrl = await recoverRobokassaPaymentFromUrl();
+      if (fromUrl?.product === 'full_report') {
+        trackPaymentEvent('payment_recover_paid', { paidSessionId: fromUrl.sessionId });
+        onPaid(fromUrl.sessionId);
+        onClose();
+        return;
       }
       const r = isStandaloneWeb()
         ? await verifyWebReportPayment(sessionId)

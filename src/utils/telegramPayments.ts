@@ -4,7 +4,7 @@ import {
   rememberRobokassaPendingProduct,
 } from './paymentReturn';
 import { isStandaloneWeb } from './runtime';
-import { verifyWebReportPayment } from './webPayments';
+import { recoverRobokassaPaymentFromUrl, verifyWebReportPayment } from './webPayments';
 import { arePaymentsActive, isDevPaymentBypass, isPaymentsEnabled } from './paymentStub';
 
 export type TelegramInvoiceProduct = 'full_report' | 'consultation';
@@ -573,6 +573,11 @@ const VERIFY_PAYMENT_FAIL_MSG =
 export async function verifyReportPaymentOnServer(sessionId: string): Promise<RecoverReportResult> {
   if (isDevPaymentBypass()) return { ok: true, sessionId };
 
+  const fromRobokassa = await recoverRobokassaPaymentFromUrl();
+  if (fromRobokassa?.product === 'full_report' && fromRobokassa.sessionId) {
+    return { ok: true, sessionId: fromRobokassa.sessionId };
+  }
+
   if (isStandaloneWeb()) {
     return verifyWebReportPayment(sessionId);
   }
@@ -630,10 +635,15 @@ function unlockReportSession(sessionId: string): RecoverReportResult {
   return { ok: true, sessionId };
 }
 
-/** Восстановить доступ к отчёту (сайт / Telegram / Prodamus). */
+/** Восстановить доступ к отчёту (сайт / Telegram / Prodamus / Robokassa). */
 export async function recoverFullReportAccess(sessionId: string): Promise<RecoverReportResult> {
   if (isReportPaidInStorage(sessionId)) {
     return { ok: true, sessionId };
+  }
+
+  const fromRobokassa = await recoverRobokassaPaymentFromUrl();
+  if (fromRobokassa?.product === 'full_report' && fromRobokassa.sessionId) {
+    return unlockReportSession(fromRobokassa.sessionId);
   }
 
   if (isStandaloneWeb()) {
@@ -675,6 +685,9 @@ export async function recoverFullReportAccess(sessionId: string): Promise<Recove
     }
 
     if (await confirmReportPaymentFast(sessionId)) return { ok: true, sessionId };
+
+    const verified = await verifyWebReportPayment(sessionId);
+    if (verified.ok) return unlockReportSession(verified.sessionId);
   }
 
   return {

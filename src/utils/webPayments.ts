@@ -8,6 +8,7 @@ import {
   clearRobokassaReturnSession,
   peekRobokassaReturnInvId,
   peekRobokassaReturnProduct,
+  peekRobokassaReturnProof,
   peekRobokassaReturnSessionId,
   rememberRobokassaPendingInvId,
   rememberRobokassaPendingProduct,
@@ -122,11 +123,22 @@ async function verifyWebPaymentByInvId(
   const api = getPaymentsApiUrl();
   if (!api) return { ok: false };
 
+  const proof = peekRobokassaReturnProof();
+
   try {
     const res = await fetch(`${trimApi(api)}/payment-recover-inv-web`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ invId }),
+      body: JSON.stringify({
+        invId,
+        ...(proof && proof.invId === invId
+          ? {
+              outSum: proof.outSum,
+              signatureValue: proof.signatureValue,
+              shp: proof.shp,
+            }
+          : {}),
+      }),
     });
     const data = (await res.json()) as {
       paid?: boolean;

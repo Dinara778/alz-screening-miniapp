@@ -51,6 +51,7 @@ import {
   robokassaGetOrder,
   robokassaRegisterOrder,
   verifyRobokassaResultSignature,
+  verifyRobokassaSuccessSignature,
 } from './robokassa.mjs';
 import { isWebPaidForSession, markWebPaid } from './webPaidStore.mjs';
 import {
@@ -798,9 +799,50 @@ app.post('/payment-recover-inv-web', async (req, res) => {
     if (!invId) return res.status(400).json({ paid: false, error: 'invId required' });
     const order = robokassaGetOrder(invId);
     if (!order) return res.json({ paid: false, error: 'unknown invId' });
-    const paid = isWebPaidForSession(order.sessionId, order.product);
+
+    const prior = isWebPaidForSession(order.sessionId, order.product);
+    if (prior.paid) {
+      return res.json({
+        ...prior,
+        sessionId: order.sessionId,
+        product: order.product,
+        invId: order.invId,
+      });
+    }
+
+    const outSum = String(req.body?.outSum ?? '').trim();
+    const signatureValue = String(req.body?.signatureValue ?? '').trim();
+    if (outSum && signatureValue && isRobokassaConfigured(process.env)) {
+      const shp = req.body?.shp && typeof req.body.shp === 'object' ? req.body.shp : {};
+      const sigBody = { OutSum: outSum, InvId: invId, SignatureValue: signatureValue, ...shp };
+      if (!verifyRobokassaSuccessSignature(sigBody, process.env)) {
+        return res.json({ paid: false, error: 'bad signature', sessionId: order.sessionId, product: order.product });
+      }
+      if (Number(outSum).toFixed(2) !== Number(order.amountRub).toFixed(2)) {
+        return res.json({ paid: false, error: 'amount mismatch', sessionId: order.sessionId, product: order.product });
+      }
+      markWebPaid({
+        sessionId: order.sessionId,
+        product: order.product,
+        invId: order.invId,
+      });
+      payAnalytics.trackPaidOnServer({
+        sessionId: order.sessionId,
+        product: order.product,
+        tgUserId: null,
+        payload: `robokassa_success:${invId}`,
+      });
+      console.info('[payment-recover-inv-web] confirmed via Success URL', invId, order.sessionId);
+      return res.json({
+        paid: true,
+        sessionId: order.sessionId,
+        product: order.product,
+        invId: order.invId,
+      });
+    }
+
     return res.json({
-      ...paid,
+      paid: false,
       sessionId: order.sessionId,
       product: order.product,
       invId: order.invId,
@@ -883,6 +925,9 @@ app.post('/payment-recover-session', async (req, res) => {
       if (exact.paid) return res.json(exact);
       const anyPaid = findLatestTelegramPaidForUser(user?.id, product);
       return res.json(anyPaid);
+    }
+    if (PAYMENT_PROVIDER === 'robokassa') {
+      return res.json(isWebPaidForSession(String(sessionId), product));
     }
     if (PAYMENT_PROVIDER !== 'prodamus') {
       return res.json({ paid: false });

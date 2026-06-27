@@ -5,6 +5,7 @@ const PAYMENT_FAIL_BOOT_KEY = 'alz_payment_fail_boot_result';
 const ROBOKASSA_RETURN_SESSION_KEY = 'alz_robokassa_return_session';
 const ROBOKASSA_RETURN_PRODUCT_KEY = 'alz_robokassa_return_product';
 const ROBOKASSA_RETURN_INV_KEY = 'alz_robokassa_return_inv';
+const ROBOKASSA_RETURN_PROOF_KEY = 'alz_robokassa_return_proof';
 const ROBOKASSA_PENDING_PRODUCT_KEY = 'alz_robokassa_pending_product';
 
 function parseRobokassaProduct(raw: string | null | undefined): TelegramInvoiceProduct | null {
@@ -56,6 +57,19 @@ export function captureRobokassaSuccessFromUrl(): void {
       parseRobokassaProduct(q.get('Shp_Product')) ??
       parseRobokassaProduct(sessionStorage.getItem(ROBOKASSA_PENDING_PRODUCT_KEY));
     if (product) sessionStorage.setItem(ROBOKASSA_RETURN_PRODUCT_KEY, product);
+
+    const outSum = q.get('OutSum')?.trim();
+    const signatureValue = q.get('SignatureValue')?.trim();
+    if (outSum && invId && signatureValue) {
+      const shp: Record<string, string> = {};
+      q.forEach((v, k) => {
+        if (k.startsWith('Shp_')) shp[k] = v;
+      });
+      sessionStorage.setItem(
+        ROBOKASSA_RETURN_PROOF_KEY,
+        JSON.stringify({ outSum, invId, signatureValue, shp }),
+      );
+    }
 
     if (q.get('robokassa') !== 'success' && sessionId) {
       const next = new URLSearchParams(q);
@@ -119,6 +133,48 @@ export function peekRobokassaReturnProduct(): TelegramInvoiceProduct {
   return 'full_report';
 }
 
+/** Доказательство оплаты с Success URL Робокассы (OutSum + InvId + SignatureValue). */
+export function peekRobokassaReturnProof(): {
+  outSum: string;
+  invId: string;
+  signatureValue: string;
+  shp: Record<string, string>;
+} | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const q = new URLSearchParams(window.location.search);
+    const outSum = q.get('OutSum')?.trim();
+    const invId = q.get('InvId')?.trim();
+    const signatureValue = q.get('SignatureValue')?.trim();
+    if (outSum && invId && signatureValue) {
+      const shp: Record<string, string> = {};
+      q.forEach((v, k) => {
+        if (k.startsWith('Shp_')) shp[k] = v;
+      });
+      return { outSum, invId, signatureValue, shp };
+    }
+    const raw = sessionStorage.getItem(ROBOKASSA_RETURN_PROOF_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      outSum?: string;
+      invId?: string;
+      signatureValue?: string;
+      shp?: Record<string, string>;
+    };
+    if (parsed.outSum && parsed.invId && parsed.signatureValue) {
+      return {
+        outSum: parsed.outSum,
+        invId: parsed.invId,
+        signatureValue: parsed.signatureValue,
+        shp: parsed.shp ?? {},
+      };
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
 export function clearRobokassaReturnSession(): void {
   if (typeof sessionStorage === 'undefined') return;
   try {
@@ -126,6 +182,7 @@ export function clearRobokassaReturnSession(): void {
     sessionStorage.removeItem(ROBOKASSA_RETURN_PRODUCT_KEY);
     sessionStorage.removeItem(ROBOKASSA_RETURN_INV_KEY);
     sessionStorage.removeItem(ROBOKASSA_PENDING_PRODUCT_KEY);
+    sessionStorage.removeItem(ROBOKASSA_RETURN_PROOF_KEY);
   } catch {
     /* ignore */
   }

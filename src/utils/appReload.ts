@@ -18,6 +18,9 @@ export function stripPaymentQueryFromUrl(): void {
     'robokassa',
     'sessionId',
     'product',
+    'OutSum',
+    'InvId',
+    'SignatureValue',
   ];
   let changed = false;
   for (const key of drop) {
@@ -26,6 +29,12 @@ export function stripPaymentQueryFromUrl(): void {
       changed = true;
     }
   }
+  url.searchParams.forEach((_, key) => {
+    if (key.startsWith('Shp_')) {
+      url.searchParams.delete(key);
+      changed = true;
+    }
+  });
   if (!changed) return;
   const next = `${url.pathname}${url.search}${url.hash}`;
   window.history.replaceState(null, '', next);
