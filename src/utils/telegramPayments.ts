@@ -693,7 +693,7 @@ export async function recoverFullReportAccess(sessionId: string): Promise<Recove
   return {
     ok: false,
     message:
-      'Оплату пока не видим по этому аккаунту. Если списание было — напишите в поддержку: дата, @username, что проходили тест дважды.',
+      'Оплату пока не видим по этому аккаунту. Если списание было — напишите в поддержку: дата, @username, что проходили оценку дважды.',
   };
 }
 

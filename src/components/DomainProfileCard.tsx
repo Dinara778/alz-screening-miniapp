@@ -19,17 +19,17 @@ export const DomainProfileCard = ({ domain }: Props) => {
       <div className="mt-2 h-2 rounded-full bg-slate-200 overflow-hidden">
         <div className="h-2 rounded-full bg-emerald-800" style={{ width: `${score}%` }} />
       </div>
-      <div className="mt-3 space-y-2 results-body">
+      <div className="mt-3 results-prose results-body">
         <p>
-          <span className="font-semibold text-white/95">{INTERPRETATION_LABEL_IN_LIFE} </span>
+          <span className="interpretation-label">{INTERPRETATION_LABEL_IN_LIFE} </span>
           {i.inLife}
         </p>
         <p>
-          <span className="font-semibold text-white/95">{INTERPRETATION_LABEL_MANIFESTATION} </span>
+          <span className="interpretation-label">{INTERPRETATION_LABEL_MANIFESTATION} </span>
           {i.manifestations}
         </p>
         <p>
-          <span className="font-semibold text-white/95">{INTERPRETATION_LABEL_RECOMMENDATIONS} </span>
+          <span className="interpretation-label">{INTERPRETATION_LABEL_RECOMMENDATIONS} </span>
           {i.aboutResult}
         </p>
       </div>

@@ -24,16 +24,16 @@ export const PaidReportTemporalOverload = ({
         {cards.map((row) => (
           <li
             key={row.id}
-            className="rounded-lg border border-amber-400/35 bg-amber-400/10 p-3"
+            className="results-prose rounded-lg border border-amber-400/35 bg-amber-400/10 p-3"
           >
             <p className="report-domain-title">{row.title}</p>
-            <p className="results-body mt-2">{row.description}</p>
-            <p className="results-body mt-2">
-              <span className="font-semibold text-white/95">Как вы это замечаете: </span>
+            <p className="results-body">{row.description}</p>
+            <p className="results-body">
+              <span className="interpretation-label">Как вы это замечаете: </span>
               {row.howYouNotice}
             </p>
-            <p className="results-body mt-2">
-              <span className="font-semibold text-white/95">Что делать: </span>
+            <p className="results-body">
+              <span className="interpretation-label">Что делать: </span>
               {row.whatToDo}
             </p>
           </li>

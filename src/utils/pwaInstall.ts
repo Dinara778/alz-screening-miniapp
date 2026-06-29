@@ -1,6 +1,9 @@
 const DISMISS_KEY = 'corta-install-dismissed-until';
 const DISMISS_DAYS = 14;
 
+/** Баннер «Установить на главный экран» — позже только для подписчиков. */
+export const PWA_INSTALL_BANNER_ENABLED = false;
+
 export type InstallPlatform = 'ios' | 'android' | 'desktop' | 'unknown';
 
 export type InstallUiMode = 'native' | 'ios' | 'android-manual' | 'in-app-browser' | 'hidden';
@@ -51,6 +54,7 @@ export function dismissInstallBanner(): void {
 
 export function shouldOfferPwaInstall(): boolean {
   if (typeof window === 'undefined') return false;
+  if (!PWA_INSTALL_BANNER_ENABLED) return false;
   if (!import.meta.env.PROD) return false;
   if (isStandalonePwa()) return false;
   if (isTelegramMiniApp()) return false;

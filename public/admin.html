@@ -177,12 +177,12 @@
     <section style="margin-bottom:16px">
       <h2>Конверсии</h2>
       <div class="conv-row">
-        <div class="conv-title">Оставил email → прошёл тест</div>
+        <div class="conv-title">Оставил email → прошёл оценку</div>
         <div class="conv-big" id="convVisit">—</div>
         <div class="conv-detail" id="convVisitDetail"></div>
       </div>
       <div class="conv-row">
-        <div class="conv-title">Прошёл тест → покупка</div>
+        <div class="conv-title">Прошёл оценку → покупка</div>
         <div class="conv-big" id="convTest">—</div>
         <div class="conv-detail" id="convTestDetail"></div>
       </div>
@@ -198,11 +198,11 @@
       <section>
         <h2>Активность</h2>
         <div class="metric">
-          <span class="metric-label" id="testsLabel">Прошли тест за период</span>
+          <span class="metric-label" id="testsLabel">Прошли оценку за период</span>
           <span class="metric-value" id="testsInPeriod">—</span>
         </div>
         <div class="metric">
-          <span class="metric-label">Вернулись (2+ теста)</span>
+          <span class="metric-label">Вернулись (2+ оценки)</span>
           <span class="metric-value" id="returned">—</span>
         </div>
       </section>
@@ -259,7 +259,7 @@
       });
       const label = periodLabel(period);
       $('usersNewLabel').textContent = period === 'all' ? 'Новые за всё время' : 'Новые за ' + label;
-      $('testsLabel').textContent = period === 'all' ? 'Прошли тест (всего)' : 'Прошли тест за ' + label;
+      $('testsLabel').textContent = period === 'all' ? 'Прошли оценку (всего)' : 'Прошли оценку за ' + label;
     }
 
     function render(data) {
@@ -320,7 +320,7 @@
         if (!res.ok || !json.ok) throw new Error(json.error || 'Ошибка импорта');
         const s = json.stats;
         $('importResult').textContent =
-          'Готово: пользователей ' + s.users + ', воронка ' + s.funnel + ', тесты ' + s.assessments + ', оплаты ' + s.payments;
+          'Готово: пользователей ' + s.users + ', воронка ' + s.funnel + ', оценки ' + s.assessments + ', оплаты ' + s.payments;
         $('importResult').className = 'success';
         await loadDashboard(token);
       } catch (e) {

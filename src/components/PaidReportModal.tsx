@@ -68,17 +68,17 @@ export const PaidReportModal = ({ open, data, onClose }: Props) => {
 
           <section className="mt-8 space-y-4 calm-inset">
             <SectionTitle>Расширенная интерпретация</SectionTitle>
-            <div className="space-y-3 results-body text-sm leading-relaxed text-white/88">
+            <div className="results-prose results-body text-sm leading-relaxed text-white/88">
               <p>
-                <span className="font-semibold text-white/95">{INTERPRETATION_LABEL_IN_LIFE} </span>
+                <span className="interpretation-label">{INTERPRETATION_LABEL_IN_LIFE} </span>
                 {data.extendedInterpretation.inLife}
               </p>
               <p>
-                <span className="font-semibold text-white/95">{INTERPRETATION_LABEL_FEELING} </span>
+                <span className="interpretation-label">{INTERPRETATION_LABEL_FEELING} </span>
                 {data.extendedInterpretation.feeling}
               </p>
               <p>
-                <span className="font-semibold text-white/95">{INTERPRETATION_LABEL_ABOUT_RESULT} </span>
+                <span className="interpretation-label">{INTERPRETATION_LABEL_ABOUT_RESULT} </span>
                 {data.extendedInterpretation.aboutResult}
               </p>
             </div>

@@ -16,7 +16,7 @@ export type PaymentProductMeta = {
 export const PAYMENT_PRODUCTS: Record<TelegramInvoiceProduct, PaymentProductMeta> = {
   full_report: {
     title:
-      'Понятный план по снижению перегрузки и быстрому восстановлению когнитивного ресурса именно под ваши показатели',
+      'Понятные шаги, как снять перегрузку и быстро восстановить когнитивный ресурс именно вам',
     priceRub: 149,
     subtitle: '',
     bullets: [

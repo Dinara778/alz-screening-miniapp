@@ -323,7 +323,7 @@ async function sendConsultationEmail({ consultationEmail, sessionId, participant
     'Пользователь оставил заявку на разбор в мини-приложении.',
     '',
     `Email для связи: ${consultationEmail}`,
-    `ID сессии теста: ${sessionId || '—'}`,
+    `ID сессии оценки: ${sessionId || '—'}`,
   ];
   if (tgUser?.id) {
     lines.push(`Telegram: id ${tgUser.id}${tgUser.username ? `, @${tgUser.username}` : ''}`);
@@ -530,8 +530,8 @@ async function sendHealthJson(res) {
       hint: hints.length
         ? hints.join(' · ')
         : PAYMENT_PROVIDER === 'robokassa'
-          ? 'Робокасса настроена. Тестируйте оплату на cortaapp.ru в браузере.'
-          : 'Сервер и вебхук в порядке. Тестируйте оплату только из Telegram.',
+          ? 'Робокасса настроена. Проверяйте оплату на cortaapp.ru в браузере.'
+          : 'Сервер и вебхук в порядке. Проверяйте оплату только из Telegram.',
     },
   });
 }

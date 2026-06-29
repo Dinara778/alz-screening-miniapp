@@ -180,7 +180,7 @@ export const FullReportPage = () => {
       case 'index':
         return (
           <div className="mx-auto w-full max-w-md space-y-3 pb-2">
-            <div className="calm-inset space-y-3">
+            <div className="calm-inset results-prose">
               <SketchHighlightTitle accent={accent}>
                 Ваш индекс когнитивной устойчивости{' '}
                 <strong className="font-bold">прямо сейчас</strong>:
@@ -217,7 +217,7 @@ export const FullReportPage = () => {
               <SketchHighlightTitle accent={accent}>
                 {renderDomainSectionTitle(page.chunkIndex)}
               </SketchHighlightTitle>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {domains.map((d) => (
                   <DomainProfileCard key={d.key} domain={d} />
                 ))}

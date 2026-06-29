@@ -57,7 +57,7 @@ export const InstallAppBanner = () => {
   const isIosChrome = platform === 'ios' && /CriOS/i.test(navigator.userAgent);
 
   let title = 'Добавьте Corta на главный экран';
-  let body = 'Так тест и отчёт будут открываться в один тап — как приложение.';
+  let body = 'Так оценка и отчёт будут открываться в один тап — как приложение.';
 
   if (mode === 'in-app-browser') {
     title = 'Откройте Corta в браузере';

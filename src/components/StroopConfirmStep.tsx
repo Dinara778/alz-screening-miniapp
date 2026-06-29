@@ -13,7 +13,7 @@ export const StroopConfirmStep = ({ onConfirm }: Props) => {
       <div className="calm-inset min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
         <h2 className="app-heading">Всё ли понятно?</h2>
         <p className="calm-body">
-          Перед тестом проверьте правило: нажимаете <strong>цвет букв</strong>, а не то, что написано.
+          Перед заданием проверьте правило: нажимаете <strong>цвет букв</strong>, а не то, что написано.
         </p>
 
         <div className="space-y-3 rounded-xl border border-amber-400/35 bg-amber-400/10 p-4">

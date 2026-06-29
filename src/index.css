@@ -139,6 +139,16 @@ input:focus-visible {
     @apply text-base leading-relaxed text-white/85 sm:text-lg;
   }
 
+  /** Абзацы на экранах результата и отчёта */
+  .results-prose {
+    @apply space-y-4;
+  }
+
+  /** Подписи блоков интерпретации: «Скорее всего сейчас», «Рекомендации» и т.д. */
+  .interpretation-label {
+    @apply font-bold text-white;
+  }
+
   /** Длинный экран платного отчёта — единая типографика */
   .report-long-screen .report-domain-title {
     @apply text-base font-bold leading-snug text-white sm:text-lg;

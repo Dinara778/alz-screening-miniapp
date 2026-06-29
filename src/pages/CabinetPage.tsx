@@ -90,7 +90,7 @@ export const CabinetPage = () => {
         <div className="cabinet-card cabinet-card-narrow">
           <h1>Личный кабинет Corta</h1>
           <p className="cabinet-muted">
-            Войдите по email — пришлём ссылку без пароля. Используйте тот же адрес, что указывали при тесте.
+            Войдите по email — пришлём ссылку без пароля. Используйте тот же адрес, что указывали при оценке.
           </p>
           <input
             className="cabinet-input"
@@ -109,7 +109,7 @@ export const CabinetPage = () => {
           {loginMsg ? <p className="cabinet-success">{loginMsg}</p> : null}
           {loginError ? <p className="cabinet-error">{loginError}</p> : null}
           <p className="cabinet-foot">
-            <a href="/">← Вернуться к тесту</a>
+            <a href="/">← Вернуться к оценке</a>
           </p>
         </div>
       </div>
@@ -157,7 +157,7 @@ export const CabinetPage = () => {
                 </ul>
               </>
             ) : (
-              <p className="cabinet-muted">Пока нет завершённых оценок. Пройдите тест на главной.</p>
+              <p className="cabinet-muted">Пока нет завершённых оценок. Пройдите оценку на главной.</p>
             )}
           </section>
         </div>
@@ -167,7 +167,7 @@ export const CabinetPage = () => {
           {data?.compensationTip ? (
             <p className="cabinet-tip">{data.compensationTip}</p>
           ) : (
-            <p className="cabinet-muted">Появится после следующего прохождения теста.</p>
+            <p className="cabinet-muted">Появится после следующего прохождения оценки.</p>
           )}
         </section>
 
@@ -188,7 +188,7 @@ export const CabinetPage = () => {
         </section>
 
         <p className="cabinet-foot">
-          <a href="/">Пройти тест снова</a>
+          <a href="/">Пройти оценку снова</a>
         </p>
       </div>
     </div>

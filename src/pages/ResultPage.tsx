@@ -49,7 +49,7 @@ const sessionUpsellFeatures = [
 
 const reportOfferBullets = [
   'Расшифровку вашего когнитивного статуса',
-  'Понятный план по снижению перегрузки и быстрому восстановлению когнитивного ресурса именно под ваши показатели',
+  'Технику по улучшению когнитивного состояния по наиболее проседающему домену, которую вы можете сделать прямо сейчас',
   'Краткие персональные рекомендации, которые помогут снять перегрузку и быстрее вернуть когнитивный ресурс',
 ] as const;
 
@@ -68,20 +68,20 @@ const FreeIndexInterpretationBody = ({
 }) => (
   <div className="mx-auto w-full max-w-md space-y-4">
     <SketchHighlightTitle accent={accent}>{title}</SketchHighlightTitle>
-    <div className="calm-inset space-y-4 text-left text-base leading-relaxed text-white sm:text-lg">
+    <div className="calm-inset results-prose text-left text-base leading-relaxed text-white sm:text-lg">
       <p>
-        <span className="font-semibold">{INTERPRETATION_LABEL_IN_LIFE} </span>
+        <span className="interpretation-label">{INTERPRETATION_LABEL_IN_LIFE} </span>
         {interpretation.inLife}
       </p>
       {interpretation.feeling ? (
         <p>
-          <span className="font-semibold">{INTERPRETATION_LABEL_FEELING} </span>
+          <span className="interpretation-label">{INTERPRETATION_LABEL_FEELING} </span>
           {interpretation.feeling}
         </p>
       ) : null}
       {interpretation.insight ? (
         <p>
-          <span className="font-semibold">{INTERPRETATION_LABEL_ABOUT_RESULT} </span>
+          <span className="interpretation-label">{INTERPRETATION_LABEL_ABOUT_RESULT} </span>
           {interpretation.insight}
         </p>
       ) : null}
@@ -501,7 +501,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
             </div>
           }
         >
-          <div className="mx-auto my-auto w-full max-w-md space-y-5">
+          <div className="mx-auto w-full max-w-md results-prose space-y-5">
             <p className="app-heading leading-snug text-white/95">
               Узнайте, почему сейчас мозг работает именно так и что поможет быстрее восстановить
               ресурс
@@ -567,7 +567,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
             </div>
           }
         >
-          <div className="mx-auto w-full max-w-md space-y-5">
+          <div className="mx-auto w-full max-w-md results-prose space-y-5">
             {sessionPaid ? (
               <p className="text-lg font-semibold leading-relaxed text-emerald-200">
                 {CONSULTATION_PAID_THANKS_TEXT}
@@ -644,7 +644,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           </div>
         }
       >
-        <div className="mx-auto w-full max-w-md space-y-5 pb-4">
+        <div className="mx-auto w-full max-w-md results-prose space-y-5 pb-4">
           <SketchHighlightTitle accent={accent} generousOutline>
             Узнайте, что перегружает вашу когнитивную систему
           </SketchHighlightTitle>

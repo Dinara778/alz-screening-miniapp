@@ -2,7 +2,6 @@ const PLACEHOLDER_NAMES = new Set([
   'не указано',
   'не',
   'пользователь',
-  'тест',
   'test',
 ]);
 
