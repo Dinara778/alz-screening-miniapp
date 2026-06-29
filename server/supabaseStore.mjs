@@ -4,6 +4,10 @@
 import { createClient } from '@supabase/supabase-js';
 import ws from 'ws';
 
+if (typeof globalThis.WebSocket === 'undefined') {
+  globalThis.WebSocket = ws;
+}
+
 let client = null;
 
 export function isSupabaseConfigured(env = process.env) {
@@ -13,10 +17,15 @@ export function isSupabaseConfigured(env = process.env) {
 export function getClient(env = process.env) {
   if (!isSupabaseConfigured(env)) return null;
   if (!client) {
-    client = createClient(env.SUPABASE_URL.trim(), env.SUPABASE_SERVICE_ROLE_KEY.trim(), {
-      auth: { persistSession: false, autoRefreshToken: false },
-      realtime: { transport: ws },
-    });
+    try {
+      client = createClient(env.SUPABASE_URL.trim(), env.SUPABASE_SERVICE_ROLE_KEY.trim(), {
+        auth: { persistSession: false, autoRefreshToken: false },
+        realtime: { transport: ws },
+      });
+    } catch (error) {
+      console.error('[supabase] client init failed', error);
+      return null;
+    }
   }
   return client;
 }

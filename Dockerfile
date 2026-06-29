@@ -1,7 +1,7 @@
 # Мини-приложение + API оплат (/invoice, /prodamus/notify) на одном домене.
 # Amvera: тип Docker, порт 8080. Сборка: VITE_* ; Запуск: TELEGRAM_*, PRODAMUS_*, SERVE_STATIC=true
 
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
@@ -23,7 +23,7 @@ ENV VITE_SHARE_BOT_URL=$VITE_SHARE_BOT_URL
 
 RUN echo "VITE_TELEGRAM_PAYMENTS_URL=${VITE_TELEGRAM_PAYMENTS_URL}" && npm run build
 
-FROM node:20-alpine
+FROM node:22-alpine
 WORKDIR /app/server
 COPY server/package.json server/package-lock.json ./
 RUN npm ci --omit=dev
