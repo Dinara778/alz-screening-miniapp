@@ -71,6 +71,7 @@ import {
 } from './cabinetStore.mjs';
 import {
   getSupabaseHealthInfo,
+  getPublicSupabaseConfig,
   isSupabaseConfigured,
   recordPayment,
   upsertAssessment,
@@ -1247,6 +1248,18 @@ app.get('/api/admin/dashboard', async (req, res) => {
     console.error('[api/admin/dashboard]', e);
     return res.status(500).json({ ok: false, error: 'server_error' });
   }
+});
+
+app.get('/api/public-config', (_req, res) => {
+  const cfg = getPublicSupabaseConfig(process.env);
+  if (!cfg) {
+    return res.status(503).json({
+      ok: false,
+      error: 'supabase_public_not_configured',
+      hint: 'Amvera «Запуск»: SUPABASE_ANON_KEY (anon public из Supabase → API)',
+    });
+  }
+  return res.json({ ok: true, ...cfg });
 });
 
 app.get('/api/cabinet/me', async (req, res) => {

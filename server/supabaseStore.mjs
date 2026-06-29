@@ -238,8 +238,18 @@ function clampScore(n) {
 }
 
 export function getSupabaseHealthInfo(env = process.env) {
+  const url = env.SUPABASE_URL?.trim() ? env.SUPABASE_URL.trim().replace(/\/$/, '') : null;
+  const anonKey = env.SUPABASE_ANON_KEY?.trim() || env.VITE_SUPABASE_ANON_KEY?.trim() || null;
   return {
     configured: isSupabaseConfigured(env),
-    url: env.SUPABASE_URL?.trim() ? env.SUPABASE_URL.trim().replace(/\/$/, '') : null,
+    url,
+    publicBrowser: Boolean(url && anonKey),
   };
+}
+
+export function getPublicSupabaseConfig(env = process.env) {
+  const url = env.SUPABASE_URL?.trim()?.replace(/\/$/, '');
+  const anonKey = env.SUPABASE_ANON_KEY?.trim() || env.VITE_SUPABASE_ANON_KEY?.trim();
+  if (!url || !anonKey) return null;
+  return { supabaseUrl: url, supabaseAnonKey: anonKey };
 }

@@ -6,7 +6,6 @@ import {
   useCabinetSession,
   type CabinetData,
 } from '../utils/cabinetApi';
-import { isSupabaseBrowserConfigured } from '../utils/supabaseBrowser';
 
 function fmtDate(iso: string): string {
   try {
@@ -23,7 +22,7 @@ function fmtDate(iso: string): string {
 }
 
 export const CabinetPage = () => {
-  const { accessToken, email, ready } = useCabinetSession();
+  const { accessToken, email, ready, configured } = useCabinetSession();
   const [loginEmail, setLoginEmail] = useState('');
   const [loginMsg, setLoginMsg] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -63,22 +62,25 @@ export const CabinetPage = () => {
     window.location.href = '/cabinet';
   };
 
-  if (!isSupabaseBrowserConfigured()) {
+  if (!ready || configured === null) {
     return (
       <div className="cabinet-shell">
         <div className="cabinet-card">
-          <h1>Личный кабинет</h1>
-          <p className="cabinet-muted">Кабинет пока не настроен на сервере (нужны VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY).</p>
+          <p className="cabinet-muted">Загрузка…</p>
         </div>
       </div>
     );
   }
 
-  if (!ready) {
+  if (configured === false) {
     return (
       <div className="cabinet-shell">
         <div className="cabinet-card">
-          <p className="cabinet-muted">Загрузка…</p>
+          <h1>Личный кабинет</h1>
+          <p className="cabinet-muted">
+            Кабинет пока не настроен: добавьте SUPABASE_ANON_KEY на Amvera (этап «Запуск») или
+            VITE_SUPABASE_* на «Сборка».
+          </p>
         </div>
       </div>
     );

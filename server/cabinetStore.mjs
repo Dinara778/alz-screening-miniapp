@@ -1,7 +1,7 @@
 /**
  * Личный кабинет: проверка JWT Supabase Auth и данные пользователя.
  */
-import { getClient, isSupabaseConfigured, upsertUserByEmail } from './supabaseStore.mjs';
+import { getClient, getPublicSupabaseConfig, isSupabaseConfigured, upsertUserByEmail } from './supabaseStore.mjs';
 
 export function isCabinetConfigured(env = process.env) {
   return isSupabaseConfigured(env);
@@ -118,9 +118,12 @@ export async function getCabinetData(email, env = process.env) {
 }
 
 export function getCabinetHealthInfo(env = process.env) {
+  const pub = getPublicSupabaseConfig(env);
   return {
     configured: isCabinetConfigured(env),
+    browserReady: Boolean(pub),
     url: '/cabinet',
     auth: 'supabase_magic_link',
+    publicConfigUrl: '/api/public-config',
   };
 }
