@@ -64,6 +64,12 @@ import {
 } from './dashboardStore.mjs';
 import { importSheetsCsvText } from './sheetsCsvImport.mjs';
 import {
+  getCabinetData,
+  getCabinetHealthInfo,
+  isCabinetConfigured,
+  verifySupabaseAccessToken,
+} from './cabinetStore.mjs';
+import {
   getSupabaseHealthInfo,
   isSupabaseConfigured,
   recordPayment,
@@ -500,6 +506,7 @@ async function sendHealthJson(res) {
     },
     supabase: getSupabaseHealthInfo(process.env),
     adminDashboard: getAdminDashboardHealthInfo(process.env),
+    cabinet: getCabinetHealthInfo(process.env),
     payments: {
       ready: paymentsReady,
       provider: PAYMENT_PROVIDER,
@@ -1125,6 +1132,7 @@ app.post('/api/sync-assessment', async (req, res) => {
       speedScore,
       stabilityScore,
       flexibilityScore,
+      compensationTip,
     } = req.body ?? {};
 
     if (!sessionId || !email) {
@@ -1140,6 +1148,7 @@ app.post('/api/sync-assessment', async (req, res) => {
       speedScore,
       stabilityScore,
       flexibilityScore,
+      compensationTip,
     });
 
     if (!saved) {
@@ -1236,6 +1245,28 @@ app.get('/api/admin/dashboard', async (req, res) => {
     return res.json({ ok: true, data });
   } catch (e) {
     console.error('[api/admin/dashboard]', e);
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
+app.get('/api/cabinet/me', async (req, res) => {
+  try {
+    if (!isCabinetConfigured()) {
+      return res.status(503).json({ ok: false, error: 'cabinet_not_configured' });
+    }
+    const auth = req.get('Authorization');
+    const token = auth?.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+    const email = await verifySupabaseAccessToken(token);
+    if (!email) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' });
+    }
+    const data = await getCabinetData(email);
+    if (!data) {
+      return res.status(500).json({ ok: false, error: 'load_failed' });
+    }
+    return res.json({ ok: true, data });
+  } catch (e) {
+    console.error('[api/cabinet/me]', e);
     return res.status(500).json({ ok: false, error: 'server_error' });
   }
 });

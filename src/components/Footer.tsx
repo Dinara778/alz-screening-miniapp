@@ -47,6 +47,11 @@ export const Footer = ({ compact = false }: Props) => {
           </a>
         </div>
         <div className="mb-2 w-full">
+          <a href="/cabinet" className="text-teal-300/90 underline underline-offset-2 hover:text-teal-200">
+            Личный кабинет
+          </a>
+        </div>
+        <div className="mb-2 w-full">
           <a href={TELEGRAM_SUPPORT_URL} target="_blank" rel="noopener noreferrer">
             Техподдержка
           </a>

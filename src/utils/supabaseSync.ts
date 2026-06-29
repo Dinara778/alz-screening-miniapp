@@ -1,5 +1,5 @@
 import type { SessionResult } from '../types';
-import { buildCognitiveAnalytics } from './cognitiveAnalytics';
+import { buildCognitiveAnalytics, pickRandomPatternRecommendation } from './cognitiveAnalytics';
 import { getPaymentsApiUrl } from './telegramPayments';
 
 export type SyncAssessmentPayload = {
@@ -11,6 +11,7 @@ export type SyncAssessmentPayload = {
   speedScore: number;
   stabilityScore: number;
   flexibilityScore: number;
+  compensationTip?: string | null;
 };
 
 function domainScore(
@@ -25,6 +26,7 @@ export function buildSyncAssessmentPayload(session: SessionResult): SyncAssessme
   if (!email || !email.includes('@')) return null;
 
   const analytics = buildCognitiveAnalytics(session);
+  const compensationTip = pickRandomPatternRecommendation(analytics.patterns, session.id);
   return {
     sessionId: session.id,
     email,
@@ -34,6 +36,7 @@ export function buildSyncAssessmentPayload(session: SessionResult): SyncAssessme
     speedScore: domainScore(analytics.domains, 'reactionSpeed'),
     stabilityScore: domainScore(analytics.domains, 'reactionStability'),
     flexibilityScore: domainScore(analytics.domains, 'cognitiveFlexibility'),
+    compensationTip,
   };
 }
 

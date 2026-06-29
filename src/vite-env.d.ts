@@ -7,6 +7,8 @@ interface Window {
 
 interface ImportMetaEnv {
   readonly VITE_SHEETS_WEBHOOK_URL?: string;
+  readonly VITE_SUPABASE_URL?: string;
+  readonly VITE_SUPABASE_ANON_KEY?: string;
   /** Dev: skip paywall and invoice for full report */
   readonly VITE_DEV_BYPASS_REPORT_PAYMENT?: string;
 }
