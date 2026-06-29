@@ -12,8 +12,10 @@ import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
 type Props = { onStart: (profile: ParticipantProfile) => void };
 
-/** Знакомство → имя → пол → возраст → старт оценки. */
-const FIELD_STEP_MAX = 4;
+/** Знакомство → имя → пол → возраст → email → старт оценки. */
+const FIELD_STEP_MAX = 5;
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const SEX_OPTIONS = ['Женский', 'Мужской'] as const satisfies readonly ParticipantProfile['sex'][];
 
@@ -30,6 +32,7 @@ export const WelcomePage = ({ onStart }: Props) => {
   const [name, setName] = useState('');
   const [sex, setSex] = useState<ParticipantProfile['sex']>('Женский');
   const [age, setAge] = useState('');
+  const [email, setEmail] = useState('');
   const formSessionIdRef = useRef(`welcome-${Date.now()}`);
   const hasSentFormStartRef = useRef(false);
 
@@ -56,6 +59,10 @@ export const WelcomePage = ({ onStart }: Props) => {
       const n = Number(age);
       return Number.isFinite(n) && n >= 18 && n <= 100;
     }
+    if (s === 4) {
+      const trimmed = email.trim().toLowerCase();
+      return EMAIL_RE.test(trimmed) && trimmed.length <= 254;
+    }
     return false;
   };
 
@@ -64,9 +71,12 @@ export const WelcomePage = ({ onStart }: Props) => {
     if (!Number.isFinite(parsedAge) || parsedAge < 18 || parsedAge > 100) {
       return null;
     }
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!EMAIL_RE.test(trimmedEmail)) return null;
+
     return {
       name: name.trim(),
-      email: 'Не указано',
+      email: trimmedEmail,
       phone: 'Не указано',
       sex,
       age: parsedAge,
@@ -86,6 +96,7 @@ export const WelcomePage = ({ onStart }: Props) => {
       stage: 'welcome',
       participant: {
         name: profile.name,
+        email: profile.email,
         sex: profile.sex,
         age: profile.age,
         pcConfidence: 3,
@@ -115,7 +126,7 @@ export const WelcomePage = ({ onStart }: Props) => {
     </Button>
   );
 
-  if (step === 4) {
+  if (step === 5) {
     return (
       <CalmCardShell fill>
         <ScreenBottomCta
@@ -153,7 +164,9 @@ export const WelcomePage = ({ onStart }: Props) => {
     stepBody = (
       <div className="space-y-5 text-center sm:text-left">
         <h2 className="app-heading text-center">Несколько вопросов перед началом оценки</h2>
-        <p className="calm-caption sm:text-base">Пол и возраст, при желании — имя. Займёт около минуты.</p>
+        <p className="calm-caption sm:text-base">
+          Пол, возраст и email для отчёта, при желании — имя. Займёт около минуты.
+        </p>
       </div>
     );
     stepFooter = nextButton(0);
@@ -227,11 +240,33 @@ export const WelcomePage = ({ onStart }: Props) => {
         />
       </div>
     );
+    stepFooter = nextButton(3);
+  } else if (step === 4) {
+    stepBody = (
+      <div className="space-y-4">
+        <div className="text-center text-4xl">✉️</div>
+        <h2 className="app-heading text-center">Ваш email</h2>
+        <p className="text-center calm-caption">Для сохранения отчёта и чека после оплаты</p>
+        <input
+          className={inputClass}
+          placeholder="name@example.com"
+          type="email"
+          autoComplete="email"
+          value={email}
+          autoFocus
+          onFocus={scrollFieldIntoView}
+          onChange={(e) => {
+            sendFormStartedEvent('email');
+            setEmail(e.target.value);
+          }}
+        />
+      </div>
+    );
     stepFooter = (
       <Button
         type="button"
         className={CTA_BUTTON_CLASS}
-        disabled={!canAdvanceFrom(3)}
+        disabled={!canAdvanceFrom(4)}
         onClick={completeFormSteps}
       >
         Далее
@@ -239,14 +274,14 @@ export const WelcomePage = ({ onStart }: Props) => {
     );
   }
 
-  const stackForm = step >= 1 && step <= 3;
+  const stackForm = step >= 1 && step <= 4;
 
   return (
     <div className={`flex flex-col ${stackForm ? 'shrink-0' : 'min-h-0 flex-1'}`}>
       <CalmCardShell fill={introStep}>
         <div className="relative mb-4 shrink-0 space-y-3">
           <div className="flex items-start gap-3">
-            {step >= 1 && step <= 3 ? (
+            {step >= 1 && step <= 4 ? (
               <BackArrowButton onClick={goBack} className="mt-0.5 shrink-0" aria-label="Назад" />
             ) : null}
             <div className="min-w-0 flex-1 space-y-2.5">
@@ -261,7 +296,7 @@ export const WelcomePage = ({ onStart }: Props) => {
                 )}
                 <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-0.5 text-[0.6875rem] font-medium text-white/65">
                   {step === 0
-                    ? 'впереди 4 шага'
+                    ? 'впереди 5 шагов'
                     : step >= FIELD_STEP_MAX - 1
                       ? 'финиш ✨'
                       : `осталось: ${FIELD_STEP_MAX - step}`}

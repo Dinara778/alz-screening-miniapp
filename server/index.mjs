@@ -55,6 +55,12 @@ import {
 } from './robokassa.mjs';
 import { isWebPaidForSession, markWebPaid } from './webPaidStore.mjs';
 import {
+  getSupabaseHealthInfo,
+  isSupabaseConfigured,
+  recordPayment,
+  upsertAssessment,
+} from './supabaseStore.mjs';
+import {
   findLatestTelegramPaidForUser,
   isTelegramPaidForUser,
   markTelegramPaid,
@@ -109,6 +115,18 @@ const PRODUCTS = {
   },
 };
 
+function syncPaidToSupabase({ sessionId, product, amountRub, invId }) {
+  if (!isSupabaseConfigured()) return;
+  void recordPayment({
+    sessionId,
+    product,
+    amountRub,
+    type: 'one_time',
+    status: 'paid',
+    externalId: invId != null ? String(invId) : undefined,
+  }).catch((e) => console.error('[supabase] sync payment', e));
+}
+
 function extractRobokassaShp(body) {
   const shp = {};
   for (const [k, v] of Object.entries(body ?? {})) {
@@ -142,6 +160,12 @@ function confirmRobokassaSuccessReturn({ invId, outSum, signatureValue, shp, ord
     sessionId: resolved.sessionId,
     product: resolved.product,
     invId: String(invId),
+  });
+  syncPaidToSupabase({
+    sessionId: resolved.sessionId,
+    product: resolved.product,
+    amountRub: resolved.amountRub,
+    invId,
   });
   payAnalytics.trackPaidOnServer({
     sessionId: resolved.sessionId,
@@ -464,6 +488,7 @@ async function sendHealthJson(res) {
       source: sheetsWebhookSource(),
       testUrl: '/api/sheets-test',
     },
+    supabase: getSupabaseHealthInfo(process.env),
     payments: {
       ready: paymentsReady,
       provider: PAYMENT_PROVIDER,
@@ -944,6 +969,12 @@ app.all('/robokassa/result', async (req, res) => {
       product: order.product,
       invId: order.invId,
     });
+    syncPaidToSupabase({
+      sessionId: order.sessionId,
+      product: order.product,
+      amountRub: order.amountRub,
+      invId: order.invId,
+    });
     payAnalytics.trackPaidOnServer({
       sessionId: order.sessionId,
       product: order.product,
@@ -1067,6 +1098,48 @@ app.post(
     }
   },
 );
+
+/** Сохранение результата теста в Supabase (после прохождения на фронте). */
+app.post('/api/sync-assessment', async (req, res) => {
+  try {
+    if (!isSupabaseConfigured()) {
+      return res.status(503).json({ ok: false, error: 'supabase_not_configured' });
+    }
+    const {
+      sessionId,
+      email,
+      score,
+      memoryScore,
+      attentionScore,
+      speedScore,
+      stabilityScore,
+      flexibilityScore,
+    } = req.body ?? {};
+
+    if (!sessionId || !email) {
+      return res.status(400).json({ ok: false, error: 'sessionId and email required' });
+    }
+
+    const saved = await upsertAssessment({
+      email,
+      sessionId,
+      score,
+      memoryScore,
+      attentionScore,
+      speedScore,
+      stabilityScore,
+      flexibilityScore,
+    });
+
+    if (!saved) {
+      return res.status(500).json({ ok: false, error: 'save_failed' });
+    }
+    return res.json({ ok: true, assessmentId: saved.id, userId: saved.user_id });
+  } catch (e) {
+    console.error('[api/sync-assessment]', e);
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
 
 app.post('/consultation-lead', async (req, res) => {
   try {

@@ -40,6 +40,7 @@ import {
   sendFunnelAnalyticsEvent,
 } from '../utils/sessionFunnelAnalytics';
 import { sendSessionToSheets } from '../utils/sheetsWebhook';
+import { sendSessionToSupabase } from '../utils/supabaseSync';
 
 type ConsultationReturnStage = 'result' | 'full-report';
 
@@ -538,6 +539,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     void sendSessionToSheets(result, getVisitFunnelKey(sessionSeed)).catch(() => {
       // Ignore webhook errors to keep UX stable.
     });
+    void sendSessionToSupabase(result);
     setHistory(loadHistory());
     clearProgress();
   }, [sessionSeed]);
