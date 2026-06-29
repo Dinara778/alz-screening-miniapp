@@ -246,7 +246,7 @@ export const WelcomePage = ({ onStart }: Props) => {
       <div className="space-y-4">
         <div className="text-center text-4xl">✉️</div>
         <h2 className="app-heading text-center">Ваш email</h2>
-        <p className="text-center calm-caption">Для сохранения отчёта и чека после оплаты</p>
+        <p className="text-center calm-caption">Чтобы сохранить ваш отчёт</p>
         <input
           className={inputClass}
           placeholder="name@example.com"
