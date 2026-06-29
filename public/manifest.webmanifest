@@ -2,23 +2,38 @@
   "name": "Оцени работу мозга 🧠 — Corta",
   "short_name": "Corta",
   "description": "Оценка когнитивного ресурса: тест и персональный отчёт",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#050807",
   "theme_color": "#14b5a4",
   "lang": "ru",
   "icons": [
     {
-      "src": "/corta-logo-mark.png",
-      "sizes": "260x260",
+      "src": "/icon-192.png",
+      "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/corta-logo-mark.png",
       "sizes": "260x260",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any"
     }
   ]
 }

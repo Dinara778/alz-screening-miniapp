@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { InstallAppBanner } from './components/InstallAppBanner';
 import { useScrollToTopOnStage } from './hooks/useScrollToTopOnStage';
 import { useApp } from './context/AppContext';
 import { applyTelegramTheme, attachTelegramThemeListener } from './utils/telegramTheme';
@@ -133,6 +134,7 @@ function App() {
           {app.stage === 'consultation-request' && <ConsultationRequestPage />}
         </div>
       </div>
+      <InstallAppBanner />
     </main>
   );
 }
