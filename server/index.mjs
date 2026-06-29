@@ -1228,7 +1228,7 @@ app.get('/api/admin/dashboard', async (req, res) => {
       return res.status(500).json({
         ok: false,
         error: 'dashboard_unavailable',
-        hint: 'Проверьте Supabase и выполните 003_admin_dashboard.sql',
+        hint: 'Проверьте Supabase: таблицы users, funnel_sessions, assessments, payments',
       });
     }
     return res.json({ ok: true, data });

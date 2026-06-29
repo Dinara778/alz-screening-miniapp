@@ -2,6 +2,7 @@
  * Запись в Supabase (service role). Без ключей — no-op.
  */
 import { createClient } from '@supabase/supabase-js';
+import ws from 'ws';
 
 let client = null;
 
@@ -14,6 +15,7 @@ export function getClient(env = process.env) {
   if (!client) {
     client = createClient(env.SUPABASE_URL.trim(), env.SUPABASE_SERVICE_ROLE_KEY.trim(), {
       auth: { persistSession: false, autoRefreshToken: false },
+      realtime: { transport: ws },
     });
   }
   return client;

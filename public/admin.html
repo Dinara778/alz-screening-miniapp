@@ -235,9 +235,12 @@
         headers: { Authorization: 'Bearer ' + token },
       });
       if (res.status === 401) throw new Error('Неверный пароль');
-      if (!res.ok) throw new Error('Ошибка загрузки (' + res.status + ')');
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error || 'Ошибка');
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = new Error(json.hint ? String(json.hint) : 'Ошибка загрузки (' + res.status + ')');
+        throw err;
+      }
+      if (!json.ok) throw new Error(json.hint || json.error || 'Ошибка');
       render(json.data);
     }
 
@@ -255,6 +258,7 @@
         showApp();
       } catch (e) {
         $('loginError').textContent = e.message || 'Ошибка входа';
+        if (e.hint) $('loginError').textContent += ' — ' + e.hint;
         sessionStorage.removeItem(STORAGE_KEY);
       } finally {
         $('loginBtn').disabled = false;
