@@ -27,7 +27,7 @@
     }
     .wrap { max-width: 960px; margin: 0 auto; }
     h1 { margin: 0 0 6px; font-size: 1.5rem; }
-    .sub { color: var(--muted); font-size: .9rem; margin-bottom: 24px; }
+    .sub { color: var(--muted); font-size: .9rem; margin-bottom: 16px; }
     .login {
       max-width: 360px;
       margin: 80px auto;
@@ -38,7 +38,7 @@
     }
     .login h2 { margin: 0 0 8px; font-size: 1.15rem; }
     .login p { margin: 0 0 16px; color: var(--muted); font-size: .9rem; line-height: 1.45; }
-    input {
+    input[type="password"], input[type="file"] {
       width: 100%;
       border: 1px solid var(--border);
       background: rgba(255,255,255,.04);
@@ -49,7 +49,6 @@
       margin-bottom: 12px;
     }
     button {
-      width: 100%;
       border: 0;
       border-radius: 12px;
       padding: 12px 16px;
@@ -61,10 +60,10 @@
     }
     button:disabled { opacity: .6; cursor: wait; }
     .error { color: #fca5a5; font-size: .85rem; min-height: 1.2em; margin-top: 8px; }
+    .success { color: #6ee7b7; font-size: .85rem; margin-top: 8px; }
     .grid { display: grid; gap: 16px; }
     @media (min-width: 700px) {
       .grid-2 { grid-template-columns: 1fr 1fr; }
-      .grid-3 { grid-template-columns: repeat(3, 1fr); }
     }
     section {
       background: var(--card);
@@ -90,7 +89,6 @@
     .metric:first-of-type { border-top: 0; padding-top: 0; }
     .metric-label { color: var(--muted); font-size: .92rem; }
     .metric-value { font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; }
-    .metric-value.small { font-size: 1rem; font-weight: 700; }
     .conv-row { padding: 10px 0; border-top: 1px solid var(--border); }
     .conv-row:first-child { border-top: 0; padding-top: 0; }
     .conv-title { font-size: .92rem; color: var(--muted); margin-bottom: 4px; }
@@ -99,14 +97,28 @@
     .toolbar {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-start;
       gap: 12px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       flex-wrap: wrap;
     }
-    .toolbar button { width: auto; padding: 8px 14px; font-size: .85rem; background: rgba(255,255,255,.08); color: var(--text); }
+    .toolbar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .toolbar button, .periods button {
+      width: auto;
+      padding: 8px 14px;
+      font-size: .85rem;
+      background: rgba(255,255,255,.08);
+      color: var(--text);
+    }
+    .periods { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .periods button.active {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #042f2e;
+    }
     .note { font-size: .8rem; color: var(--muted); line-height: 1.45; margin-top: 16px; }
     .hidden { display: none !important; }
+    .login button { width: 100%; }
+    #importBtn { width: 100%; margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -124,18 +136,27 @@
         <h1>Corta — дашборд</h1>
         <div class="sub" id="updatedAt">Загрузка…</div>
       </div>
-      <button id="refreshBtn" type="button">Обновить</button>
+      <div class="toolbar-actions">
+        <button id="refreshBtn" type="button">Обновить</button>
+      </div>
+    </div>
+
+    <div class="periods" id="periods">
+      <button type="button" data-period="today" class="active">Сегодня</button>
+      <button type="button" data-period="7d">7 дней</button>
+      <button type="button" data-period="30d">30 дней</button>
+      <button type="button" data-period="all">Всё время</button>
     </div>
 
     <div class="grid grid-2" style="margin-bottom:16px">
       <section>
         <h2>Пользователи</h2>
         <div class="metric">
-          <span class="metric-label">Новые за сегодня</span>
+          <span class="metric-label" id="usersNewLabel">Новые за период</span>
           <span class="metric-value" id="usersNew">—</span>
         </div>
         <div class="metric">
-          <span class="metric-label">Всего</span>
+          <span class="metric-label">Всего в базе</span>
           <span class="metric-value" id="usersTotal">—</span>
         </div>
       </section>
@@ -170,26 +191,38 @@
         <div class="conv-big" id="convSub">—</div>
         <div class="conv-detail" id="convSubDetail"></div>
       </div>
-      <p class="note">«Посетил» = оставил email в анкете. Анонимные заходы без email пока не считаются.</p>
+      <p class="note">«Посетил» = оставил email в анкете. Конверсии считаются за выбранный период.</p>
     </section>
 
-    <div class="grid grid-2">
+    <div class="grid grid-2" style="margin-bottom:16px">
       <section>
         <h2>Активность</h2>
         <div class="metric">
-          <span class="metric-label">Прошли тест сегодня</span>
-          <span class="metric-value" id="testsToday">—</span>
+          <span class="metric-label" id="testsLabel">Прошли тест за период</span>
+          <span class="metric-value" id="testsInPeriod">—</span>
         </div>
         <div class="metric">
           <span class="metric-label">Вернулись (2+ теста)</span>
           <span class="metric-value" id="returned">—</span>
         </div>
       </section>
+
+      <section>
+        <h2>Импорт из Google Sheets</h2>
+        <p class="note" style="margin-top:0;margin-bottom:12px">
+          Таблица → Файл → Скачать → CSV. Загрузите лист <code>events</code> один раз.
+        </p>
+        <input id="csvFile" type="file" accept=".csv,text/csv" />
+        <button id="importBtn" type="button">Импортировать в Supabase</button>
+        <div id="importResult" class="success"></div>
+      </section>
     </div>
   </div>
 
   <script>
     const STORAGE_KEY = 'corta_admin_token';
+    const PERIOD_KEY = 'corta_admin_period';
+    let currentPeriod = sessionStorage.getItem(PERIOD_KEY) || 'today';
 
     const $ = (id) => document.getElementById(id);
 
@@ -211,8 +244,26 @@
       return n + ' из ' + d;
     }
 
+    function periodLabel(period) {
+      if (period === 'today') return 'сегодня';
+      if (period === '7d') return '7 дней';
+      if (period === '30d') return '30 дней';
+      return 'всё время';
+    }
+
+    function setActivePeriod(period) {
+      currentPeriod = period;
+      sessionStorage.setItem(PERIOD_KEY, period);
+      document.querySelectorAll('#periods button').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.period === period);
+      });
+      const label = periodLabel(period);
+      $('usersNewLabel').textContent = period === 'all' ? 'Новые за всё время' : 'Новые за ' + label;
+      $('testsLabel').textContent = period === 'all' ? 'Прошли тест (всего)' : 'Прошли тест за ' + label;
+    }
+
     function render(data) {
-      $('usersNew').textContent = data?.users?.newToday ?? '—';
+      $('usersNew').textContent = data?.users?.newInPeriod ?? data?.users?.newToday ?? '—';
       $('usersTotal').textContent = data?.users?.total ?? '—';
       $('revOneTime').textContent = fmtRub(data?.revenue?.oneTimeRub);
       $('revSub').textContent = fmtRub(data?.revenue?.subscriptionRub);
@@ -222,31 +273,68 @@
       $('convTestDetail').textContent = fmtConvDetail(data?.conversions?.testToPurchase);
       $('convSub').textContent = fmtPct(data?.conversions?.purchaseToSubscription);
       $('convSubDetail').textContent = fmtConvDetail(data?.conversions?.purchaseToSubscription);
-      $('testsToday').textContent = data?.activity?.testsToday ?? '—';
+      $('testsInPeriod').textContent = data?.activity?.testsInPeriod ?? data?.activity?.testsToday ?? '—';
       $('returned').textContent = data?.activity?.returnedUsers ?? '—';
       const at = data?.generatedAt ? new Date(data.generatedAt) : null;
+      const pl = data?.periodLabel || periodLabel(currentPeriod);
       $('updatedAt').textContent = at
-        ? 'Обновлено ' + at.toLocaleString('ru-RU', { timeZone: data.timezone || 'Europe/Moscow' }) + ' (МСК)'
-        : '';
+        ? 'Период: ' + pl + ' · обновлено ' + at.toLocaleString('ru-RU', { timeZone: data.timezone || 'Europe/Moscow' }) + ' (МСК)'
+        : 'Период: ' + pl;
     }
 
     async function loadDashboard(token) {
-      const res = await fetch('/api/admin/dashboard', {
+      const res = await fetch('/api/admin/dashboard?period=' + encodeURIComponent(currentPeriod), {
         headers: { Authorization: 'Bearer ' + token },
       });
       if (res.status === 401) throw new Error('Неверный пароль');
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const err = new Error(json.hint ? String(json.hint) : 'Ошибка загрузки (' + res.status + ')');
-        throw err;
+        throw new Error(json.hint ? String(json.hint) : 'Ошибка загрузки (' + res.status + ')');
       }
       if (!json.ok) throw new Error(json.hint || json.error || 'Ошибка');
       render(json.data);
     }
 
+    async function importCsv(token) {
+      const fileInput = $('csvFile');
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) {
+        $('importResult').textContent = 'Выберите CSV-файл';
+        $('importResult').className = 'error';
+        return;
+      }
+      $('importBtn').disabled = true;
+      $('importResult').textContent = 'Импорт…';
+      $('importResult').className = 'success';
+      try {
+        const text = await file.text();
+        const res = await fetch('/api/admin/import-sheets-csv', {
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer ' + token,
+            'Content-Type': 'text/csv; charset=utf-8',
+          },
+          body: text,
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.ok) throw new Error(json.error || 'Ошибка импорта');
+        const s = json.stats;
+        $('importResult').textContent =
+          'Готово: пользователей ' + s.users + ', воронка ' + s.funnel + ', тесты ' + s.assessments + ', оплаты ' + s.payments;
+        $('importResult').className = 'success';
+        await loadDashboard(token);
+      } catch (e) {
+        $('importResult').textContent = e.message || 'Ошибка импорта';
+        $('importResult').className = 'error';
+      } finally {
+        $('importBtn').disabled = false;
+      }
+    }
+
     function showApp() {
       $('login').classList.add('hidden');
       $('app').classList.remove('hidden');
+      setActivePeriod(currentPeriod);
     }
 
     async function enter(token) {
@@ -258,7 +346,6 @@
         showApp();
       } catch (e) {
         $('loginError').textContent = e.message || 'Ошибка входа';
-        if (e.hint) $('loginError').textContent += ' — ' + e.hint;
         sessionStorage.removeItem(STORAGE_KEY);
       } finally {
         $('loginBtn').disabled = false;
@@ -281,6 +368,19 @@
     $('refreshBtn').addEventListener('click', () => {
       const token = sessionStorage.getItem(STORAGE_KEY);
       if (token) void loadDashboard(token).catch((e) => alert(e.message));
+    });
+
+    $('importBtn').addEventListener('click', () => {
+      const token = sessionStorage.getItem(STORAGE_KEY);
+      if (token) void importCsv(token);
+    });
+
+    document.querySelectorAll('#periods button').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        setActivePeriod(btn.dataset.period || 'today');
+        const token = sessionStorage.getItem(STORAGE_KEY);
+        if (token) void loadDashboard(token).catch((e) => alert(e.message));
+      });
     });
 
     const saved = sessionStorage.getItem(STORAGE_KEY);

@@ -55,6 +55,15 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbG...   # service_role, не anon!
 
 Показывает: пользователи, доход, конверсии, активность (данные из Supabase).
 
+Фильтры: **сегодня / 7 дней / 30 дней / всё время**.
+
+### Импорт старых данных из Google Sheets
+
+1. Google Таблица → лист `events` → **Файл → Скачать → CSV**
+2. В дашборде `/admin` → блок **Импорт из Google Sheets** → выбрать файл → **Импортировать**
+
+Импортируются: email → `users`, анкета/выход → `funnel_sessions`, завершённые тесты → `assessments`, оплаты → `payments`.
+
 Проверка: `/health` → блок `supabase.configured: true`
 
 ## 6. Безопасность

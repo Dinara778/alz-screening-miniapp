@@ -27,21 +27,59 @@ export function extractAdminPassword(req) {
   return null;
 }
 
-function getMoscowDayStartIso() {
+export function parseDashboardPeriod(raw) {
+  const period = String(raw ?? 'today').trim().toLowerCase();
+  if (period === '7d' || period === '30d' || period === 'all' || period === 'today') return period;
+  return 'today';
+}
+
+export function getPeriodLabel(period) {
+  if (period === 'today') return 'сегодня';
+  if (period === '7d') return '7 дней';
+  if (period === '30d') return '30 дней';
+  return 'всё время';
+}
+
+function getMoscowParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Moscow',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).formatToParts(new Date());
-  const y = parts.find((p) => p.type === 'year')?.value ?? '1970';
-  const m = parts.find((p) => p.type === 'month')?.value ?? '01';
-  const d = parts.find((p) => p.type === 'day')?.value ?? '01';
+  }).formatToParts(date);
+  return {
+    y: parts.find((p) => p.type === 'year')?.value ?? '1970',
+    m: parts.find((p) => p.type === 'month')?.value ?? '01',
+    d: parts.find((p) => p.type === 'day')?.value ?? '01',
+  };
+}
+
+function getMoscowDayStartIso(date = new Date()) {
+  const { y, m, d } = getMoscowParts(date);
   return `${y}-${m}-${d}T00:00:00+03:00`;
+}
+
+export function getPeriodStartIso(period) {
+  if (period === 'all') return null;
+  if (period === 'today') return getMoscowDayStartIso();
+
+  const days = period === '7d' ? 7 : 30;
+  const anchor = new Date(getMoscowDayStartIso());
+  anchor.setUTCDate(anchor.getUTCDate() - (days - 1));
+  return anchor.toISOString();
 }
 
 function uniqueUserIds(rows) {
   return new Set((rows ?? []).map((r) => r.user_id).filter(Boolean));
+}
+
+function filterByPeriod(rows, periodStart, field = 'created_at') {
+  if (!periodStart) return rows ?? [];
+  const start = new Date(periodStart).getTime();
+  return (rows ?? []).filter((row) => {
+    const ts = new Date(row[field] ?? 0).getTime();
+    return Number.isFinite(ts) && ts >= start;
+  });
 }
 
 function countReturnedUsers(assessmentRows) {
@@ -63,7 +101,8 @@ function pct(numerator, denominator) {
 }
 
 function buildDashboardPayload({
-  usersNewToday,
+  period,
+  usersNewInPeriod,
   usersTotal,
   payments,
   funnelUserIds,
@@ -71,7 +110,7 @@ function buildDashboardPayload({
   paidWithTestUserIds,
   paidUserIds,
   subUserIds,
-  testsToday,
+  testsInPeriod,
   returnedUsers,
 }) {
   const funnelCount = funnelUserIds.size;
@@ -92,8 +131,10 @@ function buildDashboardPayload({
   return {
     generatedAt: new Date().toISOString(),
     timezone: 'Europe/Moscow',
+    period,
+    periodLabel: getPeriodLabel(period),
     users: {
-      newToday: usersNewToday,
+      newInPeriod: usersNewInPeriod,
       total: usersTotal,
     },
     revenue: {
@@ -118,7 +159,7 @@ function buildDashboardPayload({
       },
     },
     activity: {
-      testsToday,
+      testsInPeriod,
       returnedUsers,
     },
   };
@@ -133,67 +174,84 @@ async function fetchTableRows(supabase, table, select) {
   return data ?? [];
 }
 
-async function fetchDashboardStatsDirect(supabase) {
-  const dayStart = getMoscowDayStartIso();
+async function fetchDashboardStatsDirect(supabase, period = 'today') {
+  const periodStart = getPeriodStartIso(period);
 
-  const [usersNewRes, usersTotalRes, paymentsRes, assessmentsRes, assessmentsTodayRes, subsRes, funnelRows] =
-    await Promise.all([
-      supabase.from('users').select('id', { count: 'exact', head: true }).gte('created_at', dayStart),
-      supabase.from('users').select('id', { count: 'exact', head: true }),
-      supabase.from('payments').select('user_id, type, amount').eq('status', 'paid'),
-      supabase.from('assessments').select('user_id'),
-      supabase.from('assessments').select('id', { count: 'exact', head: true }).gte('created_at', dayStart),
-      supabase.from('subscriptions').select('user_id').eq('status', 'active'),
-      fetchTableRows(supabase, 'funnel_sessions', 'user_id'),
-    ]);
+  const [usersRes, paymentsRes, assessmentsRes, subsRes, funnelRows] = await Promise.all([
+    supabase.from('users').select('id, created_at'),
+    supabase.from('payments').select('user_id, type, amount, created_at, status').eq('status', 'paid'),
+    supabase.from('assessments').select('user_id, created_at'),
+    supabase.from('subscriptions').select('user_id, created_at, status').eq('status', 'active'),
+    fetchTableRows(supabase, 'funnel_sessions', 'user_id, created_at'),
+  ]);
 
   const firstError =
-    usersNewRes.error ||
-    usersTotalRes.error ||
-    paymentsRes.error ||
-    assessmentsRes.error ||
-    assessmentsTodayRes.error ||
-    subsRes.error;
+    usersRes.error || paymentsRes.error || assessmentsRes.error || subsRes.error;
 
   if (firstError) {
     console.error('[supabase] dashboard direct', firstError.message);
     return null;
   }
 
-  const assessmentUserIds = uniqueUserIds(assessmentsRes.data);
+  const usersInPeriod = filterByPeriod(usersRes.data, periodStart);
+  const paymentsInPeriod = filterByPeriod(paymentsRes.data, periodStart);
+  const assessmentsInPeriod = filterByPeriod(assessmentsRes.data, periodStart);
+  const funnelInPeriod = filterByPeriod(funnelRows, periodStart);
+  const subsInPeriod = filterByPeriod(subsRes.data, periodStart);
+
+  const assessmentUserIds = uniqueUserIds(assessmentsInPeriod);
   const paidUserIds = uniqueUserIds(
-    (paymentsRes.data ?? []).filter((p) => p.type === 'one_time'),
+    paymentsInPeriod.filter((p) => p.type === 'one_time'),
   );
   const paidWithTestUserIds = new Set(
     [...paidUserIds].filter((id) => assessmentUserIds.has(id)),
   );
 
   return buildDashboardPayload({
-    usersNewToday: usersNewRes.count ?? 0,
-    usersTotal: usersTotalRes.count ?? 0,
-    payments: paymentsRes.data,
-    funnelUserIds: uniqueUserIds(funnelRows),
+    period,
+    usersNewInPeriod: usersInPeriod.length,
+    usersTotal: usersRes.data?.length ?? 0,
+    payments: paymentsInPeriod,
+    funnelUserIds: uniqueUserIds(funnelInPeriod),
     assessmentUserIds,
     paidWithTestUserIds,
     paidUserIds,
-    subUserIds: uniqueUserIds(subsRes.data),
-    testsToday: assessmentsTodayRes.count ?? 0,
-    returnedUsers: countReturnedUsers(assessmentsRes.data),
+    subUserIds: uniqueUserIds(subsInPeriod),
+    testsInPeriod: assessmentsInPeriod.length,
+    returnedUsers: countReturnedUsers(assessmentsInPeriod),
   });
 }
 
-export async function getDashboardStats(env = process.env) {
+export async function getDashboardStats(period = 'today', env = process.env) {
   const supabase = getClient(env);
   if (!supabase) return null;
 
+  if (period !== 'today') {
+    return fetchDashboardStatsDirect(supabase, period);
+  }
+
   const { data, error } = await supabase.rpc('admin_dashboard_stats');
-  if (!error && data) return data;
+  if (!error && data) {
+    return {
+      ...data,
+      period: 'today',
+      periodLabel: getPeriodLabel('today'),
+      users: {
+        newInPeriod: data?.users?.newToday ?? data?.users?.newInPeriod ?? 0,
+        total: data?.users?.total ?? 0,
+      },
+      activity: {
+        testsInPeriod: data?.activity?.testsToday ?? data?.activity?.testsInPeriod ?? 0,
+        returnedUsers: data?.activity?.returnedUsers ?? 0,
+      },
+    };
+  }
 
   if (error) {
     console.warn('[supabase] admin_dashboard_stats rpc unavailable, using direct queries:', error.message);
   }
 
-  return fetchDashboardStatsDirect(supabase);
+  return fetchDashboardStatsDirect(supabase, period);
 }
 
 export function getAdminDashboardHealthInfo(env = process.env) {
@@ -201,5 +259,6 @@ export function getAdminDashboardHealthInfo(env = process.env) {
     configured: isAdminDashboardConfigured(env),
     url: '/admin',
     apiUrl: '/api/admin/dashboard',
+    importApiUrl: '/api/admin/import-sheets-csv',
   };
 }

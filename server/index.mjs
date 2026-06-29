@@ -59,8 +59,10 @@ import {
   getAdminDashboardHealthInfo,
   getDashboardStats,
   isAdminDashboardConfigured,
+  parseDashboardPeriod,
   verifyAdminPassword,
 } from './dashboardStore.mjs';
+import { importSheetsCsvText } from './sheetsCsvImport.mjs';
 import {
   getSupabaseHealthInfo,
   isSupabaseConfigured,
@@ -1223,7 +1225,7 @@ app.get('/api/admin/dashboard', async (req, res) => {
     if (!verifyAdminPassword(password)) {
       return res.status(401).json({ ok: false, error: 'unauthorized' });
     }
-    const data = await getDashboardStats();
+    const data = await getDashboardStats(parseDashboardPeriod(req.query.period));
     if (!data) {
       return res.status(500).json({
         ok: false,
@@ -1234,6 +1236,30 @@ app.get('/api/admin/dashboard', async (req, res) => {
     return res.json({ ok: true, data });
   } catch (e) {
     console.error('[api/admin/dashboard]', e);
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
+app.post('/api/admin/import-sheets-csv', express.text({ type: ['text/csv', 'text/plain', '*/*'], limit: '12mb' }), async (req, res) => {
+  try {
+    if (!isAdminDashboardConfigured()) {
+      return res.status(503).json({ ok: false, error: 'admin_not_configured' });
+    }
+    const password = extractAdminPassword(req);
+    if (!verifyAdminPassword(password)) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' });
+    }
+    const csvText = typeof req.body === 'string' ? req.body : '';
+    if (!csvText.trim()) {
+      return res.status(400).json({ ok: false, error: 'empty_csv' });
+    }
+    const result = await importSheetsCsvText(csvText);
+    if (!result.ok) {
+      return res.status(400).json(result);
+    }
+    return res.json({ ok: true, stats: result.stats });
+  } catch (e) {
+    console.error('[api/admin/import-sheets-csv]', e);
     return res.status(500).json({ ok: false, error: 'server_error' });
   }
 });
