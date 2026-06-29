@@ -1,5 +1,5 @@
 import {
-  INTERPRETATION_LABEL_ABOUT_RESULT,
+  INTERPRETATION_LABEL_RECOMMENDATIONS,
   INTERPRETATION_LABEL_IN_LIFE,
   INTERPRETATION_LABEL_MANIFESTATION,
 } from '../copy/interpretationLabels';
@@ -29,7 +29,7 @@ export const DomainProfileCard = ({ domain }: Props) => {
           {i.manifestations}
         </p>
         <p>
-          <span className="font-semibold text-white/95">{INTERPRETATION_LABEL_ABOUT_RESULT} </span>
+          <span className="font-semibold text-white/95">{INTERPRETATION_LABEL_RECOMMENDATIONS} </span>
           {i.aboutResult}
         </p>
       </div>

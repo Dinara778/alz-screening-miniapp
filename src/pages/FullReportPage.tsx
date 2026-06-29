@@ -11,10 +11,11 @@ import { ReportFlowShell } from '../components/results/ReportFlowShell';
 import { SketchHighlightTitle } from '../components/results/SketchHighlightTitle';
 import { scoreAccentFromValue } from '../components/results/scoreAccent';
 import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
+import { DIGITAL_DETOX_SCREENS, shouldShowDigitalDetox } from '../copy/digitalDetoxContent';
 import { useApp } from '../context/AppContext';
 import { useHydrateLatestResult } from '../hooks/useHydrateLatestResult';
 import { useSyncPaidReportSession } from '../hooks/useSyncPaidReportSession';
-import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
+import { buildCognitiveAnalytics, pickRandomPatternRecommendation } from '../utils/cognitiveAnalytics';
 import type { DomainScore } from '../utils/cognitiveAnalytics';
 import { getLeadingDeficit } from '../utils/paidReport';
 import {
@@ -24,7 +25,7 @@ import {
 import { isReportPaidUnlocked, isPaymentsBackendConfigured } from '../utils/telegramPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
-type ReportPhase = 'ready' | 'report' | 'learned';
+type ReportPhase = 'ready' | 'report' | 'learned' | 'detox';
 
 type ReportPage =
   | { id: 'index'; kind: 'index' }
@@ -60,7 +61,6 @@ export const FullReportPage = () => {
     participant,
     setStage,
     openResultAtStep,
-    setConsultationReturnTo,
     serverPaymentsReady,
     setAnalyticsScreenDetail,
   } = useApp();
@@ -68,6 +68,7 @@ export const FullReportPage = () => {
   useSyncPaidReportSession();
   const [phase, setPhase] = useState<ReportPhase>('ready');
   const [reportPageIndex, setReportPageIndex] = useState(0);
+  const [detoxPageIndex, setDetoxPageIndex] = useState(0);
 
   const analytics = useMemo(() => {
     if (!latestResult) return null;
@@ -95,6 +96,11 @@ export const FullReportPage = () => {
     return getTemporalRecommendations(leading, domainScoresInput);
   }, [analytics, domainScoresInput]);
 
+  const patternTip = useMemo(() => {
+    if (!analytics || !latestResult) return null;
+    return pickRandomPatternRecommendation(analytics.patterns, latestResult.id);
+  }, [analytics, latestResult]);
+
   const reportPages = useMemo((): ReportPage[] => {
     const pages: ReportPage[] = [{ id: 'index', kind: 'index' }];
     domainChunks.forEach((_, chunkIndex) => {
@@ -107,11 +113,14 @@ export const FullReportPage = () => {
     return pages;
   }, [domainChunks, temporalRecommendations.length]);
 
+  const showDetox = analytics ? shouldShowDigitalDetox(analytics.index.value) : false;
+
   const analyticsDetail = useMemo(() => {
     if (phase === 'ready') return 'ready';
     if (phase === 'learned') return 'learned';
+    if (phase === 'detox') return `detox/${DIGITAL_DETOX_SCREENS[detoxPageIndex]?.id ?? 'unknown'}`;
     return `report/${reportPages[reportPageIndex]?.id ?? 'unknown'}`;
-  }, [phase, reportPageIndex, reportPages]);
+  }, [phase, reportPageIndex, reportPages, detoxPageIndex]);
 
   useEffect(() => {
     setAnalyticsScreenDetail(analyticsDetail);
@@ -153,11 +162,6 @@ export const FullReportPage = () => {
 
   const accent = scoreAccentFromValue(analytics.index.value);
 
-  const openSessionOffer = () => {
-    setConsultationReturnTo('full-report');
-    openResultAtStep('session-offer');
-  };
-
   const goToNextReportPage = () => {
     if (reportPageIndex < reportPages.length - 1) {
       setReportPageIndex((i) => i + 1);
@@ -183,7 +187,7 @@ export const FullReportPage = () => {
               </SketchHighlightTitle>
               <div className="text-4xl font-bold tabular-nums text-white">{analytics.index.value}</div>
               <p className="results-body">{analytics.index.description}</p>
-              {analytics.index.recommendations.length > 0 ? (
+              {analytics.index.recommendations.length > 0 || patternTip ? (
                 <ul className="list-none space-y-2.5 results-body">
                   {analytics.index.recommendations.map((rec) => (
                     <li key={rec} className="flex gap-2">
@@ -193,6 +197,14 @@ export const FullReportPage = () => {
                       <span>{rec}</span>
                     </li>
                   ))}
+                  {patternTip ? (
+                    <li className="flex gap-2">
+                      <span className="shrink-0 text-emerald-400" aria-hidden>
+                        •
+                      </span>
+                      <span>{patternTip}</span>
+                    </li>
+                  ) : null}
                 </ul>
               ) : null}
             </div>
@@ -304,8 +316,19 @@ export const FullReportPage = () => {
         contentAlign="readable"
         footer={
           <div className="space-y-3">
-            <Button type="button" variant="sell" className={CTA_BUTTON_CLASS} onClick={openSessionOffer}>
-              Подробнее о сессии
+            <Button
+              type="button"
+              className={CTA_BUTTON_CLASS}
+              onClick={() => {
+                if (showDetox) {
+                  setDetoxPageIndex(0);
+                  setPhase('detox');
+                  return;
+                }
+                openResultAtStep('hub');
+              }}
+            >
+              {showDetox ? 'Цифровой детокс' : 'К результатам'}
             </Button>
             <SupportFooter showDeveloperCredit={false} />
           </div>
@@ -323,15 +346,45 @@ export const FullReportPage = () => {
               </li>
             ))}
           </ul>
-          <div className="space-y-3">
-            <SketchHighlightTitle accent={accent}>Что дальше?</SketchHighlightTitle>
-            <p className="results-body">
-              А дальше вы можете пройти индивидуальную сессию со специалистом по когнитивной устойчивости для
-              получения более глубоких рекомендаций по управлению своим когнитивным состоянием.
-            </p>
-          </div>
         </div>
       </CalmScreen>
+    );
+  }
+
+  if (phase === 'detox') {
+    const screen = DIGITAL_DETOX_SCREENS[detoxPageIndex];
+    if (!screen) return null;
+
+    const isLast = detoxPageIndex >= DIGITAL_DETOX_SCREENS.length - 1;
+
+    return (
+      <ReportFlowShell
+        footer={
+          <div className="flex flex-col gap-2">
+            <p className="text-center text-xs font-medium tracking-wide text-white/55">
+              Часть {detoxPageIndex + 1} из {DIGITAL_DETOX_SCREENS.length}
+            </p>
+            <Button
+              type="button"
+              className={CTA_BUTTON_CLASS}
+              onClick={() => {
+                if (isLast) {
+                  openResultAtStep('hub');
+                  return;
+                }
+                setDetoxPageIndex((i) => i + 1);
+              }}
+            >
+              {isLast ? 'К результатам' : 'Следующая часть'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="mx-auto w-full max-w-md space-y-4 pb-2">
+          <SketchHighlightTitle accent={accent}>{screen.title}</SketchHighlightTitle>
+          <div className="calm-inset whitespace-pre-line results-body">{screen.body}</div>
+        </div>
+      </ReportFlowShell>
     );
   }
 

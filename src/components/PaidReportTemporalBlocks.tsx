@@ -29,11 +29,11 @@ export const PaidReportTemporalOverload = ({
             <p className="report-domain-title">{row.title}</p>
             <p className="results-body mt-2">{row.description}</p>
             <p className="results-body mt-2">
-              <span className="font-semibold text-white/95">Как вы это замечаете сегодня: </span>
+              <span className="font-semibold text-white/95">Как вы это замечаете: </span>
               {row.howYouNotice}
             </p>
             <p className="results-body mt-2">
-              <span className="font-semibold text-white/95">Что сделать в этом состоянии: </span>
+              <span className="font-semibold text-white/95">Что делать: </span>
               {row.whatToDo}
             </p>
           </li>

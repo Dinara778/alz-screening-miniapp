@@ -610,7 +610,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   }
 
   const reportFeatures = [
-    'Подробная карта когнитивной перегрузки',
     'Расшифровка сильных и слабых зон',
     'Адресные рекомендации именно под ваш профиль',
   ] as const;

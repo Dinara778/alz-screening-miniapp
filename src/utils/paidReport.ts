@@ -1,4 +1,5 @@
 import type { CognitiveDomainKey } from '../types';
+import { normalizeInterpretationFragment } from '../copy/interpretationLabels';
 import { getGranularIndexInterpretation } from './indexInterpretationBands';
 import { getIndexCategory } from './indexCategory';
 import type { CognitivePattern, OverloadMapItem } from './cognitiveAnalytics';
@@ -25,6 +26,14 @@ export type PaidReportExtendedBlock = {
   feeling: string;
   aboutResult: string;
 };
+
+function normalizeExtendedBlock(block: PaidReportExtendedBlock): PaidReportExtendedBlock {
+  return {
+    inLife: normalizeInterpretationFragment(block.inLife),
+    feeling: normalizeInterpretationFragment(block.feeling),
+    aboutResult: normalizeInterpretationFragment(block.aboutResult),
+  };
+}
 
 export type PaidReportOverloadEntry = {
   id: string;
@@ -333,7 +342,7 @@ export function getPaidReportData(
     indexValue,
     indexLabel: getIndexCategory(indexValue).category,
     indexAccent: scoreAccentFromValue(indexValue),
-    extendedInterpretation,
+    extendedInterpretation: normalizeExtendedBlock(extendedInterpretation),
     leadingDeficitTitle: leadingKey ? LEADING_DEFICIT_TITLES[leadingKey] : 'Сбалансированный профиль',
     leadingDeficitKey: leadingKey,
     overloadEntries: buildOverloadEntries(activePatterns, overloadMap),

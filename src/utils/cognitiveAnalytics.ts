@@ -477,32 +477,7 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
   if (highReactivity) drivers.push({ text: 'высокая реактивность на скорость', weight: 2 });
   drivers.sort((a, b) => b.weight - a.weight);
 
-  const fromBand: MicroRecommendation[] = index.recommendations.map((text) => ({ text }));
-  const fromPatterns: MicroRecommendation[] = [];
-  patterns
-    .filter((p) => p.active)
-    .forEach((p) => {
-      p.recommendations.forEach((t) => fromPatterns.push({ text: t }));
-    });
-
-  const stabilizationTips: MicroRecommendation[] = [];
-  const seenTip = new Set<string>();
-  const pushUnique = (items: MicroRecommendation[]) => {
-    for (const { text } of items) {
-      const k = text.trim();
-      if (!k || seenTip.has(k)) continue;
-      seenTip.add(k);
-      stabilizationTips.push({ text });
-    }
-  };
-  pushUnique(fromBand);
-  pushUnique(fromPatterns);
-  if (!stabilizationTips.length) {
-    stabilizationTips.push(
-      { text: 'Сохраняйте чередование сосредоточенной работы (25–50 минут) и короткого восстановления (5–10 минут).' },
-      { text: 'Фиксируйте один главный канал входящей информации в рабочем окне.' },
-    );
-  }
+  const stabilizationTips: MicroRecommendation[] = index.recommendations.map((text) => ({ text }));
 
   const activePatternCount = patterns.filter((p) => p.active).length;
 
@@ -521,3 +496,21 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
     },
   };
 };
+
+function hashPatternSeed(seed: string): number {
+  let h = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
+/** Одна случайная рекомендация из активных паттернов (п. 2.5). */
+export function pickRandomPatternRecommendation(
+  patterns: CognitivePattern[],
+  seed: string,
+): string | null {
+  const pool = patterns.filter((p) => p.active).flatMap((p) => p.recommendations);
+  if (!pool.length) return null;
+  return pool[hashPatternSeed(seed) % pool.length] ?? null;
+}
