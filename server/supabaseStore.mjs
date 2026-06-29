@@ -9,7 +9,7 @@ export function isSupabaseConfigured(env = process.env) {
   return Boolean(env.SUPABASE_URL?.trim() && env.SUPABASE_SERVICE_ROLE_KEY?.trim());
 }
 
-function getClient(env = process.env) {
+export function getClient(env = process.env) {
   if (!isSupabaseConfigured(env)) return null;
   if (!client) {
     client = createClient(env.SUPABASE_URL.trim(), env.SUPABASE_SERVICE_ROLE_KEY.trim(), {

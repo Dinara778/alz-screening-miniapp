@@ -55,6 +55,13 @@ import {
 } from './robokassa.mjs';
 import { isWebPaidForSession, markWebPaid } from './webPaidStore.mjs';
 import {
+  extractAdminPassword,
+  getAdminDashboardHealthInfo,
+  getDashboardStats,
+  isAdminDashboardConfigured,
+  verifyAdminPassword,
+} from './dashboardStore.mjs';
+import {
   getSupabaseHealthInfo,
   isSupabaseConfigured,
   recordPayment,
@@ -490,6 +497,7 @@ async function sendHealthJson(res) {
       testUrl: '/api/sheets-test',
     },
     supabase: getSupabaseHealthInfo(process.env),
+    adminDashboard: getAdminDashboardHealthInfo(process.env),
     payments: {
       ready: paymentsReady,
       provider: PAYMENT_PROVIDER,
@@ -1190,6 +1198,46 @@ app.post('/api/sync-funnel', async (req, res) => {
   }
 });
 
+function resolveAdminHtmlPath() {
+  const distPath = path.join(__dirname, '../dist/admin.html');
+  if (fs.existsSync(distPath)) return distPath;
+  const publicPath = path.join(__dirname, '../public/admin.html');
+  if (fs.existsSync(publicPath)) return publicPath;
+  return null;
+}
+
+app.get('/admin', (_req, res) => {
+  const adminPath = resolveAdminHtmlPath();
+  if (!adminPath) {
+    return res.status(404).type('text/plain').send('admin.html not found');
+  }
+  return res.type('html').sendFile(adminPath);
+});
+
+app.get('/api/admin/dashboard', async (req, res) => {
+  try {
+    if (!isAdminDashboardConfigured()) {
+      return res.status(503).json({ ok: false, error: 'admin_not_configured' });
+    }
+    const password = extractAdminPassword(req);
+    if (!verifyAdminPassword(password)) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' });
+    }
+    const data = await getDashboardStats();
+    if (!data) {
+      return res.status(500).json({
+        ok: false,
+        error: 'dashboard_unavailable',
+        hint: 'Проверьте Supabase и выполните 003_admin_dashboard.sql',
+      });
+    }
+    return res.json({ ok: true, data });
+  } catch (e) {
+    console.error('[api/admin/dashboard]', e);
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
 app.post('/consultation-lead', async (req, res) => {
   try {
     const { initData, consultationEmail, sessionId = '', participant } = req.body ?? {};
@@ -1338,7 +1386,7 @@ if (process.env.SERVE_STATIC === 'true') {
         },
       }),
     );
-    app.get(/^(?!\/(webhook|invoice|invoice-web|health|api|prodamus|robokassa|consultation-lead|payment-order-status|payment-return-confirm|payment-recover-session|payment-recover-session-web|payment-recover-inv-web)).*$/, (_req, res) => {
+    app.get(/^(?!\/(webhook|invoice|invoice-web|health|api|prodamus|robokassa|consultation-lead|admin|payment-order-status|payment-return-confirm|payment-recover-session|payment-recover-session-web|payment-recover-inv-web)).*$/, (_req, res) => {
       res.type('html');
       res.sendFile(path.join(distDir, 'index.html'));
     });

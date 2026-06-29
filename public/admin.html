@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Corta — дашборд</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b100f;
+      --card: #121a18;
+      --border: rgba(255,255,255,.08);
+      --text: #eef6f3;
+      --muted: rgba(238,246,243,.55);
+      --accent: #34d399;
+      --accent2: #2dd4bf;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: radial-gradient(ellipse 80% 50% at 100% 0%, rgba(52,211,153,.12), transparent 50%), var(--bg);
+      color: var(--text);
+      padding: 24px 16px 48px;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; }
+    h1 { margin: 0 0 6px; font-size: 1.5rem; }
+    .sub { color: var(--muted); font-size: .9rem; margin-bottom: 24px; }
+    .login {
+      max-width: 360px;
+      margin: 80px auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+    }
+    .login h2 { margin: 0 0 8px; font-size: 1.15rem; }
+    .login p { margin: 0 0 16px; color: var(--muted); font-size: .9rem; line-height: 1.45; }
+    input {
+      width: 100%;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 1rem;
+      margin-bottom: 12px;
+    }
+    button {
+      width: 100%;
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #042f2e;
+    }
+    button:disabled { opacity: .6; cursor: wait; }
+    .error { color: #fca5a5; font-size: .85rem; min-height: 1.2em; margin-top: 8px; }
+    .grid { display: grid; gap: 16px; }
+    @media (min-width: 700px) {
+      .grid-2 { grid-template-columns: 1fr 1fr; }
+      .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    }
+    section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 18px 20px;
+    }
+    section h2 {
+      margin: 0 0 14px;
+      font-size: .78rem;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      padding: 8px 0;
+      border-top: 1px solid var(--border);
+    }
+    .metric:first-of-type { border-top: 0; padding-top: 0; }
+    .metric-label { color: var(--muted); font-size: .92rem; }
+    .metric-value { font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .metric-value.small { font-size: 1rem; font-weight: 700; }
+    .conv-row { padding: 10px 0; border-top: 1px solid var(--border); }
+    .conv-row:first-child { border-top: 0; padding-top: 0; }
+    .conv-title { font-size: .92rem; color: var(--muted); margin-bottom: 4px; }
+    .conv-big { font-size: 1.6rem; font-weight: 800; color: var(--accent); }
+    .conv-detail { font-size: .82rem; color: var(--muted); margin-top: 2px; }
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .toolbar button { width: auto; padding: 8px 14px; font-size: .85rem; background: rgba(255,255,255,.08); color: var(--text); }
+    .note { font-size: .8rem; color: var(--muted); line-height: 1.45; margin-top: 16px; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div id="login" class="login">
+    <h2>Вход в дашборд</h2>
+    <p>Пароль задаётся на Amvera: <code>ADMIN_DASHBOARD_PASSWORD</code></p>
+    <input id="password" type="password" placeholder="Пароль" autocomplete="current-password" />
+    <button id="loginBtn" type="button">Войти</button>
+    <div id="loginError" class="error"></div>
+  </div>
+
+  <div id="app" class="wrap hidden">
+    <div class="toolbar">
+      <div>
+        <h1>Corta — дашборд</h1>
+        <div class="sub" id="updatedAt">Загрузка…</div>
+      </div>
+      <button id="refreshBtn" type="button">Обновить</button>
+    </div>
+
+    <div class="grid grid-2" style="margin-bottom:16px">
+      <section>
+        <h2>Пользователи</h2>
+        <div class="metric">
+          <span class="metric-label">Новые за сегодня</span>
+          <span class="metric-value" id="usersNew">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Всего</span>
+          <span class="metric-value" id="usersTotal">—</span>
+        </div>
+      </section>
+
+      <section>
+        <h2>Доход (оплачено)</h2>
+        <div class="metric">
+          <span class="metric-label">Разовые покупки</span>
+          <span class="metric-value" id="revOneTime">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Подписки</span>
+          <span class="metric-value" id="revSub">—</span>
+        </div>
+      </section>
+    </div>
+
+    <section style="margin-bottom:16px">
+      <h2>Конверсии</h2>
+      <div class="conv-row">
+        <div class="conv-title">Оставил email → прошёл тест</div>
+        <div class="conv-big" id="convVisit">—</div>
+        <div class="conv-detail" id="convVisitDetail"></div>
+      </div>
+      <div class="conv-row">
+        <div class="conv-title">Прошёл тест → покупка</div>
+        <div class="conv-big" id="convTest">—</div>
+        <div class="conv-detail" id="convTestDetail"></div>
+      </div>
+      <div class="conv-row">
+        <div class="conv-title">Покупка → подписка</div>
+        <div class="conv-big" id="convSub">—</div>
+        <div class="conv-detail" id="convSubDetail"></div>
+      </div>
+      <p class="note">«Посетил» = оставил email в анкете. Анонимные заходы без email пока не считаются.</p>
+    </section>
+
+    <div class="grid grid-2">
+      <section>
+        <h2>Активность</h2>
+        <div class="metric">
+          <span class="metric-label">Прошли тест сегодня</span>
+          <span class="metric-value" id="testsToday">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Вернулись (2+ теста)</span>
+          <span class="metric-value" id="returned">—</span>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'corta_admin_token';
+
+    const $ = (id) => document.getElementById(id);
+
+    function fmtRub(n) {
+      const v = Number(n);
+      if (!Number.isFinite(v)) return '—';
+      return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(v);
+    }
+
+    function fmtPct(block) {
+      if (!block || block.percent == null) return '—';
+      return block.percent + '%';
+    }
+
+    function fmtConvDetail(block) {
+      if (!block) return '';
+      const n = block.numerator ?? 0;
+      const d = block.denominator ?? 0;
+      return n + ' из ' + d;
+    }
+
+    function render(data) {
+      $('usersNew').textContent = data?.users?.newToday ?? '—';
+      $('usersTotal').textContent = data?.users?.total ?? '—';
+      $('revOneTime').textContent = fmtRub(data?.revenue?.oneTimeRub);
+      $('revSub').textContent = fmtRub(data?.revenue?.subscriptionRub);
+      $('convVisit').textContent = fmtPct(data?.conversions?.visitedToTest);
+      $('convVisitDetail').textContent = fmtConvDetail(data?.conversions?.visitedToTest);
+      $('convTest').textContent = fmtPct(data?.conversions?.testToPurchase);
+      $('convTestDetail').textContent = fmtConvDetail(data?.conversions?.testToPurchase);
+      $('convSub').textContent = fmtPct(data?.conversions?.purchaseToSubscription);
+      $('convSubDetail').textContent = fmtConvDetail(data?.conversions?.purchaseToSubscription);
+      $('testsToday').textContent = data?.activity?.testsToday ?? '—';
+      $('returned').textContent = data?.activity?.returnedUsers ?? '—';
+      const at = data?.generatedAt ? new Date(data.generatedAt) : null;
+      $('updatedAt').textContent = at
+        ? 'Обновлено ' + at.toLocaleString('ru-RU', { timeZone: data.timezone || 'Europe/Moscow' }) + ' (МСК)'
+        : '';
+    }
+
+    async function loadDashboard(token) {
+      const res = await fetch('/api/admin/dashboard', {
+        headers: { Authorization: 'Bearer ' + token },
+      });
+      if (res.status === 401) throw new Error('Неверный пароль');
+      if (!res.ok) throw new Error('Ошибка загрузки (' + res.status + ')');
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || 'Ошибка');
+      render(json.data);
+    }
+
+    function showApp() {
+      $('login').classList.add('hidden');
+      $('app').classList.remove('hidden');
+    }
+
+    async function enter(token) {
+      $('loginBtn').disabled = true;
+      $('loginError').textContent = '';
+      try {
+        await loadDashboard(token);
+        sessionStorage.setItem(STORAGE_KEY, token);
+        showApp();
+      } catch (e) {
+        $('loginError').textContent = e.message || 'Ошибка входа';
+        sessionStorage.removeItem(STORAGE_KEY);
+      } finally {
+        $('loginBtn').disabled = false;
+      }
+    }
+
+    $('loginBtn').addEventListener('click', () => {
+      const token = $('password').value.trim();
+      if (!token) {
+        $('loginError').textContent = 'Введите пароль';
+        return;
+      }
+      void enter(token);
+    });
+
+    $('password').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') $('loginBtn').click();
+    });
+
+    $('refreshBtn').addEventListener('click', () => {
+      const token = sessionStorage.getItem(STORAGE_KEY);
+      if (token) void loadDashboard(token).catch((e) => alert(e.message));
+    });
+
+    const saved = sessionStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      void enter(saved);
+    }
+  </script>
+</body>
+</html>

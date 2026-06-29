@@ -45,7 +45,15 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbG...   # service_role, не anon!
 | Завершение теста | `users` + `assessments` + `funnel_sessions.status = completed` |
 | Успешная оплата Робокассы | `payments` (автоматически на сервере) |
 
-После деплоя выполните в SQL Editor также `supabase/migrations/002_funnel_sessions.sql`.
+После деплоя выполните в SQL Editor также `supabase/migrations/002_funnel_sessions.sql` и `003_admin_dashboard.sql`.
+
+## 8. Админ-дашборд
+
+1. В SQL Editor выполните `supabase/migrations/003_admin_dashboard.sql`
+2. На Amvera (Запуск) добавьте `ADMIN_DASHBOARD_PASSWORD=ваш-пароль`
+3. Откройте **https://cortaapp.ru/admin**
+
+Показывает: пользователи, доход, конверсии, активность (данные из Supabase).
 
 Проверка: `/health` → блок `supabase.configured: true`
 
