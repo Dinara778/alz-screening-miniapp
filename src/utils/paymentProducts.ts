@@ -17,7 +17,7 @@ export const PAYMENT_PRODUCTS: Record<TelegramInvoiceProduct, PaymentProductMeta
   full_report: {
     title:
       'Понятный план по снижению перегрузки и быстрому восстановлению когнитивного ресурса именно под ваши показатели',
-    priceRub: 199,
+    priceRub: 149,
     subtitle: '',
     bullets: [
       'Карта перегрузки и расшифровка зон',

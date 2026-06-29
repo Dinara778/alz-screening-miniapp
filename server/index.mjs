@@ -98,8 +98,8 @@ const PRODUCTS = {
     title: 'Расширенный отчёт Corta',
     description:
       'Расширенный отчёт: интерпретация метрик и персональные рекомендации',
-    amount: 19900,
-    priceRub: 199,
+    amount: 14900,
+    priceRub: 149,
   },
   consultation: {
     title: 'Сессия с экспертом Corta',
@@ -444,7 +444,7 @@ async function sendHealthJson(res) {
   if (buildInfo && !frontendPaymentsOn) {
     hints.push(
       paymentsReady
-        ? 'Сборка: VITE_PAYMENTS_ENABLED=false, но сервер payments.ready — на проде оплата 199 ₽ активна'
+        ? 'Сборка: VITE_PAYMENTS_ENABLED=false, но сервер payments.ready — на проде оплата 149 ₽ активна'
         : 'Фронт: VITE_PAYMENTS_ENABLED=false и сервер без оплаты — отчёт без оплаты',
     );
   }

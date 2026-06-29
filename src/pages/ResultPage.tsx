@@ -496,7 +496,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
                 </Button>
               ) : null}
               <Button type="button" variant="sell" className={calmBtnClass} onClick={openCheckout}>
-                {reportUnlocked ? 'Открыть расшифровку' : 'Восстановить ресурс - 199 ₽'}
+                {reportUnlocked ? 'Открыть расшифровку' : `Восстановить ресурс — ${reportPriceRub} ₽`}
               </Button>
             </div>
           }
