@@ -186,26 +186,25 @@ export const createStroopTrials = (sessionSeed: number): StroopStimulus[] => {
 
 export type FaceStimulus = { id: number; label: string; image: string; correctName: string; options: string[] };
 
+const FACE_NAME_POOL = ['Михаил', 'Иван', 'Дмитрий'] as const;
+
 export const createFaceTrials = (sessionSeed: number): FaceStimulus[] => {
   const baseFaces = [
-    { id: 1, label: 'Лицо 1', image: publicAsset('/faces/man-1.svg'), correctName: 'Михаил' },
-    { id: 2, label: 'Лицо 2', image: publicAsset('/faces/man-2.svg'), correctName: 'Иван' },
-    { id: 3, label: 'Лицо 3', image: publicAsset('/faces/man-3.svg'), correctName: 'Дмитрий' },
+    { id: 1, label: 'Лицо 1', image: publicAsset('/faces/man-1.svg') },
+    { id: 2, label: 'Лицо 2', image: publicAsset('/faces/man-2.svg') },
+    { id: 3, label: 'Лицо 3', image: publicAsset('/faces/man-3.svg') },
   ];
-  const names = ['Михаил', 'Иван', 'Дмитрий', 'Алексей', 'Сергей', 'Андрей', 'Павел'];
   const previousSig = lastFaceNameSig();
 
-  const pickOptions = (correctName: string, rng: () => number): string[] => {
-    const distractors = shuffle(
-      names.filter((n) => n !== correctName),
-      rng,
-    ).slice(0, 2);
+  /** Варианты ответа — только из трёх имён этой сессии (те же, что на изучении). */
+  const pickOptions = (correctName: string, sessionNames: readonly string[], rng: () => number): string[] => {
+    const distractors = sessionNames.filter((n) => n !== correctName);
     return shuffle([correctName, ...distractors], rng);
   };
 
   for (let bump = 0; bump < 40; bump += 1) {
     const rng = mulberry32(stimulusSubSeed(sessionSeed, 'face-name', bump));
-    const assignedNames = shuffle([...names], rng);
+    const assignedNames = shuffle([...FACE_NAME_POOL], rng);
     const mapped = baseFaces.map((face, idx) => ({
       id: face.id,
       label: face.label,
@@ -218,11 +217,14 @@ export const createFaceTrials = (sessionSeed: number): FaceStimulus[] => {
       .map((f) => `${f.id}:${f.correctName}`)
       .join('|');
     if (sig === previousSig) continue;
-    return shuffle(mapped, rng).map((f) => ({ ...f, options: pickOptions(f.correctName, rng) }));
+    return shuffle(mapped, rng).map((f) => ({
+      ...f,
+      options: pickOptions(f.correctName, assignedNames, rng),
+    }));
   }
 
   const fallbackRng = mulberry32(stimulusSubSeed(sessionSeed, 'face-name-fallback'));
-  const assignedNames = shuffle([...names], fallbackRng);
+  const assignedNames = shuffle([...FACE_NAME_POOL], fallbackRng);
   const fallback = baseFaces.map((face, idx) => ({
     id: face.id,
     label: face.label,
@@ -231,7 +233,7 @@ export const createFaceTrials = (sessionSeed: number): FaceStimulus[] => {
   }));
   return shuffle(fallback, fallbackRng).map((f) => ({
     ...f,
-    options: pickOptions(f.correctName, fallbackRng),
+    options: pickOptions(f.correctName, assignedNames, fallbackRng),
   }));
 };
 
