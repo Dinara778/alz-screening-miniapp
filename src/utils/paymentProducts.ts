@@ -22,7 +22,6 @@ export const PAYMENT_PRODUCTS: Record<TelegramInvoiceProduct, PaymentProductMeta
     bullets: [
       'Карта перегрузки и расшифровка зон',
       'Персональные рекомендации по улучшению состояния',
-      'PDF сохраняется на вашем устройстве',
     ],
     paymentNote: 'Чек на email после оплаты',
     awaitingReturnHint:

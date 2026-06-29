@@ -109,7 +109,6 @@ export type AppStage =
   | 'full-report'
   | 'consultation-request';
 
-/** Подэкран внутри full-report (сохраняется при «Обновить»). */
 export type ReportFlowStep = 'ready' | 'report' | 'learned' | 'upsell';
 
 export type SavedProgress = {

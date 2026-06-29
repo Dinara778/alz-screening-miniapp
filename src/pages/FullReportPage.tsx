@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '../components/Button';
 import { DomainProfileCard } from '../components/DomainProfileCard';
 import {
@@ -14,19 +14,23 @@ import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { useApp } from '../context/AppContext';
 import { useHydrateLatestResult } from '../hooks/useHydrateLatestResult';
 import { useSyncPaidReportSession } from '../hooks/useSyncPaidReportSession';
-import { formatDomainInterpretationPlain } from '../copy/cognitiveDomainInterpretations';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
+import type { DomainScore } from '../utils/cognitiveAnalytics';
 import { getLeadingDeficit } from '../utils/paidReport';
 import {
   getOverloadMapWithTemporalTexts,
   getTemporalRecommendations,
 } from '../utils/paidReportTemporal';
-import { downloadCognitiveReportPdf } from '../utils/pdfReport';
 import { isReportPaidUnlocked, isPaymentsBackendConfigured } from '../utils/telegramPayments';
-import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 
-type ReportStep = 'ready' | 'report' | 'learned';
+type ReportPhase = 'ready' | 'report' | 'learned';
+
+type ReportPage =
+  | { id: 'index'; kind: 'index' }
+  | { id: `domains-${number}`; kind: 'domains'; chunkIndex: number }
+  | { id: 'overload'; kind: 'overload' }
+  | { id: 'recommendations'; kind: 'recommendations' };
 
 const learnedItems = [
   'ваши зоны перегрузки',
@@ -35,24 +39,19 @@ const learnedItems = [
   'рекомендации по улучшению',
 ] as const;
 
-const sessionPdfFeatures = [
-  'Онлайн-расшифровку результатов простым языком с опытным экспертом по когнитивной устойчивости (созвон)',
-  'Персональные рекомендации под вашу ситуацию',
-  'Понимание, что больше всего мешает вашему ресурсу',
-  'План улучшения показателей',
-] as const;
+const DOMAINS_PER_SCREEN = 2;
 
-/** Короткая подпись ссылки для PDF (без https://). */
-function pdfTelegramAppLinkLabel(): string {
-  const raw = (import.meta.env.VITE_SHARE_BOT_URL as string | undefined)?.trim() || 'https://t.me/cortalab_ns_bot';
-  try {
-    const host = new URL(raw).hostname.replace(/^www\./, '');
-    const path = new URL(raw).pathname.replace(/^\//, '');
-    if (host === 't.me') return path ? `t.me/${path}` : 't.me';
-  } catch {
-    /* ignore */
+function chunkItems<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
   }
-  return raw.replace(/^https?:\/\//i, '');
+  return chunks;
+}
+
+function nextReportButtonLabel(pageIndex: number, totalPages: number): string {
+  if (pageIndex < totalPages - 1) return 'Следующая часть';
+  return 'К итогам';
 }
 
 export const FullReportPage = () => {
@@ -67,10 +66,8 @@ export const FullReportPage = () => {
   } = useApp();
   useHydrateLatestResult();
   useSyncPaidReportSession();
-  const [step, setStep] = useState<ReportStep>('ready');
-  const [pdfBusy, setPdfBusy] = useState(false);
-  const [pdfError, setPdfError] = useState<string | null>(null);
-  const pdfRef = useRef<HTMLDivElement>(null);
+  const [phase, setPhase] = useState<ReportPhase>('ready');
+  const [reportPageIndex, setReportPageIndex] = useState(0);
 
   const analytics = useMemo(() => {
     if (!latestResult) return null;
@@ -79,6 +76,11 @@ export const FullReportPage = () => {
 
   const domainScoresInput = useMemo(
     () => (analytics ? analytics.domains.map((d) => ({ key: d.key, score: d.score })) : []),
+    [analytics],
+  );
+
+  const domainChunks = useMemo(
+    () => (analytics ? chunkItems(analytics.domains, DOMAINS_PER_SCREEN) : []),
     [analytics],
   );
 
@@ -93,9 +95,27 @@ export const FullReportPage = () => {
     return getTemporalRecommendations(leading, domainScoresInput);
   }, [analytics, domainScoresInput]);
 
+  const reportPages = useMemo((): ReportPage[] => {
+    const pages: ReportPage[] = [{ id: 'index', kind: 'index' }];
+    domainChunks.forEach((_, chunkIndex) => {
+      pages.push({ id: `domains-${chunkIndex}`, kind: 'domains', chunkIndex });
+    });
+    pages.push({ id: 'overload', kind: 'overload' });
+    if (temporalRecommendations.length > 0) {
+      pages.push({ id: 'recommendations', kind: 'recommendations' });
+    }
+    return pages;
+  }, [domainChunks, temporalRecommendations.length]);
+
+  const analyticsDetail = useMemo(() => {
+    if (phase === 'ready') return 'ready';
+    if (phase === 'learned') return 'learned';
+    return `report/${reportPages[reportPageIndex]?.id ?? 'unknown'}`;
+  }, [phase, reportPageIndex, reportPages]);
+
   useEffect(() => {
-    setAnalyticsScreenDetail(step);
-  }, [step, setAnalyticsScreenDetail]);
+    setAnalyticsScreenDetail(analyticsDetail);
+  }, [analyticsDetail, setAnalyticsScreenDetail]);
 
   useEffect(() => {
     if (!latestResult) return;
@@ -133,165 +153,29 @@ export const FullReportPage = () => {
 
   const accent = scoreAccentFromValue(analytics.index.value);
 
-  const handlePdfDownload = async () => {
-    if (!pdfRef.current) return;
-    setPdfBusy(true);
-    setPdfError(null);
-    try {
-      await downloadCognitiveReportPdf(pdfRef.current, `otchet-corta-${latestResult.id.slice(0, 8)}.pdf`);
-      void sendAnalyticsEventToSheets({
-        eventType: 'report_pdf_downloaded',
-        sessionId: latestResult.id,
-        stage: 'full-report',
-        participant: participant ?? undefined,
-      }).catch(() => {});
-    } catch (e) {
-      console.error('[pdf]', e);
-      setPdfError(
-        'Не удалось сформировать PDF. Откройте мини-приложение через ⋯ → «Открыть в браузере» и повторите.',
-      );
-    } finally {
-      setPdfBusy(false);
-    }
-  };
-
   const openSessionOffer = () => {
     setConsultationReturnTo('full-report');
     openResultAtStep('session-offer');
   };
 
-  const fmt = (d: string) => new Date(d).toLocaleDateString('ru-RU');
+  const goToNextReportPage = () => {
+    if (reportPageIndex < reportPages.length - 1) {
+      setReportPageIndex((i) => i + 1);
+      return;
+    }
+    setPhase('learned');
+  };
 
-  const pdfMarkup = (
-    <div
-      ref={pdfRef}
-      className="bg-white p-8 text-[13px] leading-relaxed text-slate-900"
-      style={{ width: '190mm', fontFamily: 'system-ui, -apple-system, sans-serif' }}
-    >
-      <h1 className="text-xl font-bold">Расширенный отчёт Corta</h1>
-      <p className="mt-2 text-sm text-slate-600">
-        {fmt(latestResult.date)} · Индекс {analytics.index.value}/100 · {analytics.index.label}
-      </p>
-      <p className="mt-3">{analytics.index.description}</p>
-      <h2 className="mt-6 text-lg font-bold">Домены</h2>
-      <ul className="mt-2 space-y-3">
-        {analytics.domains.map((d) => (
-          <li key={d.key}>
-            <strong>
-              {d.title} — {d.score}/100
-            </strong>
-            <div className="mt-1 whitespace-pre-line text-sm">{formatDomainInterpretationPlain(d.interpretation)}</div>
-          </li>
-        ))}
-      </ul>
-      <h2 className="mt-6 text-lg font-bold">Карта перегрузки</h2>
-      <ul className="mt-2 space-y-1">
-        {analytics.overloadMap.map((o) => (
-          <li key={o.id}>
-            {o.title}: {o.active ? o.explanation : 'в пределах нормы'}
-          </li>
-        ))}
-      </ul>
-      <h2 className="mt-6 text-lg font-bold">Рекомендации</h2>
-      <ul className="mt-2 list-disc pl-5">
-        {analytics.stabilizationTips.map((t) => (
-          <li key={t.text}>{t.text}</li>
-        ))}
-      </ul>
+  const renderDomainSectionTitle = (chunkIndex: number) => {
+    if (domainChunks.length <= 1) return 'Сильные и слабые зоны';
+    return `Сильные и слабые зоны (${chunkIndex + 1} из ${domainChunks.length})`;
+  };
 
-      <h2 className="mt-8 border-t border-slate-200 pt-6 text-lg font-bold">Что дальше</h2>
-      <h3 className="mt-4 text-base font-semibold text-slate-900">Что вы узнали</h3>
-      <ul className="mt-2 list-disc pl-5 space-y-1">
-        {learnedItems.map((item) => (
-          <li key={item}>{item}</li>
-        ))}
-      </ul>
-      <p className="mt-4 text-sm leading-relaxed">
-        А дальше вы можете пройти индивидуальную сессию со специалистом по когнитивной устойчивости для
-        получения более глубоких рекомендаций по управлению своим когнитивным состоянием.
-      </p>
-
-      <h3 className="mt-5 text-base font-semibold text-slate-900">
-        Сессия с экспертом — {PAYMENT_PRODUCTS.consultation.priceRub.toLocaleString('ru-RU')} ₽
-      </h3>
-      <p className="mt-2 text-sm leading-relaxed">
-        30-минутная сессия по вашему когнитивному профилю с экспертом по когнитивной устойчивости.
-      </p>
-      <p className="mt-3 text-sm font-semibold text-slate-800">Что вы получите:</p>
-      <ul className="mt-2 list-none space-y-2 pl-0">
-        {sessionPdfFeatures.map((line) => (
-          <li key={line} className="text-sm leading-relaxed">
-            <span className="mr-1.5 text-teal-700">✓</span>
-            {line}
-          </li>
-        ))}
-      </ul>
-
-      <p className="mt-6 text-sm leading-relaxed text-slate-700">
-        Записаться на сессию можно в приложении:
-      </p>
-      <p className="mt-1 text-base font-semibold text-teal-800">{pdfTelegramAppLinkLabel()}</p>
-    </div>
-  );
-
-  const hiddenPdfLayer = (
-    <div className="pdf-export-root pointer-events-none fixed left-[-12000px] top-0 z-0 w-[210mm] max-w-[210mm]">
-      {pdfMarkup}
-    </div>
-  );
-
-  if (step === 'ready') {
-    return (
-      <ReportFlowShell
-        centerContent
-        footer={
-          <div className="flex flex-col gap-3">
-            <Button type="button" className={CTA_BUTTON_CLASS} onClick={() => setStep('report')}>
-              Далее
-            </Button>
-          </div>
-        }
-      >
-        <div className="mx-auto w-full max-w-md space-y-5 py-6 text-center sm:text-left">
-          <h2 className="app-heading leading-snug">
-            <span className="inline-flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-              <span>Ваш расширенный отчёт готов!</span>
-              <span className="text-[1.35em] leading-none" aria-hidden>
-                🎉
-              </span>
-            </span>
-          </h2>
-          <p className="results-body">
-            Дальше — расширенная расшифровка именно по вашему когнитивному профилю.
-          </p>
-        </div>
-      </ReportFlowShell>
-    );
-  }
-
-  if (step === 'report') {
-    return (
-      <>
-        <ReportFlowShell
-          showScrollHint
-          footer={
-            <div className="flex flex-col gap-3">
-              <Button
-                type="button"
-                className={CTA_BUTTON_CLASS}
-                disabled={pdfBusy}
-                onClick={() => void handlePdfDownload()}
-              >
-                {pdfBusy ? 'Формируем PDF…' : 'Скачать PDF'}
-              </Button>
-              {pdfError ? <p className="text-center text-sm text-amber-200/90">{pdfError}</p> : null}
-              <Button type="button" variant="secondary" className="w-full" onClick={() => setStep('learned')}>
-                Далее
-              </Button>
-            </div>
-          }
-        >
-          <div className="report-long-screen mx-auto w-full max-w-md space-y-6 pb-2">
+  const renderReportPage = (page: ReportPage, domains: DomainScore[]) => {
+    switch (page.kind) {
+      case 'index':
+        return (
+          <div className="mx-auto w-full max-w-md space-y-3 pb-2">
             <div className="calm-inset space-y-3">
               <SketchHighlightTitle accent={accent}>
                 Ваш индекс когнитивной устойчивости{' '}
@@ -312,40 +196,109 @@ export const FullReportPage = () => {
                 </ul>
               ) : null}
             </div>
-
+          </div>
+        );
+      case 'domains':
+        return (
+          <div className="mx-auto w-full max-w-md space-y-3 pb-2">
             <div className="space-y-3">
-              <SketchHighlightTitle accent={accent}>Сильные и слабые зоны</SketchHighlightTitle>
+              <SketchHighlightTitle accent={accent}>
+                {renderDomainSectionTitle(page.chunkIndex)}
+              </SketchHighlightTitle>
               <div className="space-y-3">
-                {analytics.domains.map((d) => (
+                {domains.map((d) => (
                   <DomainProfileCard key={d.key} domain={d} />
                 ))}
               </div>
             </div>
-
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <SketchHighlightTitle accent={accent}>Персональная карта перегрузки</SketchHighlightTitle>
-                <PaidReportTemporalOverload hideSectionTitle cards={temporalOverloadCards} />
-              </div>
-              {temporalRecommendations.length > 0 ? (
-                <div className="space-y-3">
-                  <SketchHighlightTitle accent={accent}>Что делать в этом состоянии</SketchHighlightTitle>
-                  <PaidReportTemporalRecommendations
-                    hideSectionTitle
-                    className="space-y-3"
-                    lines={temporalRecommendations}
-                  />
-                </div>
-              ) : null}
+          </div>
+        );
+      case 'overload':
+        return (
+          <div className="mx-auto w-full max-w-md space-y-3 pb-2">
+            <div className="space-y-3">
+              <SketchHighlightTitle accent={accent}>Персональная карта перегрузки</SketchHighlightTitle>
+              <PaidReportTemporalOverload hideSectionTitle cards={temporalOverloadCards} />
             </div>
           </div>
-        </ReportFlowShell>
-        {hiddenPdfLayer}
-      </>
+        );
+      case 'recommendations':
+        return (
+          <div className="mx-auto w-full max-w-md space-y-3 pb-2">
+            <div className="space-y-3">
+              <SketchHighlightTitle accent={accent}>Что делать в этом состоянии</SketchHighlightTitle>
+              <PaidReportTemporalRecommendations
+                hideSectionTitle
+                className="space-y-3"
+                lines={temporalRecommendations}
+              />
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  if (phase === 'ready') {
+    return (
+      <ReportFlowShell
+        centerContent
+        footer={
+          <div className="flex flex-col gap-3">
+            <Button
+              type="button"
+              className={CTA_BUTTON_CLASS}
+              onClick={() => {
+                setReportPageIndex(0);
+                setPhase('report');
+              }}
+            >
+              Читать отчёт
+            </Button>
+          </div>
+        }
+      >
+        <div className="mx-auto w-full max-w-md space-y-5 py-6 text-center sm:text-left">
+          <h2 className="app-heading leading-snug">
+            <span className="inline-flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+              <span>Ваш расширенный отчёт готов!</span>
+              <span className="text-[1.35em] leading-none" aria-hidden>
+                🎉
+              </span>
+            </span>
+          </h2>
+          <p className="results-body">
+            Дальше — расшифровка по вашему профилю: отчёт из нескольких коротких частей, жмите кнопку внизу.
+          </p>
+        </div>
+      </ReportFlowShell>
     );
   }
 
-  if (step === 'learned') {
+  if (phase === 'report') {
+    const page = reportPages[reportPageIndex];
+    if (!page) return null;
+
+    const progressLabel = `Часть ${reportPageIndex + 1} из ${reportPages.length}`;
+
+    return (
+      <ReportFlowShell
+        footer={
+          <div className="flex flex-col gap-2">
+            <p className="text-center text-xs font-medium tracking-wide text-white/55">{progressLabel}</p>
+            <Button type="button" className={CTA_BUTTON_CLASS} onClick={goToNextReportPage}>
+              {nextReportButtonLabel(reportPageIndex, reportPages.length)}
+            </Button>
+          </div>
+        }
+      >
+        {renderReportPage(page, domainChunks[page.kind === 'domains' ? page.chunkIndex : 0] ?? [])}
+      </ReportFlowShell>
+    );
+  }
+
+  if (phase === 'learned') {
     return (
       <CalmScreen
         contentAlign="readable"
