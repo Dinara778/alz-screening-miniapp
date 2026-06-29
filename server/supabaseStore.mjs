@@ -109,6 +109,49 @@ export async function upsertAssessment(
   return data;
 }
 
+export async function upsertFunnelSession(
+  {
+    email,
+    visitId,
+    lastScreen,
+    screensPath,
+    status = 'in_progress',
+    exitReason,
+    assessmentSessionId,
+  },
+  env = process.env,
+) {
+  const supabase = getClient(env);
+  const vid = String(visitId ?? '').trim();
+  if (!supabase || !vid) return null;
+
+  const user = await upsertUserByEmail(email, env);
+  if (!user) return null;
+
+  const row = {
+    user_id: user.id,
+    visit_id: vid,
+    last_screen: lastScreen ? String(lastScreen).slice(0, 200) : null,
+    screens_path: screensPath ? String(screensPath).slice(0, 2000) : null,
+    status,
+    exit_reason: exitReason ? String(exitReason).slice(0, 120) : null,
+    assessment_session_id: assessmentSessionId ? String(assessmentSessionId).slice(0, 80) : null,
+  };
+
+  const { data, error } = await supabase
+    .from('funnel_sessions')
+    .upsert(row, { onConflict: 'visit_id' })
+    .select('id, user_id, visit_id, status, last_screen')
+    .single();
+
+  if (error) {
+    console.error('[supabase] upsert funnel', error.message);
+    return null;
+  }
+  console.info('[supabase] funnel saved', data.visit_id, data.status, data.last_screen);
+  return data;
+}
+
 export async function findUserIdBySessionId(sessionId, env = process.env) {
   const supabase = getClient(env);
   const sid = String(sessionId ?? '').trim();

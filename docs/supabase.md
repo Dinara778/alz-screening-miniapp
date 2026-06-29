@@ -33,13 +33,19 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbG...   # service_role, не anon!
 | `payments` | type (one_time / subscription), amount, status, product |
 | `subscriptions` | status, start_date, end_date |
 | `user_settings` | push_time, notifications_enabled |
+| `funnel_sessions` | email-визит, last_screen, screens_path, status (in_progress / completed / abandoned) |
 
 ## 5. Как данные попадают в БД
 
 | Событие | Что пишется |
 |---------|-------------|
-| Завершение теста | `users` + `assessments` (POST `/api/sync-assessment`) |
+| Email в анкете | `users` + `funnel_sessions` (экран `welcome/email`) |
+| Переход по экранам | `funnel_sessions.last_screen` обновляется |
+| Закрытие вкладки | `funnel_sessions.status = abandoned` |
+| Завершение теста | `users` + `assessments` + `funnel_sessions.status = completed` |
 | Успешная оплата Робокассы | `payments` (автоматически на сервере) |
+
+После деплоя выполните в SQL Editor также `supabase/migrations/002_funnel_sessions.sql`.
 
 Проверка: `/health` → блок `supabase.configured: true`
 

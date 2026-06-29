@@ -35,12 +35,14 @@ import { recoverRobokassaPaymentFromUrl } from '../utils/webPayments';
 import { consumeReopenPaidReportSessionId, markReopenPaidReportAfterReload } from '../utils/reportReload';
 import { useAppExitAnalytics } from '../hooks/useAppExitAnalytics';
 import {
+  getAnalyticsScreensPath,
   getVisitFunnelKey,
   recordAnalyticsScreen,
   sendFunnelAnalyticsEvent,
 } from '../utils/sessionFunnelAnalytics';
 import { sendSessionToSheets } from '../utils/sheetsWebhook';
 import { sendSessionToSupabase } from '../utils/supabaseSync';
+import { syncFunnelToSupabase } from '../utils/supabaseFunnelSync';
 
 type ConsultationReturnStage = 'result' | 'full-report';
 
@@ -403,6 +405,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   useAppExitAnalytics({
     stage,
     sessionId: analyticsSessionId,
+    visitId: String(sessionSeed),
     visitFunnelKey,
     screenDetail: analyticsScreenDetail,
     participant,
@@ -451,6 +454,28 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       /* ignore */
     });
   }, [visitFunnelKey, stage, analyticsSessionId, participant]);
+
+  /** Прогресс воронки в Supabase: последний экран (debounce). */
+  useEffect(() => {
+    const email = participant?.email?.trim().toLowerCase();
+    if (!email || !email.includes('@')) return;
+
+    const screen = analyticsScreenDetail ? `${stage}/${analyticsScreenDetail}` : stage;
+    const screensPath = getAnalyticsScreensPath(visitFunnelKey);
+    const visitId = String(sessionSeed);
+
+    const timer = window.setTimeout(() => {
+      void syncFunnelToSupabase({
+        email,
+        visitId,
+        lastScreen: screen,
+        screensPath,
+        status: 'in_progress',
+      });
+    }, 1500);
+
+    return () => window.clearTimeout(timer);
+  }, [stage, analyticsScreenDetail, participant, sessionSeed, visitFunnelKey]);
 
   const resetSession = useCallback(() => {
     setStage('corta-intro');
@@ -540,9 +565,20 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       // Ignore webhook errors to keep UX stable.
     });
     void sendSessionToSupabase(result);
+    const email = result.participant?.email?.trim().toLowerCase();
+    if (email && email.includes('@')) {
+      void syncFunnelToSupabase({
+        email,
+        visitId: String(sessionSeed),
+        lastScreen: 'result',
+        screensPath: getAnalyticsScreensPath(visitFunnelKey),
+        status: 'completed',
+        assessmentSessionId: result.id,
+      });
+    }
     setHistory(loadHistory());
     clearProgress();
-  }, [sessionSeed]);
+  }, [sessionSeed, visitFunnelKey]);
 
   const value = useMemo(
     () => ({

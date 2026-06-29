@@ -1,4 +1,4 @@
-import { useRef, useState, type FocusEvent, type ReactNode } from 'react';
+import { useRef, useState, useEffect, type FocusEvent, type ReactNode } from 'react';
 import { BackArrowButton } from '../components/BackArrowButton';
 import { CalmCardShell } from '../components/CalmCardShell';
 import { Button } from '../components/Button';
@@ -9,8 +9,13 @@ import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { ParticipantProfile } from '../types';
 import { TEST_DURATION_LABEL } from '../constants/testDuration';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
+import { syncFunnelToSupabase } from '../utils/supabaseFunnelSync';
 
-type Props = { onStart: (profile: ParticipantProfile) => void };
+type Props = {
+  visitId: string;
+  onStart: (profile: ParticipantProfile) => void;
+  onProfileReady?: (profile: ParticipantProfile) => void;
+};
 
 /** Знакомство → имя → пол → возраст → email → старт оценки. */
 const FIELD_STEP_MAX = 5;
@@ -27,7 +32,7 @@ const scrollFieldIntoView = (e: FocusEvent<HTMLInputElement>) => {
   });
 };
 
-export const WelcomePage = ({ onStart }: Props) => {
+export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
   const [sex, setSex] = useState<ParticipantProfile['sex']>('Женский');
@@ -103,14 +108,41 @@ export const WelcomePage = ({ onStart }: Props) => {
       },
     }).catch(() => {});
 
+    void syncFunnelToSupabase({
+      email: profile.email,
+      visitId,
+      lastScreen: 'welcome/email',
+      status: 'in_progress',
+    });
+
+    onProfileReady?.(profile);
+
     goNext();
   };
 
   const startAssessment = () => {
     const profile = buildProfile();
     if (!profile) return;
+    void syncFunnelToSupabase({
+      email: profile.email,
+      visitId,
+      lastScreen: 'welcome/ready',
+      status: 'in_progress',
+    });
     onStart(profile);
   };
+
+  useEffect(() => {
+    if (step !== 5) return;
+    const profile = buildProfile();
+    if (!profile) return;
+    void syncFunnelToSupabase({
+      email: profile.email,
+      visitId,
+      lastScreen: 'welcome/ready',
+      status: 'in_progress',
+    });
+  }, [step, visitId, email, age, name, sex]);
 
   const progressValue = step === 0 ? 0 : step;
 

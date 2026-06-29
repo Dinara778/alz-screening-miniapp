@@ -59,6 +59,7 @@ import {
   isSupabaseConfigured,
   recordPayment,
   upsertAssessment,
+  upsertFunnelSession,
 } from './supabaseStore.mjs';
 import {
   findLatestTelegramPaidForUser,
@@ -1137,6 +1138,54 @@ app.post('/api/sync-assessment', async (req, res) => {
     return res.json({ ok: true, assessmentId: saved.id, userId: saved.user_id });
   } catch (e) {
     console.error('[api/sync-assessment]', e);
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
+/** Воронка: email + последний экран (в т.ч. если тест не завершён). */
+app.post('/api/sync-funnel', async (req, res) => {
+  try {
+    if (!isSupabaseConfigured()) {
+      return res.status(503).json({ ok: false, error: 'supabase_not_configured' });
+    }
+    const {
+      email,
+      visitId,
+      lastScreen,
+      screensPath,
+      status = 'in_progress',
+      exitReason,
+      assessmentSessionId,
+    } = req.body ?? {};
+
+    if (!email || !visitId) {
+      return res.status(400).json({ ok: false, error: 'email and visitId required' });
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+    if (!EMAIL_RE.test(normalizedEmail) || normalizedEmail.length > 254) {
+      return res.status(400).json({ ok: false, error: 'invalid_email' });
+    }
+
+    const allowedStatus = new Set(['in_progress', 'completed', 'abandoned']);
+    const funnelStatus = allowedStatus.has(status) ? status : 'in_progress';
+
+    const saved = await upsertFunnelSession({
+      email: normalizedEmail,
+      visitId,
+      lastScreen,
+      screensPath,
+      status: funnelStatus,
+      exitReason,
+      assessmentSessionId,
+    });
+
+    if (!saved) {
+      return res.status(500).json({ ok: false, error: 'save_failed' });
+    }
+    return res.json({ ok: true, funnelId: saved.id, userId: saved.user_id });
+  } catch (e) {
+    console.error('[api/sync-funnel]', e);
     return res.status(500).json({ ok: false, error: 'server_error' });
   }
 });

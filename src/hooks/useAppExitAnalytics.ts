@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { AppStage, ParticipantProfile } from '../types';
-import { sendFunnelAnalyticsBeacon } from '../utils/sessionFunnelAnalytics';
+import { sendFunnelAnalyticsBeacon, getAnalyticsScreensPath } from '../utils/sessionFunnelAnalytics';
+import { syncFunnelToSupabase } from '../utils/supabaseFunnelSync';
 
 type Params = {
   stage: AppStage;
   sessionId: string;
+  visitId: string;
   visitFunnelKey: string;
   screenDetail: string | null;
   participant: ParticipantProfile | null;
@@ -18,6 +20,7 @@ function buildScreen(stage: AppStage, screenDetail: string | null): string {
 export function useAppExitAnalytics({
   stage,
   sessionId,
+  visitId,
   visitFunnelKey,
   screenDetail,
   participant,
@@ -54,8 +57,23 @@ export function useAppExitAnalytics({
             }
           : undefined,
       });
+
+      const email = participant?.email?.trim().toLowerCase();
+      if (email && email.includes('@')) {
+        void syncFunnelToSupabase(
+          {
+            email,
+            visitId,
+            lastScreen: screen,
+            screensPath: getAnalyticsScreensPath(visitFunnelKey),
+            status: 'abandoned',
+            exitReason,
+          },
+          { beacon: true },
+        );
+      }
     },
-    [sessionId, visitFunnelKey, stage, screenDetail, participant],
+    [sessionId, visitId, visitFunnelKey, stage, screenDetail, participant],
   );
 
   useEffect(() => {

@@ -110,7 +110,11 @@ function App() {
             <IntroTestOfferPage onContinue={() => app.setStage('welcome')} />
           )}
           {app.stage === 'welcome' && (
-            <WelcomePage onStart={(profile) => app.beginNewAssessment(profile)} />
+            <WelcomePage
+              visitId={String(app.sessionSeed)}
+              onProfileReady={(profile) => app.setParticipant(profile)}
+              onStart={(profile) => app.beginNewAssessment(profile)}
+            />
           )}
           {app.stage === 'history' && <HistoryPage onBack={() => app.setStage('welcome')} />}
           {[
