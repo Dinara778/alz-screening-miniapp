@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { SameEmailHint } from './SameEmailHint';
 import { requestMagicLink } from '../utils/cabinetApi';
+import { peekCabinetAuthErrorFromUrl } from '../utils/supabaseBrowser';
 
 type Props = {
   title?: string;
@@ -17,7 +18,7 @@ export const CabinetLoginForm = ({
   const [step, setStep] = useState<'email' | 'link-sent'>('email');
   const [email, setEmail] = useState('');
   const [msg, setMsg] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => peekCabinetAuthErrorFromUrl() ?? '');
   const [busy, setBusy] = useState(false);
 
   const normalizedEmail = email.trim().toLowerCase();

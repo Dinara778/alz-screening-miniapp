@@ -60,7 +60,7 @@ export async function getSupabaseBrowser(): Promise<SupabaseClient> {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true,
+        detectSessionInUrl: false,
         flowType: 'pkce',
       },
     });
@@ -72,22 +72,62 @@ export function resetSupabaseBrowserClient(): void {
   browserClient = null;
 }
 
-/** Обработка возврата по старой magic-link (?code= / #access_token) без поломки SPA. */
+export function peekCabinetAuthErrorFromUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+  const url = new URL(window.location.href);
+  const fromQuery = url.searchParams.get('error_description') || url.searchParams.get('error');
+  if (fromQuery) return decodeURIComponent(fromQuery.replace(/\+/g, ' '));
+
+  const hash = url.hash?.replace(/^#/, '') ?? '';
+  if (!hash) return null;
+  const hashParams = new URLSearchParams(hash);
+  const fromHash = hashParams.get('error_description') || hashParams.get('error');
+  return fromHash ? decodeURIComponent(fromHash.replace(/\+/g, ' ')) : null;
+}
+
+/** Обработка возврата по magic-link (?code=, ?token_hash=, #access_token) без поломки SPA. */
 export async function completeCabinetAuthFromUrl(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
 
   const supabase = await getSupabaseBrowser();
   const url = new URL(window.location.href);
-  const code = url.searchParams.get('code')?.trim();
 
+  if (peekCabinetAuthErrorFromUrl()) {
+    stripCabinetAuthParamsFromUrl();
+    return false;
+  }
+
+  const tokenHash = url.searchParams.get('token_hash')?.trim();
+  const otpType = url.searchParams.get('type')?.trim();
+  if (tokenHash && otpType) {
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: otpType as 'magiclink' | 'email' | 'signup' | 'recovery' | 'invite' | 'email_change',
+    });
+    stripCabinetAuthParamsFromUrl();
+    return !error;
+  }
+
+  const code = url.searchParams.get('code')?.trim();
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     stripCabinetAuthParamsFromUrl();
     return !error;
   }
 
-  const hash = window.location.hash?.replace(/^#/, '') ?? '';
-  if (hash.includes('access_token=') || hash.includes('error=')) {
+  const hash = url.hash?.replace(/^#/, '') ?? '';
+  if (hash.includes('access_token=')) {
+    const hashParams = new URLSearchParams(hash);
+    const accessToken = hashParams.get('access_token')?.trim();
+    const refreshToken = hashParams.get('refresh_token')?.trim();
+    if (accessToken && refreshToken) {
+      const { error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      stripCabinetAuthParamsFromUrl();
+      return !error;
+    }
     const { data, error } = await supabase.auth.getSession();
     stripCabinetAuthParamsFromUrl();
     return !error && Boolean(data.session);

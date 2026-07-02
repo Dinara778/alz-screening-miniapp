@@ -11,7 +11,15 @@ URL: **https://cortaapp.ru/cabinet**
    - **Site URL:** `https://cortaapp.ru`
    - **Redirect URLs:** добавить `https://cortaapp.ru/cabinet`
 
-Шаблон **Magic Link** можно оставить стандартным (со ссылкой `{{ .ConfirmationURL }}`). SMTP не обязателен.
+3. **Authentication** → **Email Templates** → **Magic Link** — в теле письма ссылка:
+
+```html
+<a href="https://cortaapp.ru/cabinet?token_hash={{ .TokenHash }}&type=magiclink">Войти в личный кабинет</a>
+```
+
+Так ссылка работает **в любом браузере** (не только там, где запрашивали вход). Альтернатива — стандартная `{{ .ConfirmationURL }}`, но тогда ссылку нужно открывать **в том же браузере**.
+
+SMTP (Яндекс): **Project Settings → Authentication → SMTP Settings**.
 
 ## 2. SQL-миграция
 
