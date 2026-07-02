@@ -249,6 +249,7 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
   if (step === 0 && resumeProfile) {
     stepBody = (
       <div className="space-y-5 text-center sm:text-left">
+        <div className="text-center text-4xl">✨</div>
         <h2 className="app-heading text-center">С возвращением!</h2>
         <p className="calm-caption sm:text-base">Продолжить с сохранёнными данными?</p>
         <div className="calm-inset space-y-2 rounded-2xl px-4 py-3 text-left text-sm text-white/90">
