@@ -249,43 +249,40 @@ async function resolveWebPaymentRecovery({ sessionId, product = 'full_report', e
   if (invKey) {
     const order = robokassaGetOrder(invKey);
     if (order) {
-      const prior = isWebPaidForSession(order.sessionId, order.product);
-      const paidSessionId = prior.paid ? prior.sessionId : order.sessionId;
-      if (!prior.paid) {
-        markWebPaid({
+      const webPaidForOrder =
+        isWebPaidForSession(order.sessionId, order.product).paid ||
+        (isReportUnlockProduct(order.product) &&
+          isWebPaidForSession(order.sessionId, 'full_report').paid);
+
+      let paidInSupabase = null;
+      if (isSupabaseConfigured()) {
+        paidInSupabase = await findPaidProductPayment({
           sessionId: order.sessionId,
+          email: normalizedEmail || order.email,
           product: order.product,
-          invId: invKey,
-        });
-        syncPaidToSupabase({
-          sessionId: order.sessionId,
-          product: order.product,
-          amountRub: order.amountRub,
-          invId: invKey,
-          email: order.email || normalizedEmail,
         });
       }
-      if (paidSessionId !== sid) {
-        if (isSupabaseConfigured()) {
-          const supa = await findPaidProductPayment({
-            sessionId: paidSessionId,
-            email: normalizedEmail || order.email,
-            product: prod,
+
+      if (webPaidForOrder || paidInSupabase) {
+        if (order.sessionId !== sid) {
+          markWebPaid({
+            sessionId: sid,
+            product: reportUnlock ? 'full_report' : prod,
+            invId: invKey,
           });
-          if (supa?.id) await reassignPaidPaymentSession(supa.id, sid);
         }
-        markWebPaid({ sessionId: sid, product: reportUnlock ? 'full_report' : prod, invId: invKey });
+        const sub =
+          normalizedEmail || order.email
+            ? await findActiveSubscriptionByEmail(normalizedEmail || order.email)
+            : null;
+        return {
+          paid: true,
+          sessionId: sid,
+          product: prod,
+          subscriptionUntil: sub?.end_date ?? undefined,
+        };
       }
-      const sub =
-        normalizedEmail || order.email
-          ? await findActiveSubscriptionByEmail(normalizedEmail || order.email)
-          : null;
-      return {
-        paid: true,
-        sessionId: sid,
-        product: prod,
-        subscriptionUntil: sub?.end_date ?? undefined,
-      };
+      // Счёт создан (invId), но оплата не подтверждена — не выдаём доступ.
     }
   }
 

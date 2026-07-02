@@ -225,6 +225,10 @@ export function capturePaymentFailFromUrl(): void {
     if (status !== 'fail' && status !== 'cancel') return;
     sessionStorage.setItem(PAYMENT_FAIL_NOTICE_KEY, '1');
     sessionStorage.setItem(PAYMENT_FAIL_BOOT_KEY, '1');
+    sessionStorage.removeItem(ROBOKASSA_RETURN_INV_KEY);
+    sessionStorage.removeItem(ROBOKASSA_RETURN_PROOF_KEY);
+    sessionStorage.removeItem(ROBOKASSA_PENDING_PRODUCT_KEY);
+    localStorage.removeItem(ROBOKASSA_PENDING_INV_LS_KEY);
   } catch {
     /* ignore */
   }

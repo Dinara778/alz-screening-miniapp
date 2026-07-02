@@ -124,6 +124,8 @@ export function buildRobokassaReceipt({ itemName, amountRub }, env = process.env
         quantity: 1,
         sum,
         tax,
+        payment_method: 'full_payment',
+        payment_object: 'service',
       },
     ],
   };
@@ -204,13 +206,17 @@ function robokassaPublicBaseUrl(env = process.env) {
 
 /** Авто-возврат на сайт после оплаты (без кнопки «Вернуться в магазин»). */
 export function buildRobokassaAutoRedirect(env = process.env) {
-  const returnUrl = `${robokassaPublicBaseUrl(env)}/`;
+  const base = robokassaPublicBaseUrl(env);
+  const returnUrl = `${base}/`;
+  const failReturnUrl = `${base}/?robokassa=fail`;
   return {
-    successUrl2: encodeURIComponent(returnUrl),
+    /** В подписи — сырой URL (не encodeURIComponent), иначе ошибка 29 при фискализации. */
+    successUrl2: returnUrl,
     successUrl2Method: 'GET',
-    failUrl2: encodeURIComponent(returnUrl),
+    failUrl2: failReturnUrl,
     failUrl2Method: 'GET',
     returnUrl,
+    failReturnUrl,
   };
 }
 
@@ -292,7 +298,7 @@ export function buildRobokassaPaymentUrl(
   }
   qs = appendQueryParam(qs, 'SuccessUrl2', redirect.returnUrl);
   qs = appendQueryParam(qs, 'SuccessUrl2Method', redirect.successUrl2Method);
-  qs = appendQueryParam(qs, 'FailUrl2', redirect.returnUrl);
+  qs = appendQueryParam(qs, 'FailUrl2', redirect.failReturnUrl);
   qs = appendQueryParam(qs, 'FailUrl2Method', redirect.failUrl2Method);
   qs = appendQueryParam(qs, 'SignatureValue', signatureValue);
 

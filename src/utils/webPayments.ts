@@ -138,7 +138,8 @@ export async function verifyWebProductPayment(
     return { ok: false, message: 'Сервер оплаты не настроен.' };
   }
 
-  const invId = peekRobokassaReturnInvId();
+  const proof = peekRobokassaReturnProof();
+  const invId = proof ? peekRobokassaReturnInvId() : undefined;
 
   try {
     const res = await fetch(`${trimApi(api)}/payment-recover-session-web`, {
