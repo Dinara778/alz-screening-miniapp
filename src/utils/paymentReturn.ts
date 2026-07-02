@@ -23,6 +23,16 @@ export function rememberRobokassaPendingInvId(invId: number | string): void {
   }
 }
 
+/** Перед уходом на Робокассу — sessionId (если в Success URL нет Shp_*). */
+export function rememberRobokassaPendingSessionId(sessionId: string): void {
+  if (typeof sessionStorage === 'undefined' || !sessionId.trim()) return;
+  try {
+    sessionStorage.setItem(ROBOKASSA_RETURN_SESSION_KEY, sessionId.trim());
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Перед уходом на Робокассу — запомнить product (на случай старого Success URL без product). */
 export function rememberRobokassaPendingProduct(product: TelegramInvoiceProduct): void {
   if (typeof sessionStorage === 'undefined') return;

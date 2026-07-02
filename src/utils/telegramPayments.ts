@@ -2,6 +2,7 @@ import { PAYMENT_PRODUCTS } from './paymentProducts';
 import {
   rememberRobokassaPendingInvId,
   rememberRobokassaPendingProduct,
+  rememberRobokassaPendingSessionId,
 } from './paymentReturn';
 import { isStandaloneWeb } from './runtime';
 import { recoverRobokassaPaymentFromUrl, verifyWebReportPayment } from './webPayments';
@@ -313,6 +314,7 @@ export const openTelegramInvoiceForProduct = async (
     if (invId != null) {
       rememberRobokassaPendingInvId(invId);
       rememberRobokassaPendingProduct(product);
+      rememberRobokassaPendingSessionId(sessionId);
     }
     if (typeof tg.openLink !== 'function') {
       return { status: 'skipped', reason: 'no_open_link' };

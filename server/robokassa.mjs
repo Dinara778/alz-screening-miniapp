@@ -195,6 +195,24 @@ export function robokassaGetOrder(invId) {
   return ordersByInvId.get(String(invId)) ?? null;
 }
 
+function robokassaPublicBaseUrl(env = process.env) {
+  const raw = envStr(env, 'PAYMENTS_PUBLIC_BASE_URL') || 'https://cortaapp.ru';
+  const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  return withScheme.replace(/\/$/, '');
+}
+
+/** Авто-возврат на сайт после оплаты (без кнопки «Вернуться в магазин»). */
+export function buildRobokassaAutoRedirect(env = process.env) {
+  const returnUrl = `${robokassaPublicBaseUrl(env)}/`;
+  return {
+    successUrl2: encodeURIComponent(returnUrl),
+    successUrl2Method: 'GET',
+    failUrl2: encodeURIComponent(returnUrl),
+    failUrl2Method: 'GET',
+    returnUrl,
+  };
+}
+
 export function getRobokassaHealthInfo(env = process.env) {
   const login = envStr(env, 'ROBOKASSA_MERCHANT_LOGIN');
   const pass1 = envStr(env, 'ROBOKASSA_PASSWORD1');
@@ -212,11 +230,12 @@ export function getRobokassaHealthInfo(env = process.env) {
     receiptSno: envStr(env, 'ROBOKASSA_RECEIPT_SNO') || 'usn_income',
     receiptTax: envStr(env, 'ROBOKASSA_RECEIPT_TAX') || 'none',
     paymentSignatureFormula: receiptEnabled
-      ? 'MerchantLogin:OutSum:InvId:Receipt(raw-json):Password1[:Shp_*]'
-      : 'MerchantLogin:OutSum:InvId:Password1[:Shp_*]',
+      ? 'MerchantLogin:OutSum:InvId:Receipt:SuccessUrl2:SuccessUrl2Method:FailUrl2:FailUrl2Method:Password1[:Shp_*]'
+      : 'MerchantLogin:OutSum:InvId:SuccessUrl2:SuccessUrl2Method:FailUrl2:FailUrl2Method:Password1[:Shp_*]',
     password1Md5: pass1 ? md5(pass1) : null,
     docsError29:
       'Неверный SignatureValue — сверьте password1Md5 с md5(Пароль#1), алгоритм хэша и Receipt',
+    autoRedirect: buildRobokassaAutoRedirect(env),
   };
 }
 
@@ -240,12 +259,15 @@ export function buildRobokassaPaymentUrl(
   if (sessionId) shp.Shp_sessionId = String(sessionId).slice(0, 80);
   if (product) shp.Shp_product = String(product);
 
+  const redirect = buildRobokassaAutoRedirect(env);
+
   const sigBase = buildPaymentSignatureBase({
     login,
     outSum,
     invId,
     pass1,
     receiptJson,
+    redirect,
     shp,
   });
   const signatureValue = computeHash(sigBase, hashAlgorithm);
@@ -265,6 +287,10 @@ export function buildRobokassaPaymentUrl(
   for (const key of Object.keys(shp).sort()) {
     qs = appendQueryParam(qs, key, shp[key]);
   }
+  qs = appendQueryParam(qs, 'SuccessUrl2', redirect.returnUrl);
+  qs = appendQueryParam(qs, 'SuccessUrl2Method', redirect.successUrl2Method);
+  qs = appendQueryParam(qs, 'FailUrl2', redirect.returnUrl);
+  qs = appendQueryParam(qs, 'FailUrl2Method', redirect.failUrl2Method);
   qs = appendQueryParam(qs, 'SignatureValue', signatureValue);
 
   return `https://auth.robokassa.ru/Merchant/Index.aspx?${qs}`;

@@ -12,6 +12,7 @@ import {
   peekRobokassaReturnSessionId,
   rememberRobokassaPendingInvId,
   rememberRobokassaPendingProduct,
+  rememberRobokassaPendingSessionId,
 } from './paymentReturn';
 import { stripPaymentQueryFromUrl } from './appReload';
 
@@ -76,6 +77,7 @@ export async function openWebPayment(
       return { status: 'already_paid' };
     }
     if (data.paymentUrl) {
+      rememberRobokassaPendingSessionId(sessionId);
       rememberRobokassaPendingProduct(product);
       if (data.invId != null) rememberRobokassaPendingInvId(data.invId);
       window.location.assign(data.paymentUrl);
