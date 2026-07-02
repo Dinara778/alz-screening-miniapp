@@ -1,10 +1,8 @@
 # Личный кабинет Corta
 
-Вход по **ссылке из email** (magic link) — без пароля.
+Вход по **ссылке из email** (Supabase magic link) — без пароля и без SMTP.
 
 URL: **https://cortaapp.ru/cabinet**
-
-Письма со ссылкой отправляет **ваш SMTP на сервере** (не встроенная почта Supabase) — так нет лимита «email rate limit exceeded».
 
 ## 1. Supabase: включить Auth
 
@@ -33,14 +31,6 @@ VITE_SUPABASE_ANON_KEY=eyJ...
 ```env
 SUPABASE_URL=...
 SUPABASE_SERVICE_ROLE_KEY=...
-SUPABASE_ANON_KEY=...
-
-# SMTP — обязательно для отправки ссылки входа (те же переменные, что для заявок на разбор)
-SMTP_HOST=smtp.yandex.ru
-SMTP_PORT=465
-SMTP_USER=...
-SMTP_PASS=...
-SMTP_FROM=hello@bookvolon.ru
 ```
 
 ## 4. Как войти

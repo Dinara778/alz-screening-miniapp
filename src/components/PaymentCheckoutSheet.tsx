@@ -6,7 +6,7 @@ import { TELEGRAM_SUPPORT_URL } from './SupportFooter';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
 import { isReportUnlockProduct } from '../utils/paymentProductTypes';
 import { isStandaloneWeb } from '../utils/runtime';
-import { openWebPayment, recoverRobokassaPaymentFromUrl, verifyWebProductPayment } from '../utils/webPayments';
+import { openWebPayment } from '../utils/webPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import { REPORT_TARIFF_PAYMENT_BUTTON_CLASS } from '../constants/ctaButton';
 import type { ReportUnlockProduct } from '../utils/paymentProductTypes';
@@ -44,7 +44,6 @@ export const PaymentCheckoutSheet = ({
     isReportUnlockProduct(product) ? isReportPaidUnlocked(sessionId, false) : false,
   );
   const [sheetNotice, setSheetNotice] = useState<string | null>(null);
-  const [checkBusy, setCheckBusy] = useState(false);
   const payInFlightRef = useRef(false);
 
   const showNotice = useCallback(
@@ -75,14 +74,12 @@ export const PaymentCheckoutSheet = ({
   useEffect(() => {
     if (!open) {
       setPayBusy(false);
-      setCheckBusy(false);
       payInFlightRef.current = false;
       return;
     }
     setAlreadyPaidHelpOpen(false);
     setAlreadyPaidHelpAcknowledged(false);
     setPayBusy(false);
-    setCheckBusy(false);
     setAwaitingReturn(false);
     setSheetNotice(null);
     payInFlightRef.current = false;
@@ -235,38 +232,6 @@ export const PaymentCheckoutSheet = ({
     setAlreadyPaidHelpOpen(true);
   };
 
-  const handleCheckPayment = async () => {
-    if (!isReportUnlockProduct(product) || payBusy || checkBusy) return;
-    setCheckBusy(true);
-    showNotice('Проверяем оплату на сервере…');
-    trackPaymentEvent('payment_recover_click');
-    try {
-      const fromUrl = await recoverRobokassaPaymentFromUrl();
-      if (fromUrl && isReportUnlockProduct(fromUrl.product)) {
-        trackPaymentEvent('payment_recover_paid', { paidSessionId: fromUrl.sessionId });
-        onPaid(fromUrl.sessionId);
-        onClose();
-        return;
-      }
-      const r = isStandaloneWeb()
-        ? await verifyWebProductPayment(sessionId, product, payerEmail)
-        : await verifyReportPaymentOnServer(sessionId, payerEmail);
-      if (r.ok) {
-        trackPaymentEvent('payment_recover_paid', { paidSessionId: r.sessionId });
-        onPaid(r.sessionId);
-        onClose();
-        return;
-      }
-      trackPaymentEvent('payment_recover_not_found');
-      showNotice(r.message);
-    } catch {
-      trackPaymentEvent('payment_recover_error');
-      showNotice('Не удалось связаться с сервером. Проверьте интернет и повторите.');
-    } finally {
-      setCheckBusy(false);
-    }
-  };
-
   const reportAlreadyPaidHelp = alreadyPaidHelpOpen && isReportUnlockProduct(product);
 
   return (
@@ -410,22 +375,11 @@ export const PaymentCheckoutSheet = ({
               />
               <span className="text-sm text-white/90">Я понял/а</span>
             </label>
-            {sheetNotice ? (
-              <p className="text-center text-[11px] leading-snug text-amber-200/95">{sheetNotice}</p>
-            ) : null}
-            <Button
-              type="button"
-              variant="sell"
-              disabled={!alreadyPaidHelpAcknowledged || checkBusy}
-              className={`relative z-20 touch-manipulation disabled:opacity-50 ${REPORT_TARIFF_PAYMENT_BUTTON_CLASS}`}
-              onClick={() => void handleCheckPayment()}
-            >
-              {checkBusy ? 'Проверяем оплату…' : meta.alreadyPaidCheckLabel}
-            </Button>
             <Button
               type="button"
               variant="secondary"
-              className="report-tariff-cta mt-0 w-full shrink-0 py-3 text-sm font-semibold"
+              disabled={!alreadyPaidHelpAcknowledged}
+              className="report-tariff-cta mt-0 w-full shrink-0 py-3 text-sm font-semibold disabled:opacity-50"
               onClick={() => {
                 setAlreadyPaidHelpOpen(false);
                 setAlreadyPaidHelpAcknowledged(false);

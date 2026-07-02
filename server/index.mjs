@@ -73,10 +73,6 @@ import {
   cancelCabinetSubscription,
 } from './cabinetStore.mjs';
 import {
-  cabinetLoginLinkErrorMessage,
-  requestCabinetLoginLink,
-} from './cabinetAuth.mjs';
-import {
   getSupabaseHealthInfo,
   getPublicSupabaseConfig,
   isSupabaseConfigured,
@@ -1519,31 +1515,6 @@ app.get('/api/public-config', (_req, res) => {
     });
   }
   return res.json({ ok: true, ...cfg });
-});
-
-app.post('/api/cabinet/request-login-link', async (req, res) => {
-  try {
-    if (!isCabinetConfigured()) {
-      return res.status(503).json({ ok: false, error: 'cabinet_not_configured' });
-    }
-    const email = String(req.body?.email ?? '').trim();
-    const redirectTo = String(req.body?.redirectTo ?? '').trim();
-    const result = await requestCabinetLoginLink(email, redirectTo, process.env);
-    if (!result.ok) {
-      const status =
-        result.error === 'rate_limit' || result.error === 'hourly_limit' ? 429 : 400;
-      return res.status(status).json({
-        ok: false,
-        error: result.error,
-        retryAfterSec: result.retryAfterSec,
-        message: cabinetLoginLinkErrorMessage(result.error, result),
-      });
-    }
-    return res.json({ ok: true });
-  } catch (e) {
-    console.error('[api/cabinet/request-login-link]', e);
-    return res.status(500).json({ ok: false, error: 'server_error' });
-  }
 });
 
 app.post('/api/cabinet/cancel-subscription', async (req, res) => {
