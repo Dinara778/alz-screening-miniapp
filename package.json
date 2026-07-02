@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "self-test:cognitive": "vitest run src/debug/cognitiveSelfTest.test.ts",
-    "payments-server": "npm --prefix server run start"
+    "payments-server": "npm --prefix server run start",
+    "deploy": "node scripts/deploy.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",
