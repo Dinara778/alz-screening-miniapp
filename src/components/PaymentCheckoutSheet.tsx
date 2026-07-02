@@ -39,12 +39,12 @@ export const PaymentCheckoutSheet = ({
   const [payBusy, setPayBusy] = useState(false);
   const [awaitingReturn, setAwaitingReturn] = useState(false);
   const [alreadyPaidHelpOpen, setAlreadyPaidHelpOpen] = useState(false);
+  const [alreadyPaidHelpAcknowledged, setAlreadyPaidHelpAcknowledged] = useState(false);
   const [alreadyPaid, setAlreadyPaid] = useState(() =>
     isReportUnlockProduct(product) ? isReportPaidUnlocked(sessionId, false) : false,
   );
   const [sheetNotice, setSheetNotice] = useState<string | null>(null);
   const [checkBusy, setCheckBusy] = useState(false);
-  const [alreadyPaidHelpUnderstood, setAlreadyPaidHelpUnderstood] = useState(false);
   const payInFlightRef = useRef(false);
 
   const showNotice = useCallback(
@@ -80,7 +80,7 @@ export const PaymentCheckoutSheet = ({
       return;
     }
     setAlreadyPaidHelpOpen(false);
-    setAlreadyPaidHelpUnderstood(false);
+    setAlreadyPaidHelpAcknowledged(false);
     setPayBusy(false);
     setCheckBusy(false);
     setAwaitingReturn(false);
@@ -231,7 +231,7 @@ export const PaymentCheckoutSheet = ({
   const handleAlreadyPaidHelp = () => {
     if (!isReportUnlockProduct(product) || payBusy) return;
     showNotice(null);
-    setAlreadyPaidHelpUnderstood(false);
+    setAlreadyPaidHelpAcknowledged(false);
     setAlreadyPaidHelpOpen(true);
   };
 
@@ -292,12 +292,18 @@ export const PaymentCheckoutSheet = ({
       >
         <div
           className={`min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 sm:px-6 ${
-            reportAlreadyPaidHelp ? 'pb-2 pt-4 sm:pt-4' : 'pb-3 pt-5 sm:pt-6'
+            reportAlreadyPaidHelp ? 'pb-2 pt-4' : 'pb-3 pt-5 sm:pt-6'
           }`}
         >
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-emerald-300/90">Оплата</p>
+              <p
+                className={`font-medium uppercase tracking-wide text-emerald-300/90 ${
+                  reportAlreadyPaidHelp ? 'text-[10px]' : 'text-xs'
+                }`}
+              >
+                Оплата
+              </p>
               <h2
                 id="payment-checkout-title"
                 className={
@@ -324,8 +330,8 @@ export const PaymentCheckoutSheet = ({
           </div>
 
           {reportAlreadyPaidHelp ? (
-            <div className="mt-3 space-y-2.5">
-              <p className="text-xs leading-relaxed text-white/88 sm:text-[0.8125rem]">
+            <div className="mt-2.5 space-y-2">
+              <p className="text-xs leading-snug text-white/85">
                 {meta.alreadyPaidHelpMain}{' '}
                 <a
                   href={TELEGRAM_SUPPORT_URL}
@@ -344,14 +350,7 @@ export const PaymentCheckoutSheet = ({
                 </a>
                 .
               </p>
-              <p className="text-[11px] leading-relaxed text-white/50 sm:text-xs">
-                {meta.alreadyPaidHelpNote}
-              </p>
-              {sheetNotice ? (
-                <p className="text-center text-[11px] leading-relaxed text-amber-200/95 sm:text-xs">
-                  {sheetNotice}
-                </p>
-              ) : null}
+              <p className="text-[11px] leading-snug text-white/50">{meta.alreadyPaidHelpNote}</p>
             </div>
           ) : alreadyPaid && isReportUnlockProduct(product) ? (
             <div className="mt-4 space-y-4">
@@ -401,23 +400,24 @@ export const PaymentCheckoutSheet = ({
         </div>
 
         {reportAlreadyPaidHelp ? (
-          <div className="shrink-0 space-y-2.5 border-t border-white/10 px-5 py-3 sm:px-6">
-            <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+          <div className="shrink-0 space-y-2.5 border-t border-white/10 px-5 py-3 sm:px-6 sm:py-4">
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
               <input
                 type="checkbox"
-                className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-2 border-white/35 bg-transparent accent-emerald-500"
-                checked={alreadyPaidHelpUnderstood}
-                onChange={(e) => setAlreadyPaidHelpUnderstood(e.target.checked)}
+                className="h-4 w-4 shrink-0 cursor-pointer accent-emerald-500"
+                checked={alreadyPaidHelpAcknowledged}
+                onChange={(e) => setAlreadyPaidHelpAcknowledged(e.target.checked)}
               />
-              <span className="text-left text-xs leading-snug text-white/90 sm:text-[0.8125rem]">
-                Я понял/а
-              </span>
+              <span className="text-sm text-white/90">Я понял/а</span>
             </label>
+            {sheetNotice ? (
+              <p className="text-center text-[11px] leading-snug text-amber-200/95">{sheetNotice}</p>
+            ) : null}
             <Button
               type="button"
               variant="sell"
-              disabled={checkBusy || !alreadyPaidHelpUnderstood}
-              className={`relative z-20 touch-manipulation py-3 disabled:opacity-50 ${REPORT_TARIFF_PAYMENT_BUTTON_CLASS}`}
+              disabled={!alreadyPaidHelpAcknowledged || checkBusy}
+              className={`relative z-20 touch-manipulation disabled:opacity-50 ${REPORT_TARIFF_PAYMENT_BUTTON_CLASS}`}
               onClick={() => void handleCheckPayment()}
             >
               {checkBusy ? 'Проверяем оплату…' : meta.alreadyPaidCheckLabel}
@@ -427,8 +427,8 @@ export const PaymentCheckoutSheet = ({
               variant="secondary"
               className="report-tariff-cta mt-0 w-full shrink-0 py-3 text-sm font-semibold"
               onClick={() => {
-                setAlreadyPaidHelpUnderstood(false);
                 setAlreadyPaidHelpOpen(false);
+                setAlreadyPaidHelpAcknowledged(false);
               }}
             >
               Назад
