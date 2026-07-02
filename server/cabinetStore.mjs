@@ -7,6 +7,7 @@ import {
   getPublicSupabaseConfig,
   isSupabaseConfigured,
   upsertUserByEmail,
+  userHasSubscriptionRecord,
 } from './supabaseStore.mjs';
 
 const HISTORY_ALL_LIMIT = 200;
@@ -35,8 +36,23 @@ function isSubscriptionAccessActive(subscription) {
   return Number.isFinite(end.getTime()) && end >= new Date() && subscription.status !== 'inactive';
 }
 
+function isSubscriptionPayment(p) {
+  return (
+    p.type === 'subscription' ||
+    p.product === 'subscription_1m' ||
+    p.product === 'subscription_3m'
+  );
+}
+
+function filterCabinetPayments(payments, hasSubscriptionRecord) {
+  return (payments ?? []).filter((p) => {
+    if (isSubscriptionPayment(p)) return hasSubscriptionRecord;
+    return true;
+  });
+}
+
 function subscriptionPlanLabel(payments) {
-  const subPayment = (payments ?? []).find((p) => p.type === 'subscription' && p.status === 'paid');
+  const subPayment = (payments ?? []).find((p) => isSubscriptionPayment(p) && p.status === 'paid');
   if (subPayment?.product === 'subscription_3m') return 'Подписка «Corta» — 3 месяца';
   if (subPayment?.product === 'subscription_1m') return 'Подписка Corta — 1 месяц';
   return 'Подписка Corta';
@@ -164,7 +180,8 @@ export async function getCabinetData(email, env = process.env) {
     return null;
   }
 
-  const payments = paymentsRes.data ?? [];
+  const hasSubscriptionRecord = await userHasSubscriptionRecord({ userId: user.id }, env);
+  const payments = filterCabinetPayments(paymentsRes.data ?? [], hasSubscriptionRecord);
   const subscription = await loadCurrentSubscription(supabase, user.id);
   const history7d = enrichAssessments(history7dRes.data, subscription, payments);
   const historyAll = enrichAssessments(historyAllRes.data, subscription, payments);
@@ -235,7 +252,8 @@ export async function getCabinetReportSession(email, sessionId, env = process.en
     return { error: 'no_report_data' };
   }
 
-  const payments = paymentsRes.data ?? [];
+  const hasSubscriptionRecord = await userHasSubscriptionRecord({ userId: user.id }, env);
+  const payments = filterCabinetPayments(paymentsRes.data ?? [], hasSubscriptionRecord);
   const subscription = await loadCurrentSubscription(supabase, user.id);
   const canOpen = canOpenReportForSession(sid, subscription, payments);
   if (!canOpen) {

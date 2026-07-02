@@ -1,26 +1,22 @@
 import { REPORT_TARIFFS, SUBSCRIPTION_CANCEL_HINT } from '../constants/reportTariffs';
 import type { ReportUnlockProduct } from '../utils/paymentProductTypes';
 import { Button } from './Button';
-import { SameEmailHint } from './SameEmailHint';
 
 type Props = {
   onSelect: (product: ReportUnlockProduct) => void;
   busyProduct?: ReportUnlockProduct | null;
   reportUnlocked?: boolean;
-  payerEmail?: string | null;
 };
 
 export const ReportTariffOffer = ({
   onSelect,
   busyProduct,
   reportUnlocked,
-  payerEmail,
 }: Props) => (
   <div className="mx-auto w-full max-w-md space-y-4">
     <p className="app-heading leading-snug text-white/95">
       Выберите формат доступа к расширенному отчёту
     </p>
-    <SameEmailHint email={payerEmail} />
 
     {REPORT_TARIFFS.map((tariff) => (
       <article

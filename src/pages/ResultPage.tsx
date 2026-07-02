@@ -526,7 +526,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         >
           <ReportTariffOffer
             reportUnlocked={reportUnlocked}
-            payerEmail={latestResult.participant?.email ?? participant?.email}
             onSelect={(product) => openCheckout(product)}
           />
         </CalmScreen>

@@ -185,6 +185,38 @@ export async function findUserIdBySessionId(sessionId, env = process.env) {
   return data?.user_id ?? null;
 }
 
+export async function userHasSubscriptionRecord({ userId, email }, env = process.env) {
+  const supabase = getClient(env);
+  if (!supabase) return false;
+
+  let uid = userId ?? null;
+  if (!uid) {
+    const normalized = normalizeEmail(email);
+    if (!normalized) return false;
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', normalized)
+      .maybeSingle();
+    if (userError) {
+      console.error('[supabase] subscription record check user', userError.message);
+      return false;
+    }
+    uid = user?.id ?? null;
+  }
+  if (!uid) return false;
+
+  const { count, error } = await supabase
+    .from('subscriptions')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', uid);
+  if (error) {
+    console.error('[supabase] subscription record check', error.message);
+    return false;
+  }
+  return (count ?? 0) > 0;
+}
+
 export async function findPaidProductPayment({ sessionId, email, product }, env = process.env) {
   const supabase = getClient(env);
   if (!supabase) return null;
@@ -192,6 +224,8 @@ export async function findPaidProductPayment({ sessionId, email, product }, env 
   const prod = String(product ?? '').trim();
   const normalizedEmail = normalizeEmail(email);
   if (!prod) return null;
+
+  let payment = null;
 
   if (sid) {
     const { data, error } = await supabase
@@ -206,37 +240,53 @@ export async function findPaidProductPayment({ sessionId, email, product }, env 
     if (error) {
       console.error('[supabase] find payment by session', error.message);
     } else if (data) {
-      return data;
+      payment = data;
     }
   }
 
-  if (!normalizedEmail) return null;
+  if (!payment && normalizedEmail) {
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', normalizedEmail)
+      .maybeSingle();
+    if (userError) {
+      console.error('[supabase] find user for payment', userError.message);
+      return null;
+    }
+    if (!user?.id) return null;
 
-  const { data: user, error: userError } = await supabase
-    .from('users')
-    .select('id')
-    .eq('email', normalizedEmail)
-    .maybeSingle();
-  if (userError) {
-    console.error('[supabase] find user for payment', userError.message);
-    return null;
+    const { data, error } = await supabase
+      .from('payments')
+      .select('id, session_id, product, external_id, created_at')
+      .eq('user_id', user.id)
+      .eq('product', prod)
+      .eq('status', 'paid')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      console.error('[supabase] find payment by email', error.message);
+      return null;
+    }
+    payment = data ?? null;
   }
-  if (!user?.id) return null;
 
-  const { data, error } = await supabase
-    .from('payments')
-    .select('id, session_id, product, external_id, created_at')
-    .eq('user_id', user.id)
-    .eq('product', prod)
-    .eq('status', 'paid')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) {
-    console.error('[supabase] find payment by email', error.message);
-    return null;
+  if (!payment) return null;
+
+  // Оплата подписки без строки в subscriptions — ложная запись (счёт без реальной оплаты).
+  if (isSubscriptionProduct(prod)) {
+    let hasRecord = false;
+    if (normalizedEmail) {
+      hasRecord = await userHasSubscriptionRecord({ email: normalizedEmail }, env);
+    } else if (sid) {
+      const uid = await findUserIdBySessionId(sid, env);
+      if (uid) hasRecord = await userHasSubscriptionRecord({ userId: uid }, env);
+    }
+    if (!hasRecord) return null;
   }
-  return data ?? null;
+
+  return payment;
 }
 
 export async function reassignPaidPaymentSession(paymentId, sessionId, env = process.env) {

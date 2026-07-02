@@ -5,7 +5,6 @@ import { CalmCardShell } from './CalmCardShell';
 import { TELEGRAM_SUPPORT_URL } from './SupportFooter';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
 import { isReportUnlockProduct } from '../utils/paymentProductTypes';
-import { SameEmailHint } from './SameEmailHint';
 import { isStandaloneWeb } from '../utils/runtime';
 import { openWebPayment, recoverRobokassaPaymentFromUrl, verifyWebProductPayment } from '../utils/webPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
@@ -368,9 +367,6 @@ export const PaymentCheckoutSheet = ({
             </div>
           ) : (
             <div className="mt-4 space-y-4">
-              {isReportUnlockProduct(product) ? (
-                <SameEmailHint email={payerEmail} />
-              ) : null}
               {meta.subtitle ? (
                 <p className="calm-body text-sm text-white/80">{meta.subtitle}</p>
               ) : null}

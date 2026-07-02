@@ -1,3 +1,4 @@
+import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { useCabinetSession } from '../utils/cabinetApi';
 
 type Props = {
@@ -13,7 +14,9 @@ export const CabinetAccessLink = ({ className = '', variant = 'link' }: Props) =
   const loggedIn = Boolean(accessToken && email);
   const label = loggedIn ? email! : 'Войти';
   const baseClass =
-    variant === 'button' ? 'cabinet-access-btn' : 'cabinet-access-link';
+    variant === 'button'
+      ? `cabinet-access-btn ${CTA_BUTTON_CLASS} transition active:scale-[0.98]`
+      : 'cabinet-access-link';
 
   return (
     <a

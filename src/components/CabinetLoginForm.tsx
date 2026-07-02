@@ -65,10 +65,10 @@ export const CabinetLoginForm = ({
     <div className="cabinet-card cabinet-card-narrow">
       <h1>{title}</h1>
       <p className="cabinet-muted">{subtitle}</p>
-      <SameEmailHint className="mb-3" />
 
       {step === 'email' ? (
         <>
+          <SameEmailHint className="mb-3" />
           <input
             className="cabinet-input"
             type="email"
