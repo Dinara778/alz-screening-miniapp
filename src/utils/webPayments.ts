@@ -15,7 +15,11 @@ import {
   rememberRobokassaPendingSessionId,
 } from './paymentReturn';
 import { stripPaymentQueryFromUrl } from './appReload';
-import { isSubscriptionActiveLocal, setSubscriptionUntil } from './subscriptionAccess';
+import {
+  clearSubscriptionAccess,
+  isSubscriptionActiveLocal,
+  setSubscriptionFromServer,
+} from './subscriptionAccess';
 
 export type WebPaymentResult =
   | { status: 'already_paid' }
@@ -47,11 +51,15 @@ export async function syncSubscriptionAccessFromServer(
       body: JSON.stringify({ email: normalized }),
     });
     const data = (await res.json()) as { active?: boolean; endDate?: string | null };
-    if (res.ok && data.active && data.endDate) {
-      setSubscriptionUntil(data.endDate);
-      return true;
+    if (res.ok) {
+      if (data.active && data.endDate) {
+        setSubscriptionFromServer(data.endDate);
+        return true;
+      }
+      clearSubscriptionAccess();
+      return false;
     }
-    return false;
+    return isSubscriptionActiveLocal();
   } catch {
     return isSubscriptionActiveLocal();
   }
@@ -63,7 +71,7 @@ function markWebProductPaid(
   subscriptionUntil?: string,
 ): void {
   localStorage.setItem(reportPaidStorageKey(sessionId), '1');
-  if (subscriptionUntil) setSubscriptionUntil(subscriptionUntil);
+  if (subscriptionUntil) setSubscriptionFromServer(subscriptionUntil);
 }
 
 export async function openWebPayment(

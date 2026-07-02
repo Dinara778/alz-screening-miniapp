@@ -68,6 +68,10 @@ export async function getSupabaseBrowser(): Promise<SupabaseClient> {
   return browserClient;
 }
 
+export function resetSupabaseBrowserClient(): void {
+  browserClient = null;
+}
+
 /** Обработка возврата по старой magic-link (?code= / #access_token) без поломки SPA. */
 export async function completeCabinetAuthFromUrl(): Promise<boolean> {
   if (typeof window === 'undefined') return false;

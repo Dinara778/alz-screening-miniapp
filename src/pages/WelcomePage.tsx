@@ -19,6 +19,7 @@ import {
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import { ensureSupabaseBrowserConfig, getSupabaseBrowser } from '../utils/supabaseBrowser';
 import { syncFunnelToSupabase } from '../utils/supabaseFunnelSync';
+import { syncSubscriptionAccessFromServer } from '../utils/webPayments';
 
 type Props = {
   visitId: string;
@@ -65,6 +66,7 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
       if (cancelled) return;
       applyProfileToForm(profile);
       setResumeProfile(profile);
+      void syncSubscriptionAccessFromServer(profile.email);
     };
 
     const local = loadLocalParticipantProfile();

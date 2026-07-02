@@ -3,6 +3,7 @@
  */
 import { createClient } from '@supabase/supabase-js';
 import ws from 'ws';
+import { isWebPaidForSession } from './webPaidStore.mjs';
 
 if (typeof globalThis.WebSocket === 'undefined') {
   globalThis.WebSocket = ws;
@@ -284,6 +285,15 @@ export async function findPaidProductPayment({ sessionId, email, product }, env 
       if (uid) hasRecord = await userHasSubscriptionRecord({ userId: uid }, env);
     }
     if (!hasRecord) return null;
+  }
+
+  if (prod === 'full_report') {
+    const paySid = String(payment.session_id ?? sid ?? '').trim();
+    const webPaid = paySid ? isWebPaidForSession(paySid, 'full_report').paid : false;
+    const sub = normalizedEmail ? await findActiveSubscriptionByEmail(normalizedEmail, env) : null;
+    if (sub?.end_date) return payment;
+    if (webPaid && paySid && sid && paySid === sid) return payment;
+    return null;
   }
 
   return payment;

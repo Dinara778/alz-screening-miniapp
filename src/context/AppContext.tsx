@@ -31,7 +31,7 @@ import {
   recoverFullReportAccess,
   recoverProdamusPaymentFromUrl,
 } from '../utils/telegramPayments';
-import { recoverRobokassaPaymentFromUrl } from '../utils/webPayments';
+import { recoverRobokassaPaymentFromUrl, syncSubscriptionAccessFromServer } from '../utils/webPayments';
 import { consumeReopenPaidReportSessionId, markReopenPaidReportAfterReload } from '../utils/reportReload';
 import { useAppExitAnalytics } from '../hooks/useAppExitAnalytics';
 import {
@@ -42,7 +42,6 @@ import {
 } from '../utils/sessionFunnelAnalytics';
 import { sendSessionToSheets } from '../utils/sheetsWebhook';
 import { sendSessionToSupabase } from '../utils/supabaseSync';
-import { syncSubscriptionAccessFromServer } from '../utils/webPayments';
 import { syncFunnelToSupabase } from '../utils/supabaseFunnelSync';
 import { saveSavedParticipantProfile } from '../utils/participantProfileStore';
 
@@ -234,6 +233,12 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       })
       .catch(() => setServerPaymentsReady(false));
   }, []);
+
+  useEffect(() => {
+    const email = participant?.email?.trim().toLowerCase();
+    if (!email?.includes('@')) return;
+    void syncSubscriptionAccessFromServer(email);
+  }, [participant?.email]);
 
   const openResultAtStep = useCallback((step: ResultEntryStep) => {
     setResultEntryStep(step);

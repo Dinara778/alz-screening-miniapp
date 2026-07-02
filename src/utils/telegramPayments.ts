@@ -11,7 +11,7 @@ import {
 import { isStandaloneWeb } from './runtime';
 import { recoverRobokassaPaymentFromUrl, verifyWebReportPayment } from './webPayments';
 import { arePaymentsActive, isDevPaymentBypass, isPaymentsEnabled } from './paymentStub';
-import { isSubscriptionActiveLocal, setSubscriptionUntil } from './subscriptionAccess';
+import { isSubscriptionActiveLocal, setSubscriptionFromServer } from './subscriptionAccess';
 
 export type { TelegramInvoiceProduct } from './paymentProductTypes';
 
@@ -154,7 +154,7 @@ function applyPaidOrder(data: PaidOrderPayload): ProdamusPaymentRecovery | null 
   sessionStorage.removeItem(prodamusPendingOrderKey(data.sessionId));
   if (isReportUnlockProduct(data.product ?? '')) {
     localStorage.setItem(reportPaidStorageKey(data.sessionId), '1');
-    if (data.subscriptionUntil) setSubscriptionUntil(data.subscriptionUntil);
+    if (data.subscriptionUntil) setSubscriptionFromServer(data.subscriptionUntil);
     return {
       paid: true,
       product: (data.product as ProdamusPaymentRecovery['product']) ?? 'full_report',
@@ -660,7 +660,17 @@ export async function recoverFullReportAccess(
   payerEmail?: string,
 ): Promise<RecoverReportResult> {
   if (isReportPaidInStorage(sessionId)) {
-    return { ok: true, sessionId };
+    if (isStandaloneWeb()) {
+      const verified = await verifyWebReportPayment(sessionId, payerEmail);
+      if (verified.ok) return unlockReportSession(verified.sessionId);
+      try {
+        localStorage.removeItem(reportPaidStorageKey(sessionId));
+      } catch {
+        /* ignore */
+      }
+    } else {
+      return { ok: true, sessionId };
+    }
   }
 
   const fromRobokassa = await recoverRobokassaPaymentFromUrl();

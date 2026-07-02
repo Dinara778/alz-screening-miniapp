@@ -10,7 +10,7 @@ import {
   type CabinetData,
   type CabinetPayment,
 } from '../utils/cabinetApi';
-import { setSubscriptionUntil } from '../utils/subscriptionAccess';
+import { setSubscriptionFromServer, clearSubscriptionAccess } from '../utils/subscriptionAccess';
 
 function fmtDate(iso: string): string {
   try {
@@ -91,6 +91,7 @@ export const CabinetPage = () => {
   const [data, setData] = useState<CabinetData | null>(null);
   const [loadError, setLoadError] = useState('');
   const [cancelBusy, setCancelBusy] = useState(false);
+  const [logoutBusy, setLogoutBusy] = useState(false);
   const [cancelMsg, setCancelMsg] = useState('');
 
   useEffect(() => {
@@ -99,16 +100,28 @@ export const CabinetPage = () => {
       .then((cabinet) => {
         setData(cabinet);
         if (cabinet.subscription?.endDate) {
-          setSubscriptionUntil(cabinet.subscription.endDate);
+          setSubscriptionFromServer(cabinet.subscription.endDate);
+        } else {
+          clearSubscriptionAccess();
         }
       })
       .catch((e) => setLoadError(e instanceof Error ? e.message : 'Ошибка загрузки'));
   }, [ready, accessToken]);
 
   const onLogout = async () => {
-    await signOutCabinet();
-    setData(null);
-    window.location.href = '/cabinet';
+    if (logoutBusy) return;
+    setLogoutBusy(true);
+    setLoadError('');
+    try {
+      await signOutCabinet();
+      clearSubscriptionAccess();
+      setData(null);
+      await refresh();
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : 'Не удалось выйти');
+    } finally {
+      setLogoutBusy(false);
+    }
   };
 
   const onCancelSubscription = async () => {
@@ -182,8 +195,13 @@ export const CabinetPage = () => {
             <h1>Личный кабинет</h1>
             <p className="cabinet-muted">{email ?? data?.email}</p>
           </div>
-          <button type="button" className="cabinet-btn-secondary" onClick={() => void onLogout()}>
-            Выйти
+          <button
+            type="button"
+            className="cabinet-btn-secondary"
+            disabled={logoutBusy}
+            onClick={() => void onLogout()}
+          >
+            {logoutBusy ? 'Выход…' : 'Выйти'}
           </button>
         </header>
 

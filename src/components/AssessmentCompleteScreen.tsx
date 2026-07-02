@@ -33,10 +33,10 @@ export const AssessmentCompleteScreen = ({ onDone }: Props) => (
     footer={
       <div className="space-y-3">
         <Button type="button" className={CTA_BUTTON_CLASS} onClick={onDone}>
-          Готово
+          Я вернусь!
         </Button>
         <CabinetAccessLink variant="button" />
-        <SupportFooter showDeveloperCredit={false} />
+        <SupportFooter showDeveloperCredit={false} showCabinetAccess={false} />
       </div>
     }
   >

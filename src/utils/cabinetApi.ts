@@ -1,7 +1,7 @@
 import type { ParticipantProfile, SessionResult } from '../types';
 import { getPaymentsApiUrl } from './telegramPayments';
 import { parseParticipantProfile } from './participantProfileStore';
-import { getCabinetRedirectUrl, getSupabaseBrowser } from './supabaseBrowser';
+import { getCabinetRedirectUrl, getSupabaseBrowser, resetSupabaseBrowserClient } from './supabaseBrowser';
 
 export type CabinetAssessment = {
   sessionId: string;
@@ -140,7 +140,9 @@ export async function verifyLoginCode(email: string, code: string): Promise<void
 
 export async function signOutCabinet(): Promise<void> {
   const supabase = await getSupabaseBrowser();
-  await supabase.auth.signOut();
+  const { error } = await supabase.auth.signOut({ scope: 'global' });
+  resetSupabaseBrowserClient();
+  if (error) throw error;
 }
 
 export { useCabinetSession } from './useCabinetSession';
