@@ -109,6 +109,32 @@ export async function fetchCabinetParticipantProfile(
   return parseParticipantProfile(json.profile);
 }
 
+export function formatCabinetAuthError(error: unknown): string {
+  if (!error) return 'Не удалось отправить ссылку. Попробуйте позже.';
+  if (typeof error === 'string' && error.trim()) return error.trim();
+
+  const record =
+    typeof error === 'object' && error !== null
+      ? (error as { message?: string; code?: string; status?: number })
+      : null;
+  const message = record?.message?.trim() ?? '';
+  const code = record?.code?.trim() ?? '';
+
+  if (/rate limit|over_email_send_rate_limit/i.test(`${code} ${message}`)) {
+    return 'Слишком частые запросы. Подождите 1–2 минуты и попробуйте снова.';
+  }
+  if (/smtp|sending confirmation email|error sending/i.test(message)) {
+    return 'Письмо не отправилось. Проверьте SMTP в Supabase (Яндекс: smtp.yandex.ru, пароль приложения для «Почта»).';
+  }
+  if (/redirect|url configuration|invalid.*url/i.test(message)) {
+    return 'Неверный адрес возврата. В Supabase добавьте https://cortaapp.ru/cabinet в Redirect URLs.';
+  }
+  if (message) return message;
+
+  if (error instanceof Error && error.message.trim()) return error.message.trim();
+  return 'Не удалось отправить ссылку. Проверьте email и настройки почты в Supabase.';
+}
+
 export async function requestMagicLink(email: string): Promise<void> {
   const supabase = await getSupabaseBrowser();
   const { error } = await supabase.auth.signInWithOtp({
@@ -118,7 +144,7 @@ export async function requestMagicLink(email: string): Promise<void> {
       emailRedirectTo: getCabinetRedirectUrl(),
     },
   });
-  if (error) throw error;
+  if (error) throw new Error(formatCabinetAuthError(error));
 }
 
 /** @deprecated Используйте requestMagicLink */
