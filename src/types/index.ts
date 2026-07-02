@@ -106,8 +106,7 @@ export type AppStage =
   | 'face-test-instruction'
   | 'face-test'
   | 'result'
-  | 'full-report'
-  | 'consultation-request';
+  | 'full-report';
 
 export type ReportFlowStep = 'ready' | 'report' | 'learned' | 'upsell';
 

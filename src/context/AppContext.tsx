@@ -26,7 +26,6 @@ import {
 import { MID_TEST_STAGES } from '../utils/storage';
 import { pickStudyWordList } from '../utils/generateStimuli';
 import {
-  consultationPaidStorageKey,
   getPaidReportSessionId,
   getPaymentsApiUrl,
   recoverFullReportAccess,
@@ -46,7 +45,6 @@ import { sendSessionToSupabase } from '../utils/supabaseSync';
 import { syncSubscriptionAccessFromServer } from '../utils/webPayments';
 import { syncFunnelToSupabase } from '../utils/supabaseFunnelSync';
 
-type ConsultationReturnStage = 'result' | 'full-report';
 
 const FUNNEL_MILESTONE_STAGES = new Set([
   'corta-intro',
@@ -54,11 +52,10 @@ const FUNNEL_MILESTONE_STAGES = new Set([
   'word-study',
   'result',
   'full-report',
-  'consultation-request',
 ]);
 
-/** С какого шага открыть ResultPage (например, продажа сессии после отчёта). */
-export type ResultEntryStep = 'hub' | 'session-offer' | 'complete';
+/** С какого шага открыть ResultPage после расширенного отчёта. */
+export type ResultEntryStep = 'complete';
 
 type FaceAnswer = { faceId: number; selected: string; correct: string };
 
@@ -121,7 +118,7 @@ function purgeStalePostTestProgress(): void {
     const raw = localStorage.getItem('alz_progress_v1');
     if (!raw) return;
     const parsed = JSON.parse(raw) as { stage?: AppStage };
-    if (parsed?.stage === 'result' || parsed?.stage === 'full-report' || parsed?.stage === 'consultation-request') {
+    if (parsed?.stage === 'result' || parsed?.stage === 'full-report') {
       clearProgress();
     }
   } catch {
@@ -190,8 +187,6 @@ type AppState = {
   /** Новое прохождение теста (профиль сохраняется; отчёт — для новой сессии). */
   retakeTest: () => void;
   saveResult: (r: SessionResult) => void;
-  consultationReturnTo: ConsultationReturnStage | null;
-  setConsultationReturnTo: (v: ConsultationReturnStage | null) => void;
   resultEntryStep: ResultEntryStep | null;
   openResultAtStep: (step: ResultEntryStep) => void;
   clearResultEntryStep: () => void;
@@ -223,7 +218,6 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [latestResult, setLatestResult] = useState<SessionResult | null>(null);
   const [sessionSeed, setSessionSeed] = useState(b.sessionSeed);
   const [participant, setParticipant] = useState<ParticipantProfile | null>(b.participant);
-  const [consultationReturnTo, setConsultationReturnTo] = useState<ConsultationReturnStage | null>(null);
   const [resultEntryStep, setResultEntryStep] = useState<ResultEntryStep | null>(null);
   const [analyticsScreenDetail, setAnalyticsScreenDetail] = useState<string | null>(null);
   const [studyWordList, setStudyWordList] = useState<string[]>(b.studyWordList);
@@ -271,7 +265,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    if (stage !== 'result' && stage !== 'full-report' && stage !== 'consultation-request') return;
+    if (stage !== 'result' && stage !== 'full-report') return;
     if (latestResult) return;
     const session = loadSessionFromHistory(loadProgress()?.latestSessionId ?? loadLastSessionId());
     if (session) setLatestResult(session);
@@ -346,12 +340,6 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       }
       if (isReportOfferProduct(recovery.product)) {
         setStage('full-report');
-        return;
-      }
-      if (recovery.product === 'consultation') {
-        localStorage.setItem(consultationPaidStorageKey(recovery.sessionId), '1');
-        window.dispatchEvent(new Event('consultation-paid'));
-        openResultAtStep('session-offer');
       }
     };
     void run();
@@ -431,7 +419,6 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       'word-study',
       'result',
       'full-report',
-      'consultation-request',
     ]),
   ).current;
 
@@ -491,7 +478,6 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     setFaceAnswers([]);
     setLatestResult(null);
     setParticipant(null);
-    setConsultationReturnTo(null);
     setStudyWordList([]);
     setSessionSeed(Date.now());
     clearProgress();
@@ -529,7 +515,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     setStroopTrials([]);
     setFaceAnswers([]);
     setLatestResult(null);
-    setConsultationReturnTo(null);
+    setStudyWordList([]);
     setStage('word-study');
   }, []);
 
@@ -615,8 +601,6 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       beginNewAssessment,
       retakeTest,
       saveResult: saveResultFn,
-      consultationReturnTo,
-      setConsultationReturnTo,
       resultEntryStep,
       openResultAtStep,
       clearResultEntryStep,
@@ -640,7 +624,6 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       history,
       sessionSeed,
       participant,
-      consultationReturnTo,
       resultEntryStep,
       openResultAtStep,
       clearResultEntryStep,

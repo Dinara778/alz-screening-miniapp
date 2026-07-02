@@ -256,6 +256,3 @@ export function consumePaymentFailNotice(): boolean {
 }
 
 export const PAYMENT_FAIL_NOTICE_TEXT = 'Оплата не прошла, попробуйте снова';
-
-export const CONSULTATION_PAID_THANKS_TEXT =
-  'Спасибо за оплату! Мы свяжемся с вами в течение 15 минут!';

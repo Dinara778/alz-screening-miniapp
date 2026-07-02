@@ -1,7 +1,6 @@
 import type { TelegramInvoiceProduct } from './paymentProductTypes';
 import { isReportUnlockProduct } from './paymentProductTypes';
 import {
-  consultationPaidStorageKey,
   getPaymentsApiUrl,
   reportPaidStorageKey,
 } from './telegramPayments';
@@ -63,13 +62,8 @@ function markWebProductPaid(
   product: TelegramInvoiceProduct,
   subscriptionUntil?: string,
 ): void {
-  if (isReportUnlockProduct(product)) {
-    localStorage.setItem(reportPaidStorageKey(sessionId), '1');
-    if (subscriptionUntil) setSubscriptionUntil(subscriptionUntil);
-    return;
-  }
-  localStorage.setItem(consultationPaidStorageKey(sessionId), '1');
-  window.dispatchEvent(new Event('consultation-paid'));
+  localStorage.setItem(reportPaidStorageKey(sessionId), '1');
+  if (subscriptionUntil) setSubscriptionUntil(subscriptionUntil);
 }
 
 export async function openWebPayment(

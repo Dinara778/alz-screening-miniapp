@@ -142,8 +142,6 @@ export const isTelegramMiniApp = (): boolean => {
 
 export const reportPaidStorageKey = (sessionId: string) => `report_paid_${sessionId}`;
 
-export const consultationPaidStorageKey = (sessionId: string) => `consultation_paid_${sessionId}`;
-
 type PaidOrderPayload = {
   paid?: boolean;
   product?: string;
@@ -162,11 +160,6 @@ function applyPaidOrder(data: PaidOrderPayload): ProdamusPaymentRecovery | null 
       product: (data.product as ProdamusPaymentRecovery['product']) ?? 'full_report',
       sessionId: data.sessionId,
     };
-  }
-  if (data.product === 'consultation') {
-    localStorage.setItem(consultationPaidStorageKey(data.sessionId), '1');
-    window.dispatchEvent(new CustomEvent('consultation-paid'));
-    return { paid: true, product: 'consultation', sessionId: data.sessionId };
   }
   return null;
 }

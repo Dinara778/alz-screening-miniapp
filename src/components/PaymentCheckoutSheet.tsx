@@ -9,19 +9,16 @@ import { SameEmailHint } from './SameEmailHint';
 import { isStandaloneWeb } from '../utils/runtime';
 import { openWebPayment, recoverRobokassaPaymentFromUrl, verifyWebProductPayment } from '../utils/webPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
+import type { ReportUnlockProduct } from '../utils/paymentProductTypes';
 import {
-  consultationPaidStorageKey,
   isReportPaidUnlocked,
   openTelegramInvoiceForProduct,
-  pollProdamusOrderPaidQuick,
-  prodamusPendingOrderKey,
   verifyReportPaymentOnServer,
-  type TelegramInvoiceProduct,
 } from '../utils/telegramPayments';
 
 type Props = {
   open: boolean;
-  product: TelegramInvoiceProduct;
+  product: ReportUnlockProduct;
   sessionId: string;
   onClose: () => void;
   /** sessionId оплаченного прохождения (для отчёта; может отличаться от текущего). */
@@ -93,46 +90,6 @@ export const PaymentCheckoutSheet = ({
   }, [open, product, sessionId, serverPaymentsReady]);
 
   const payerEmail = participant?.email?.trim();
-
-  const tryConfirmConsultationPaid = useCallback(async (): Promise<boolean> => {
-    if (product !== 'consultation') return false;
-    if (isStandaloneWeb()) {
-      const fromUrl = await recoverRobokassaPaymentFromUrl();
-      if (fromUrl?.product === 'consultation') {
-        setAwaitingReturn(false);
-        onPaid();
-        onClose();
-        return true;
-      }
-      const verified = await verifyWebProductPayment(sessionId, 'consultation');
-      if (verified.ok) {
-        setAwaitingReturn(false);
-        onPaid();
-        onClose();
-        return true;
-      }
-    }
-    const pending = sessionStorage.getItem(prodamusPendingOrderKey(sessionId));
-    if (!pending) return false;
-    const paid = await pollProdamusOrderPaidQuick(pending, sessionId);
-    if (!paid) return false;
-    localStorage.setItem(consultationPaidStorageKey(sessionId), '1');
-    window.dispatchEvent(new Event('consultation-paid'));
-    setAwaitingReturn(false);
-    onPaid();
-    onClose();
-    return true;
-  }, [product, sessionId, onPaid, onClose]);
-
-  useEffect(() => {
-    if (!open || product !== 'consultation') return;
-    const onVis = () => {
-      if (document.visibilityState !== 'visible' || !awaitingReturn) return;
-      void tryConfirmConsultationPaid();
-    };
-    document.addEventListener('visibilitychange', onVis);
-    return () => document.removeEventListener('visibilitychange', onVis);
-  }, [open, product, awaitingReturn, tryConfirmConsultationPaid]);
 
   useEffect(() => {
     if (!open || !isReportUnlockProduct(product)) return;

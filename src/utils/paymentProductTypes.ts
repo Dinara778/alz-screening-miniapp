@@ -1,6 +1,6 @@
 export type ReportUnlockProduct = 'full_report' | 'subscription_1m' | 'subscription_3m';
 
-export type TelegramInvoiceProduct = ReportUnlockProduct | 'consultation';
+export type TelegramInvoiceProduct = ReportUnlockProduct;
 
 export function isReportUnlockProduct(product: string): product is ReportUnlockProduct {
   return (
@@ -15,7 +15,6 @@ export function isSubscriptionProduct(product: string): boolean {
 export function parsePaymentProduct(raw: string | null | undefined): TelegramInvoiceProduct | null {
   if (
     raw === 'full_report' ||
-    raw === 'consultation' ||
     raw === 'subscription_1m' ||
     raw === 'subscription_3m'
   ) {

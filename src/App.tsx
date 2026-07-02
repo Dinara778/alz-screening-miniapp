@@ -9,7 +9,6 @@ import { HistoryPage } from './pages/HistoryPage';
 import { FullReportPage } from './pages/FullReportPage';
 import { ResultPage } from './pages/ResultPage';
 import { TestPage } from './pages/TestPage';
-import { ConsultationRequestPage } from './pages/ConsultationRequestPage';
 import { CortaIntroPage } from './pages/CortaIntroPage';
 import { LegalConsentPage } from './pages/LegalConsentPage';
 import { PersonalDataConsentDocPage } from './pages/PersonalDataConsentDocPage';
@@ -135,7 +134,6 @@ function App() {
           ].includes(app.stage) && <TestPage key={app.sessionSeed} />}
           {app.stage === 'result' && <ResultPage onRestart={app.restartApp} />}
           {app.stage === 'full-report' && <FullReportPage />}
-          {app.stage === 'consultation-request' && <ConsultationRequestPage />}
         </div>
       </div>
       <InstallAppBanner />

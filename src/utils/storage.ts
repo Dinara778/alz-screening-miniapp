@@ -8,7 +8,7 @@ const LAST_SESSION_ID_KEY = 'alz_last_session_id';
 const PROGRESS_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** После теста — не восстанавливаем при открытии / обновлении (пока отключено). */
-const POST_TEST_STAGES = new Set<AppStage>(['result', 'full-report', 'consultation-request']);
+const POST_TEST_STAGES = new Set<AppStage>(['result', 'full-report']);
 
 /** Этапы теста, которые можно сохранять при прохождении (без шагов result/report). */
 export const MID_TEST_STAGES = new Set<AppStage>([

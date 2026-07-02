@@ -12,7 +12,7 @@ export function useHydrateLatestResult() {
 
   useEffect(() => {
     if (latestResult) return;
-    if (stage !== 'result' && stage !== 'full-report' && stage !== 'consultation-request') return;
+    if (stage !== 'result' && stage !== 'full-report') return;
 
     const prog = loadProgress();
     const sid = prog?.latestSessionId ?? loadLastSessionId();

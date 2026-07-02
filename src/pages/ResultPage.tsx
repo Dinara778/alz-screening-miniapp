@@ -5,18 +5,15 @@ import { CalmScreen } from '../components/results/CalmScreen';
 import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { OrganicMetricHalo } from '../components/results/OrganicMetricHalo';
 import { SketchHighlightTitle } from '../components/results/SketchHighlightTitle';
-import { SupportFooter } from '../components/SupportFooter';
-import { AssessmentCompleteScreen } from '../components/AssessmentCompleteScreen';
 import { CabinetAccessLink } from '../components/CabinetAccessLink';
+import { AssessmentCompleteScreen } from '../components/AssessmentCompleteScreen';
 import { scoreAccentFromValue } from '../components/results/scoreAccent';
 import { useApp } from '../context/AppContext';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
 import { getIndexCategory, isIndexDisplayReady } from '../utils/indexCategory';
 import { getFreeIndexInterpretation } from '../utils/freeIndexInterpretation';
 import { formatParticipantFirstName } from '../utils/participantDisplayName';
-import { shareResultWithCard } from '../utils/shareResult';
 import { shouldBypassReportPayment } from '../utils/paymentStub';
-import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
 import {
   INTERPRETATION_LABEL_ABOUT_RESULT,
   INTERPRETATION_LABEL_FEELING,
@@ -31,7 +28,6 @@ import {
 } from '../utils/webPayments';
 import {
   consumePaymentFailNotice,
-  CONSULTATION_PAID_THANKS_TEXT,
   hasPendingRobokassaReturn,
   isReportOfferProduct,
   PAYMENT_FAIL_NOTICE_TEXT,
@@ -40,7 +36,6 @@ import {
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import type { ReportUnlockProduct } from '../utils/paymentProductTypes';
 import {
-  consultationPaidStorageKey,
   isReportPaidUnlocked,
   reportPaidStorageKey,
   recoverProdamusPaymentFromUrl,
@@ -52,16 +47,7 @@ type ResultStep =
   | 'index-detail'
   | 'measured'
   | 'report-offer'
-  | 'complete'
-  | 'hub'
-  | 'session-offer';
-
-const sessionUpsellFeatures = [
-  'Онлайн-расшифровку результатов простым языком с опытным экспертом по когнитивной устойчивости (созвон)',
-  'Персональные рекомендации под вашу ситуацию',
-  'Понимание, что больше всего мешает вашему ресурсу',
-  'План улучшения показателей',
-] as const;
+  | 'complete';
 
 const calmBtnClass = CTA_BUTTON_CLASS;
 const calmBtnGhost =
@@ -112,12 +98,8 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   } = useApp();
   useHydrateLatestResult();
   const [step, setStep] = useState<ResultStep>('index');
-  const [shareNotice, setShareNotice] = useState<string | null>(null);
-  const [shareBusy, setShareBusy] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutProduct, setCheckoutProduct] = useState<ReportUnlockProduct>('full_report');
-  const [sessionCheckoutOpen, setSessionCheckoutOpen] = useState(false);
-  const [sessionPaid, setSessionPaid] = useState(false);
   const [payNotice, setPayNotice] = useState<string | null>(null);
   const [recoverBusy, setRecoverBusy] = useState(false);
   const [reportGateBusy, setReportGateBusy] = useState(false);
@@ -181,12 +163,12 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     if (!consumePaymentFailNotice()) return;
     const failedProduct = peekRobokassaReturnProduct();
     setPayNotice(PAYMENT_FAIL_NOTICE_TEXT);
-    setStep(failedProduct === 'consultation' ? 'session-offer' : 'report-offer');
+    setStep('report-offer');
     void sendAnalyticsEventToSheets({
       eventType: 'payment_cancelled',
       sessionId: latestResult?.id ?? 'unknown',
       stage: 'result',
-      screen: failedProduct === 'consultation' ? 'result/session-offer' : 'result/report-offer',
+      screen: 'result/report-offer',
       participant: participant ?? undefined,
       product: failedProduct,
       channel: 'web',
@@ -197,22 +179,11 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   }, [participant, latestResult?.id]);
 
   useEffect(() => {
-    if (resultEntryStep === 'session-offer') {
-      setStep('session-offer');
-      clearResultEntryStep();
-    } else if (resultEntryStep === 'complete') {
+    if (resultEntryStep === 'complete') {
       setStep('complete');
-      clearResultEntryStep();
-    } else if (resultEntryStep === 'hub') {
-      setStep('hub');
       clearResultEntryStep();
     }
   }, [resultEntryStep, clearResultEntryStep]);
-
-  useEffect(() => {
-    if (!latestResult?.id) return;
-    setSessionPaid(localStorage.getItem(consultationPaidStorageKey(latestResult.id)) === '1');
-  }, [latestResult?.id]);
 
   useEffect(() => {
     if (
@@ -227,23 +198,15 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         (await recoverRobokassaPaymentFromUrl()) ?? (await recoverProdamusPaymentFromUrl());
       if (!recovery?.sessionId) {
         if (hasPaymentReturnInUrl() || hasPendingRobokassaReturn()) {
-          const pendingProduct = peekRobokassaReturnProduct();
           setPayNotice(
             'Оплата ещё не подтвердилась на сервере. Подождите минуту и нажмите «Проверить оплату» — или напишите hello@bookvolon.ru',
           );
-          setStep(isReportOfferProduct(pendingProduct) ? 'report-offer' : 'session-offer');
+          setStep('report-offer');
         }
         return;
       }
       const session = loadSessionFromHistory(recovery.sessionId);
       if (session) setLatestResult(session);
-      if (recovery.product === 'consultation') {
-        localStorage.setItem(consultationPaidStorageKey(recovery.sessionId), '1');
-        window.dispatchEvent(new Event('consultation-paid'));
-        setSessionPaid(true);
-        setStep('session-offer');
-        return;
-      }
       if (isReportOfferProduct(recovery.product)) {
         localStorage.setItem(reportPaidStorageKey(recovery.sessionId), '1');
         setStage('full-report');
@@ -280,7 +243,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     latestResult.participant?.name ?? participant?.name,
   );
   const accent = indexDisplayReady ? indexCategory.color : scoreAccentFromValue(a.index.value);
-  const reportPriceRub = PAYMENT_PRODUCTS.full_report.priceRub;
 
   const measuredRows = [
     {
@@ -300,24 +262,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       score: a.index.value,
     },
   ];
-
-  const handleShare = async () => {
-    setShareNotice(null);
-    setShareBusy(true);
-    try {
-      const mode = await shareResultWithCard({ indexValue: a.index.value, accent });
-      if (mode === 'download_and_telegram') {
-        setShareNotice('Картинка сохранена — прикрепите её в чат; ссылка на бота откроется отдельно');
-      } else if (mode === 'clipboard') {
-        setShareNotice('Картинка сохранена, ссылка на бота скопирована');
-      }
-    } catch (e) {
-      if ((e as Error).name === 'AbortError') return;
-      setShareNotice('Не удалось поделиться');
-    } finally {
-      setShareBusy(false);
-    }
-  };
 
   const reportUnlocked = useMemo(
     () => isReportPaidUnlocked(latestResult.id, serverPaymentsReady),
@@ -355,14 +299,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       if (fromUrl?.sessionId) {
         const session = loadSessionFromHistory(fromUrl.sessionId);
         if (session) setLatestResult(session);
-        if (fromUrl.product === 'consultation') {
-          localStorage.setItem(consultationPaidStorageKey(fromUrl.sessionId), '1');
-          window.dispatchEvent(new Event('consultation-paid'));
-          setSessionPaid(true);
-          setStep('session-offer');
-          setPayNotice(null);
-          return;
-        }
         if (isReportOfferProduct(fromUrl.product)) {
           localStorage.setItem(reportPaidStorageKey(fromUrl.sessionId), '1');
           setStage('full-report');
@@ -399,26 +335,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     setCheckoutProduct(product);
     setPayNotice(null);
     setCheckoutOpen(true);
-  };
-
-  const openSessionCheckout = () => {
-    setPayNotice(null);
-    setSessionCheckoutOpen(true);
-  };
-
-  const markSessionPaid = () => {
-    localStorage.setItem(consultationPaidStorageKey(latestResult.id), '1');
-    window.dispatchEvent(new Event('consultation-paid'));
-    setSessionPaid(true);
-    setSessionCheckoutOpen(false);
-    void sendAnalyticsEventToSheets({
-      eventType: 'consultation_paid',
-      sessionId: latestResult.id,
-      stage: 'result',
-      screen: 'result/session-offer',
-      participant: participant ?? undefined,
-      product: 'consultation',
-    }).catch(() => {});
   };
 
   const reportCheckoutSheet = (
@@ -619,153 +535,9 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     );
   }
 
-  if (step === 'session-offer') {
-    return (
-      <>
-        <CalmScreen
-          contentAlign="readable"
-          footer={
-            <div className="flex flex-col gap-3">
-              {sessionPaid ? (
-                <Button type="button" className={calmBtnClass} onClick={() => setStep('hub')}>
-                  Вернуться
-                </Button>
-              ) : (
-                <>
-                  {!sessionPaid && (hasPaymentReturnInUrl() || hasPendingRobokassaReturn()) ? (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className={calmBtnGhost}
-                      disabled={recoverBusy}
-                      onClick={() => void retryPaymentRecovery()}
-                    >
-                      {recoverBusy ? 'Проверяем оплату…' : 'Проверить оплату сессии'}
-                    </Button>
-                  ) : null}
-                  <p className="text-center text-sm leading-relaxed text-white/55">
-                    После оформления заказа мы с вами свяжемся в течение 15 минут.
-                  </p>
-                  <Button type="button" variant="sell" className={calmBtnClass} onClick={openSessionCheckout}>
-                    Купить сессию - 5 490 ₽
-                  </Button>
-                  <button type="button" className={calmBtnGhost} onClick={() => setStep('hub')}>
-                    Назад к результатам
-                  </button>
-                </>
-              )}
-              {payNotice ? (
-                <p className="text-center text-xs leading-relaxed text-amber-200/90">{payNotice}</p>
-              ) : null}
-            </div>
-          }
-        >
-          <div className="mx-auto w-full max-w-md results-prose space-y-5">
-            {sessionPaid ? (
-              <p className="text-lg font-semibold leading-relaxed text-emerald-200">
-                {CONSULTATION_PAID_THANKS_TEXT}
-              </p>
-            ) : (
-              <>
-                <SketchHighlightTitle accent={accent} generousOutline tuckBottomOutline className="mb-3">
-                  Разобрать результаты с экспертом
-                </SketchHighlightTitle>
-                <p className="results-body">
-                  30-минутная сессия по вашему когнитивному профилю с экспертом по когнитивной устойчивости.
-                </p>
-                <div className="calm-inset space-y-3">
-                  <p className="text-sm font-semibold text-white/90 sm:text-base">Что вы получите:</p>
-                  <ul className="space-y-2.5 text-sm leading-relaxed text-white/88 sm:text-base">
-                    {sessionUpsellFeatures.map((line) => (
-                      <li key={line} className="flex gap-2">
-                        <span className="shrink-0 text-emerald-400" aria-hidden>
-                          ✓
-                        </span>
-                        <span>{line}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </>
-            )}
-          </div>
-        </CalmScreen>
-        <PaymentCheckoutSheet
-          open={sessionCheckoutOpen}
-          product="consultation"
-          sessionId={latestResult.id}
-          onClose={() => setSessionCheckoutOpen(false)}
-          onPaid={markSessionPaid}
-          onNotice={setPayNotice}
-        />
-      </>
-    );
-  }
-
-  const reportFeatures = [
-    'Расшифровка сильных и слабых зон',
-    'Адресные рекомендации именно под ваш профиль',
-  ] as const;
-
   if (step === 'complete') {
     return <AssessmentCompleteScreen onDone={onRestart} />;
   }
 
-  return (
-    <>
-      <CalmScreen
-        contentAlign="readable"
-        footer={
-          <div className="space-y-3">
-            {shareNotice ? (
-              <p className="text-center text-xs leading-relaxed text-white/70">{shareNotice}</p>
-            ) : null}
-            <button
-              type="button"
-              className={calmBtnGhost}
-              disabled={shareBusy}
-              onClick={() => void handleShare()}
-            >
-              {shareBusy ? 'Готовим картинку…' : 'Поделиться результатом'}
-            </button>
-            <Button
-              type="button"
-              className={`cta-shimmer border-0 !bg-none !from-transparent !to-transparent hover:!from-transparent hover:!to-transparent ${calmBtnClass}`}
-              onClick={() => openCheckout('full_report')}
-            >
-              {reportUnlocked
-                ? 'Открыть расширенный отчёт'
-                : `Получить расширенный отчёт — ${reportPriceRub} ₽`}
-            </Button>
-            <SupportFooter showDeveloperCredit={false} />
-          </div>
-        }
-      >
-        <div className="mx-auto w-full max-w-md results-prose space-y-5 pb-4">
-          <SketchHighlightTitle accent={accent} generousOutline>
-            Узнайте, что перегружает вашу когнитивную систему
-          </SketchHighlightTitle>
-          <p className="results-body text-center sm:text-left">
-            и как это исправить — с помощью расширенного отчёта
-            <br />
-            на&nbsp;основе вашего&nbsp;индивидуального когнитивного профиля
-          </p>
-          <div className="calm-inset space-y-3">
-            <p className="text-sm font-semibold text-white/90 sm:text-base">Что входит в отчёт:</p>
-            <ul className="space-y-2.5 text-sm leading-relaxed text-white/88 sm:text-base">
-              {reportFeatures.map((line) => (
-                <li key={line} className="flex gap-2">
-                  <span className="shrink-0 text-emerald-400" aria-hidden>
-                    ✓
-                  </span>
-                  <span>{line}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </CalmScreen>
-      {reportCheckoutSheet}
-    </>
-  );
+  return null;
 };
