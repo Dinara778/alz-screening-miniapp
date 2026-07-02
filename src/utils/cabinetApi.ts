@@ -187,8 +187,8 @@ export async function requestLoginOtp(email: string): Promise<void> {
 
 export async function verifyLoginOtp(email: string, code: string): Promise<void> {
   const token = code.replace(/\D/g, '').trim();
-  if (token.length < 6) {
-    throw new Error('Введите код из письма полностью');
+  if (!/^\d{6,10}$/.test(token)) {
+    throw new Error('Введите все цифры из письма (обычно 6 или 8)');
   }
   const normalizedEmail = email.trim().toLowerCase();
 

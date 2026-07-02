@@ -58,7 +58,10 @@ export async function verifyCabinetOtp(email, token, env = process.env) {
     return { ok: false, error: 'invalid_email', message: 'Введите корректный email' };
   }
   if (code.length < 6) {
-    return { ok: false, error: 'invalid_token', message: 'Введите код из письма полностью' };
+    return { ok: false, error: 'invalid_token', message: 'Введите все цифры из письма (обычно 6 или 8)' };
+  }
+  if (code.length > 10) {
+    return { ok: false, error: 'invalid_token', message: 'Слишком длинный код' };
   }
 
   const cfg = authConfig(env);

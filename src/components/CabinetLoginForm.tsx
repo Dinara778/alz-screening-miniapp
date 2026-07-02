@@ -104,21 +104,21 @@ export const CabinetLoginForm = ({
             type="text"
             inputMode="numeric"
             autoComplete="one-time-code"
-            placeholder="000000"
-            maxLength={8}
+            placeholder="Код из письма"
+            maxLength={10}
             value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 10))}
             onKeyDown={(e) => {
               if (e.key === 'Enter') void onVerifyCode();
             }}
           />
           <p className="cabinet-muted" style={{ marginTop: -4, marginBottom: 12, fontSize: '0.8rem' }}>
-            Код действует около часа. Не нажимайте «Войти» повторно — дождитесь проверки.
+            Введите все цифры из письма (часто 6 или 8). Код действует около часа — не нажимайте «Войти» повторно.
           </p>
           <button
             type="button"
             className="cabinet-btn"
-            disabled={busy || code.replace(/\D/g, '').length < 6}
+            disabled={busy || !/^\d{6,10}$/.test(code)}
             onClick={() => void onVerifyCode()}
           >
             {busy ? 'Проверяем…' : 'Войти'}
