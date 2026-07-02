@@ -1,4 +1,5 @@
-import type { TelegramInvoiceProduct } from './telegramPayments';
+import type { TelegramInvoiceProduct } from './paymentProductTypes';
+import { isReportUnlockProduct } from './paymentProductTypes';
 import {
   consultationPaidStorageKey,
   getPaymentsApiUrl,
@@ -15,6 +16,7 @@ import {
   rememberRobokassaPendingSessionId,
 } from './paymentReturn';
 import { stripPaymentQueryFromUrl } from './appReload';
+import { isSubscriptionActiveLocal, setSubscriptionUntil } from './subscriptionAccess';
 
 export type WebPaymentResult =
   | { status: 'already_paid' }
@@ -29,9 +31,41 @@ export type RobokassaPaymentRecovery = {
 
 const trimApi = (url: string) => url.replace(/\/$/, '');
 
-function markWebProductPaid(sessionId: string, product: TelegramInvoiceProduct): void {
-  if (product === 'full_report') {
+/** Проверить подписку на сервере по email и обновить локальный кэш. */
+export async function syncSubscriptionAccessFromServer(
+  email: string | null | undefined,
+): Promise<boolean> {
+  const normalized = email?.trim().toLowerCase();
+  if (!normalized || !normalized.includes('@')) return isSubscriptionActiveLocal();
+
+  const api = getPaymentsApiUrl();
+  if (!api) return isSubscriptionActiveLocal();
+
+  try {
+    const res = await fetch(`${trimApi(api)}/api/subscription-status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: normalized }),
+    });
+    const data = (await res.json()) as { active?: boolean; endDate?: string | null };
+    if (res.ok && data.active && data.endDate) {
+      setSubscriptionUntil(data.endDate);
+      return true;
+    }
+    return false;
+  } catch {
+    return isSubscriptionActiveLocal();
+  }
+}
+
+function markWebProductPaid(
+  sessionId: string,
+  product: TelegramInvoiceProduct,
+  subscriptionUntil?: string,
+): void {
+  if (isReportUnlockProduct(product)) {
     localStorage.setItem(reportPaidStorageKey(sessionId), '1');
+    if (subscriptionUntil) setSubscriptionUntil(subscriptionUntil);
     return;
   }
   localStorage.setItem(consultationPaidStorageKey(sessionId), '1');
@@ -117,9 +151,13 @@ export async function verifyWebProductPayment(
         invId: invId ?? undefined,
       }),
     });
-    const data = (await res.json()) as { paid?: boolean; sessionId?: string };
+    const data = (await res.json()) as {
+      paid?: boolean;
+      sessionId?: string;
+      subscriptionUntil?: string;
+    };
     if (res.ok && data.paid && data.sessionId) {
-      markWebProductPaid(data.sessionId, product);
+      markWebProductPaid(data.sessionId, product, data.subscriptionUntil);
       return { ok: true, sessionId: data.sessionId };
     }
     return {
@@ -159,9 +197,10 @@ async function verifyWebPaymentByInvId(
       paid?: boolean;
       sessionId?: string;
       product?: TelegramInvoiceProduct;
+      subscriptionUntil?: string;
     };
     if (res.ok && data.paid && data.sessionId && data.product) {
-      markWebProductPaid(data.sessionId, data.product);
+      markWebProductPaid(data.sessionId, data.product, data.subscriptionUntil);
       return { ok: true, sessionId: data.sessionId, product: data.product };
     }
   } catch {

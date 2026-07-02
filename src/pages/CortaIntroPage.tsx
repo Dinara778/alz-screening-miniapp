@@ -1,4 +1,5 @@
 import { Button } from '../components/Button';
+import { CabinetAccessLink } from '../components/CabinetAccessLink';
 import { IconArrowRight, IconShield } from '../components/landing/LandingIcons';
 import { TEST_DURATION_LABEL } from '../constants/testDuration';
 import { IntroShell } from '../components/landing/IntroShell';
@@ -19,6 +20,7 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
         <span>Начать бесплатно</span>
         <IconArrowRight className="h-5 w-5 shrink-0" />
       </Button>
+      <CabinetAccessLink variant="button" />
       <div className="flex shrink-0 flex-row flex-nowrap items-center justify-center gap-2 text-center text-sm leading-snug text-emerald-200/90">
         <IconShield className="block h-5 w-5 shrink-0 text-emerald-400" aria-hidden />
         <span>Ваши данные под защитой</span>

@@ -1,4 +1,8 @@
-import type { TelegramInvoiceProduct } from './telegramPayments';
+import {
+  isReportUnlockProduct,
+  parsePaymentProduct,
+  type TelegramInvoiceProduct,
+} from './paymentProductTypes';
 
 const PAYMENT_FAIL_NOTICE_KEY = 'alz_payment_fail_notice';
 const PAYMENT_FAIL_BOOT_KEY = 'alz_payment_fail_boot_result';
@@ -9,8 +13,11 @@ const ROBOKASSA_RETURN_PROOF_KEY = 'alz_robokassa_return_proof';
 const ROBOKASSA_PENDING_PRODUCT_KEY = 'alz_robokassa_pending_product';
 
 function parseRobokassaProduct(raw: string | null | undefined): TelegramInvoiceProduct | null {
-  if (raw === 'full_report' || raw === 'consultation') return raw;
-  return null;
+  return parsePaymentProduct(raw);
+}
+
+export function isReportOfferProduct(product: TelegramInvoiceProduct): boolean {
+  return isReportUnlockProduct(product);
 }
 
 const ROBOKASSA_PENDING_INV_LS_KEY = 'alz_robokassa_pending_inv';

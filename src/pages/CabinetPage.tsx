@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
+import { CabinetLoginForm } from '../components/CabinetLoginForm';
 import {
   cabinetReportUrl,
+  cancelCabinetSubscription,
   fetchCabinetData,
-  requestMagicLink,
   signOutCabinet,
   useCabinetSession,
   type CabinetAssessment,
   type CabinetData,
   type CabinetPayment,
 } from '../utils/cabinetApi';
+import { setSubscriptionUntil } from '../utils/subscriptionAccess';
 
 function fmtDate(iso: string): string {
   try {
@@ -34,10 +36,25 @@ function fmtRub(amount: number): string {
 }
 
 function paymentLabel(p: CabinetPayment): string {
-  if (p.product === 'full_report') return 'Расширенный отчёт';
+  if (p.product === 'full_report') return 'Разовый разбор';
+  if (p.product === 'subscription_1m') return 'Подписка Corta — 1 месяц';
+  if (p.product === 'subscription_3m') return 'Подписка «Corta» — 3 месяца';
   if (p.product === 'consultation') return 'Сессия с экспертом';
-  if (p.type === 'subscription') return 'Подписка';
+  if (p.type === 'subscription') return 'Подписка Corta';
   return 'Оплата';
+}
+
+function fmtDateOnly(isoDate: string): string {
+  try {
+    return new Date(`${isoDate}T12:00:00`).toLocaleDateString('ru-RU', {
+      timeZone: 'Europe/Moscow',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+  } catch {
+    return isoDate;
+  }
 }
 
 function HistoryList({ rows, emptyText }: { rows: CabinetAssessment[]; emptyText: string }) {
@@ -70,44 +87,49 @@ function HistoryList({ rows, emptyText }: { rows: CabinetAssessment[]; emptyText
 }
 
 export const CabinetPage = () => {
-  const { accessToken, email, ready, configured } = useCabinetSession();
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginMsg, setLoginMsg] = useState('');
-  const [loginError, setLoginError] = useState('');
-  const [loginBusy, setLoginBusy] = useState(false);
+  const { accessToken, email, ready, configured, refresh } = useCabinetSession();
   const [data, setData] = useState<CabinetData | null>(null);
   const [loadError, setLoadError] = useState('');
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelMsg, setCancelMsg] = useState('');
 
   useEffect(() => {
     if (!ready || !accessToken) return;
     void fetchCabinetData(accessToken)
-      .then(setData)
+      .then((cabinet) => {
+        setData(cabinet);
+        if (cabinet.subscription?.endDate) {
+          setSubscriptionUntil(cabinet.subscription.endDate);
+        }
+      })
       .catch((e) => setLoadError(e instanceof Error ? e.message : 'Ошибка загрузки'));
   }, [ready, accessToken]);
-
-  const onRequestLink = async () => {
-    const trimmed = loginEmail.trim().toLowerCase();
-    if (!trimmed.includes('@')) {
-      setLoginError('Введите корректный email');
-      return;
-    }
-    setLoginBusy(true);
-    setLoginError('');
-    setLoginMsg('');
-    try {
-      await requestMagicLink(trimmed);
-      setLoginMsg('Ссылка для входа отправлена на ' + trimmed + '. Проверьте почту.');
-    } catch (e) {
-      setLoginError(e instanceof Error ? e.message : 'Не удалось отправить ссылку');
-    } finally {
-      setLoginBusy(false);
-    }
-  };
 
   const onLogout = async () => {
     await signOutCabinet();
     setData(null);
     window.location.href = '/cabinet';
+  };
+
+  const onCancelSubscription = async () => {
+    if (!accessToken || cancelBusy) return;
+    setCancelBusy(true);
+    setCancelMsg('');
+    setLoadError('');
+    try {
+      const result = await cancelCabinetSubscription(accessToken);
+      const refreshed = await fetchCabinetData(accessToken);
+      setData(refreshed);
+      setCancelMsg(
+        result.endDate
+          ? `Подписка отменена. Доступ сохранится до ${fmtDateOnly(result.endDate)}.`
+          : 'Подписка отменена.',
+      );
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : 'Не удалось отменить подписку');
+    } finally {
+      setCancelBusy(false);
+    }
   };
 
   if (!ready || configured === null) {
@@ -137,31 +159,10 @@ export const CabinetPage = () => {
   if (!accessToken) {
     return (
       <div className="cabinet-shell">
-        <div className="cabinet-card cabinet-card-narrow">
-          <h1>Личный кабинет Corta</h1>
-          <p className="cabinet-muted">
-            Войдите по email — пришлём ссылку без пароля. Используйте тот же адрес, что указывали при оценке.
-          </p>
-          <input
-            className="cabinet-input"
-            type="email"
-            autoComplete="email"
-            placeholder="name@example.com"
-            value={loginEmail}
-            onChange={(e) => setLoginEmail(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') void onRequestLink();
-            }}
-          />
-          <button type="button" className="cabinet-btn" disabled={loginBusy} onClick={() => void onRequestLink()}>
-            {loginBusy ? 'Отправка…' : 'Получить ссылку для входа'}
-          </button>
-          {loginMsg ? <p className="cabinet-success">{loginMsg}</p> : null}
-          {loginError ? <p className="cabinet-error">{loginError}</p> : null}
-          <p className="cabinet-foot">
-            <a href="/">← Вернуться к оценке</a>
-          </p>
-        </div>
+        <CabinetLoginForm onLoggedIn={() => void refresh()} />
+        <p className="cabinet-foot" style={{ textAlign: 'center', marginTop: 16 }}>
+          <a href="/">← Вернуться к оценке</a>
+        </p>
       </div>
     );
   }
@@ -190,10 +191,39 @@ export const CabinetPage = () => {
 
         <div className="cabinet-grid">
           <section className="cabinet-card">
+            <h2>Подписка</h2>
+            {data?.subscription ? (
+              <>
+                <p className="cabinet-big">{data.subscription.planLabel}</p>
+                <p className="cabinet-muted">действует до {fmtDateOnly(data.subscription.endDate)}</p>
+                {data.subscription.status === 'cancelled' ? (
+                  <p className="cabinet-muted">Автопродление отключено</p>
+                ) : null}
+                {data.subscription.canCancel ? (
+                  <button
+                    type="button"
+                    className="cabinet-btn-secondary"
+                    style={{ marginTop: 12 }}
+                    disabled={cancelBusy}
+                    onClick={() => void onCancelSubscription()}
+                  >
+                    {cancelBusy ? 'Отмена…' : 'Отменить подписку'}
+                  </button>
+                ) : null}
+                {cancelMsg ? <p className="cabinet-success">{cancelMsg}</p> : null}
+              </>
+            ) : data?.access.type === 'one_time' ? (
+              <p className="cabinet-muted">У вас разовый доступ к отчёту без подписки.</p>
+            ) : (
+              <p className="cabinet-muted">Активной подписки нет.</p>
+            )}
+          </section>
+
+          <section className="cabinet-card">
             <h2>Статус доступа</h2>
             <p className="cabinet-big">{data?.access.label ?? '—'}</p>
             {data?.access.endDate ? (
-              <p className="cabinet-muted">до {data.access.endDate}</p>
+              <p className="cabinet-muted">до {fmtDateOnly(data.access.endDate)}</p>
             ) : null}
           </section>
 

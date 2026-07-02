@@ -20,6 +20,7 @@ import {
   capturePaymentFailFromUrl,
   captureRobokassaSuccessFromUrl,
   hasPendingRobokassaReturn,
+  isReportOfferProduct,
   shouldBootToResultAfterPaymentFail,
 } from '../utils/paymentReturn';
 import { MID_TEST_STAGES } from '../utils/storage';
@@ -42,6 +43,7 @@ import {
 } from '../utils/sessionFunnelAnalytics';
 import { sendSessionToSheets } from '../utils/sheetsWebhook';
 import { sendSessionToSupabase } from '../utils/supabaseSync';
+import { syncSubscriptionAccessFromServer } from '../utils/webPayments';
 import { syncFunnelToSupabase } from '../utils/supabaseFunnelSync';
 
 type ConsultationReturnStage = 'result' | 'full-report';
@@ -342,7 +344,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         setLatestResult(session);
         saveLastSessionId(session.id);
       }
-      if (recovery.product === 'full_report') {
+      if (isReportOfferProduct(recovery.product)) {
         setStage('full-report');
         return;
       }
@@ -567,6 +569,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     void sendSessionToSupabase(result);
     const email = result.participant?.email?.trim().toLowerCase();
     if (email && email.includes('@')) {
+      void syncSubscriptionAccessFromServer(email);
       void syncFunnelToSupabase({
         email,
         visitId: String(sessionSeed),

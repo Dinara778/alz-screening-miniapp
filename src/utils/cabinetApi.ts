@@ -2,7 +2,6 @@ import type { SessionResult } from '../types';
 import { getPaymentsApiUrl } from './telegramPayments';
 import {
   ensureSupabaseBrowserConfig,
-  getCabinetRedirectUrl,
   getSupabaseBrowser,
 } from './supabaseBrowser';
 
@@ -42,8 +41,28 @@ export type CabinetData = {
     label: string;
     endDate: string | null;
   };
+  subscription: {
+    planLabel: string;
+    status: string;
+    endDate: string;
+    canCancel: boolean;
+  } | null;
   payments: CabinetPayment[];
 };
+
+export async function cancelCabinetSubscription(accessToken: string): Promise<{ endDate: string }> {
+  const api = getPaymentsApiUrl();
+  if (!api) throw new Error('API не настроен');
+  const res = await fetch(`${api.replace(/\/$/, '')}/api/cabinet/cancel-subscription`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json.ok) {
+    throw new Error(json.error || 'Не удалось отменить подписку');
+  }
+  return { endDate: String(json.endDate ?? '') };
+}
 
 export function cabinetReportUrl(sessionId: string): string {
   return `/cabinet/report?session=${encodeURIComponent(sessionId)}`;
@@ -79,15 +98,31 @@ export async function fetchCabinetReport(
   return json.session as SessionResult;
 }
 
-export async function requestMagicLink(email: string): Promise<void> {
+export async function requestLoginCode(email: string): Promise<void> {
   const supabase = await getSupabaseBrowser();
   const { error } = await supabase.auth.signInWithOtp({
     email: email.trim().toLowerCase(),
     options: {
-      emailRedirectTo: getCabinetRedirectUrl(),
+      shouldCreateUser: true,
     },
   });
   if (error) throw error;
+}
+
+export async function verifyLoginCode(email: string, code: string): Promise<void> {
+  const supabase = await getSupabaseBrowser();
+  const token = code.replace(/\D/g, '').trim();
+  const { error } = await supabase.auth.verifyOtp({
+    email: email.trim().toLowerCase(),
+    token,
+    type: 'email',
+  });
+  if (error) throw error;
+}
+
+/** @deprecated Используйте requestLoginCode */
+export async function requestMagicLink(email: string): Promise<void> {
+  return requestLoginCode(email);
 }
 
 export async function signOutCabinet(): Promise<void> {

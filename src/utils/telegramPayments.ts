@@ -1,5 +1,9 @@
 import { PAYMENT_PRODUCTS } from './paymentProducts';
 import {
+  isReportUnlockProduct,
+  type TelegramInvoiceProduct,
+} from './paymentProductTypes';
+import {
   rememberRobokassaPendingInvId,
   rememberRobokassaPendingProduct,
   rememberRobokassaPendingSessionId,
@@ -7,8 +11,9 @@ import {
 import { isStandaloneWeb } from './runtime';
 import { recoverRobokassaPaymentFromUrl, verifyWebReportPayment } from './webPayments';
 import { arePaymentsActive, isDevPaymentBypass, isPaymentsEnabled } from './paymentStub';
+import { isSubscriptionActiveLocal, setSubscriptionUntil } from './subscriptionAccess';
 
-export type TelegramInvoiceProduct = 'full_report' | 'consultation';
+export type { TelegramInvoiceProduct } from './paymentProductTypes';
 
 export type OpenInvoiceResult =
   | { status: 'paid' }
@@ -139,14 +144,24 @@ export const reportPaidStorageKey = (sessionId: string) => `report_paid_${sessio
 
 export const consultationPaidStorageKey = (sessionId: string) => `consultation_paid_${sessionId}`;
 
-type PaidOrderPayload = { paid?: boolean; product?: string; sessionId?: string };
+type PaidOrderPayload = {
+  paid?: boolean;
+  product?: string;
+  sessionId?: string;
+  subscriptionUntil?: string;
+};
 
 function applyPaidOrder(data: PaidOrderPayload): ProdamusPaymentRecovery | null {
   if (!data.paid || !data.sessionId) return null;
   sessionStorage.removeItem(prodamusPendingOrderKey(data.sessionId));
-  if (data.product === 'full_report') {
+  if (isReportUnlockProduct(data.product ?? '')) {
     localStorage.setItem(reportPaidStorageKey(data.sessionId), '1');
-    return { paid: true, product: 'full_report', sessionId: data.sessionId };
+    if (data.subscriptionUntil) setSubscriptionUntil(data.subscriptionUntil);
+    return {
+      paid: true,
+      product: (data.product as ProdamusPaymentRecovery['product']) ?? 'full_report',
+      sessionId: data.sessionId,
+    };
   }
   if (data.product === 'consultation') {
     localStorage.setItem(consultationPaidStorageKey(data.sessionId), '1');
@@ -177,7 +192,7 @@ async function fetchPaidOrder(
 
 export type ProdamusPaymentRecovery = {
   paid: true;
-  product: 'full_report' | 'consultation';
+  product: TelegramInvoiceProduct;
   sessionId: string;
 };
 
@@ -532,6 +547,7 @@ function loadLastSessionIdFromHistory(): string | null {
 export const isReportPaidUnlocked = (sessionId: string, serverPaymentsReady = false): boolean => {
   if (isDevPaymentBypass()) return true;
   if (!arePaymentsActive(serverPaymentsReady)) return true;
+  if (isSubscriptionActiveLocal()) return true;
   if (typeof localStorage === 'undefined') return false;
   try {
     return localStorage.getItem(reportPaidStorageKey(sessionId)) === '1';
@@ -579,7 +595,7 @@ export async function verifyReportPaymentOnServer(
   if (isDevPaymentBypass()) return { ok: true, sessionId };
 
   const fromRobokassa = await recoverRobokassaPaymentFromUrl();
-  if (fromRobokassa?.product === 'full_report' && fromRobokassa.sessionId) {
+  if (fromRobokassa && isReportUnlockProduct(fromRobokassa.product) && fromRobokassa.sessionId) {
     return { ok: true, sessionId: fromRobokassa.sessionId };
   }
 
@@ -655,7 +671,7 @@ export async function recoverFullReportAccess(
   }
 
   const fromRobokassa = await recoverRobokassaPaymentFromUrl();
-  if (fromRobokassa?.product === 'full_report' && fromRobokassa.sessionId) {
+  if (fromRobokassa && isReportUnlockProduct(fromRobokassa.product) && fromRobokassa.sessionId) {
     return unlockReportSession(fromRobokassa.sessionId);
   }
 
@@ -671,7 +687,7 @@ export async function recoverFullReportAccess(
   }
 
   const fromUrl = await recoverProdamusPaymentFromUrl();
-  if (fromUrl?.product === 'full_report' && fromUrl.sessionId) {
+  if (fromUrl && isReportUnlockProduct(fromUrl.product) && fromUrl.sessionId) {
     return unlockReportSession(fromUrl.sessionId);
   }
 

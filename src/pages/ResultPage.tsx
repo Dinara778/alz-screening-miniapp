@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHydrateLatestResult } from '../hooks/useHydrateLatestResult';
 import { Button } from '../components/Button';
 import { CalmScreen } from '../components/results/CalmScreen';
@@ -6,6 +6,7 @@ import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { OrganicMetricHalo } from '../components/results/OrganicMetricHalo';
 import { SketchHighlightTitle } from '../components/results/SketchHighlightTitle';
 import { SupportFooter } from '../components/SupportFooter';
+import { CabinetAccessLink } from '../components/CabinetAccessLink';
 import { scoreAccentFromValue } from '../components/results/scoreAccent';
 import { useApp } from '../context/AppContext';
 import { buildCognitiveAnalytics } from '../utils/cognitiveAnalytics';
@@ -20,17 +21,23 @@ import {
   INTERPRETATION_LABEL_FEELING,
   INTERPRETATION_LABEL_IN_LIFE,
 } from '../copy/interpretationLabels';
+import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
+import { ReportTariffOffer } from '../components/ReportTariffOffer';
+import { hasPaymentReturnInUrl, loadSessionFromHistory } from '../utils/storage';
+import {
+  recoverRobokassaPaymentFromUrl,
+  syncSubscriptionAccessFromServer,
+} from '../utils/webPayments';
 import {
   consumePaymentFailNotice,
   CONSULTATION_PAID_THANKS_TEXT,
   hasPendingRobokassaReturn,
+  isReportOfferProduct,
   PAYMENT_FAIL_NOTICE_TEXT,
   peekRobokassaReturnProduct,
 } from '../utils/paymentReturn';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
-import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
-import { hasPaymentReturnInUrl, loadSessionFromHistory } from '../utils/storage';
-import { recoverRobokassaPaymentFromUrl } from '../utils/webPayments';
+import type { ReportUnlockProduct } from '../utils/paymentProductTypes';
 import {
   consultationPaidStorageKey,
   isReportPaidUnlocked,
@@ -46,12 +53,6 @@ const sessionUpsellFeatures = [
   'Персональные рекомендации под вашу ситуацию',
   'Понимание, что больше всего мешает вашему ресурсу',
   'План улучшения показателей',
-] as const;
-
-const reportOfferBullets = [
-  'Расшифровку вашего когнитивного статуса',
-  'Технику по улучшению когнитивного состояния по наиболее проседающему домену, которую вы можете сделать прямо сейчас',
-  'Краткие персональные рекомендации, которые помогут снять перегрузку и быстрее вернуть когнитивный ресурс',
 ] as const;
 
 const calmBtnClass = CTA_BUTTON_CLASS;
@@ -106,14 +107,67 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const [shareNotice, setShareNotice] = useState<string | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutProduct, setCheckoutProduct] = useState<ReportUnlockProduct>('full_report');
   const [sessionCheckoutOpen, setSessionCheckoutOpen] = useState(false);
   const [sessionPaid, setSessionPaid] = useState(false);
   const [payNotice, setPayNotice] = useState<string | null>(null);
   const [recoverBusy, setRecoverBusy] = useState(false);
+  const [reportGateBusy, setReportGateBusy] = useState(false);
+  const [subscriptionSynced, setSubscriptionSynced] = useState(false);
+
+  const skipNativePayment = shouldBypassReportPayment(serverPaymentsReady);
+
+  const payerEmail =
+    latestResult?.participant?.email?.trim() || participant?.email?.trim() || '';
+
+  const unlockFullReport = useCallback(
+    (paidSessionId?: string) => {
+      const sid = paidSessionId ?? latestResult?.id;
+      if (!sid) return;
+      const session =
+        latestResult?.id === sid ? latestResult : loadSessionFromHistory(sid) ?? latestResult;
+      if (session) setLatestResult(session);
+      localStorage.setItem(reportPaidStorageKey(sid), '1');
+      setStage('full-report');
+    },
+    [latestResult, setLatestResult, setStage],
+  );
 
   useEffect(() => {
     setAnalyticsScreenDetail(step);
   }, [step, setAnalyticsScreenDetail]);
+
+  useEffect(() => {
+    if (!latestResult?.id || skipNativePayment || !payerEmail) return;
+    void syncSubscriptionAccessFromServer(payerEmail).then(() => {
+      setSubscriptionSynced(true);
+    });
+  }, [latestResult?.id, payerEmail, skipNativePayment]);
+
+  useEffect(() => {
+    if (step !== 'report-offer' || skipNativePayment || !latestResult?.id) return;
+    if (isReportPaidUnlocked(latestResult.id, serverPaymentsReady)) {
+      unlockFullReport(latestResult.id);
+      return;
+    }
+    if (!payerEmail) return;
+    let cancelled = false;
+    void syncSubscriptionAccessFromServer(payerEmail).then((active) => {
+      if (cancelled) return;
+      setSubscriptionSynced(true);
+      if (active) unlockFullReport(latestResult.id);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    step,
+    latestResult?.id,
+    payerEmail,
+    skipNativePayment,
+    serverPaymentsReady,
+    unlockFullReport,
+  ]);
 
   useEffect(() => {
     if (!consumePaymentFailNotice()) return;
@@ -149,8 +203,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     setSessionPaid(localStorage.getItem(consultationPaidStorageKey(latestResult.id)) === '1');
   }, [latestResult?.id]);
 
-  const skipNativePayment = shouldBypassReportPayment(serverPaymentsReady);
-
   useEffect(() => {
     if (
       !latestResult?.id ||
@@ -168,7 +220,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           setPayNotice(
             'Оплата ещё не подтвердилась на сервере. Подождите минуту и нажмите «Проверить оплату» — или напишите hello@bookvolon.ru',
           );
-          setStep(pendingProduct === 'consultation' ? 'session-offer' : 'report-offer');
+          setStep(isReportOfferProduct(pendingProduct) ? 'report-offer' : 'session-offer');
         }
         return;
       }
@@ -181,9 +233,10 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         setStep('session-offer');
         return;
       }
-      if (recovery.product !== 'full_report') return;
-      localStorage.setItem(reportPaidStorageKey(recovery.sessionId), '1');
-      setStage('full-report');
+      if (isReportOfferProduct(recovery.product)) {
+        localStorage.setItem(reportPaidStorageKey(recovery.sessionId), '1');
+        setStage('full-report');
+      }
     };
     void run();
   }, [latestResult?.id, skipNativePayment, setStage]);
@@ -255,17 +308,31 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     }
   };
 
-  const unlockFullReport = (paidSessionId?: string) => {
-    const sid = paidSessionId ?? latestResult?.id;
-    if (!sid) return;
-    const session =
-      latestResult?.id === sid ? latestResult : loadSessionFromHistory(sid) ?? latestResult;
-    if (session) setLatestResult(session);
-    localStorage.setItem(reportPaidStorageKey(sid), '1');
-    setStage('full-report');
-  };
+  const reportUnlocked = useMemo(
+    () => isReportPaidUnlocked(latestResult.id, serverPaymentsReady),
+    [latestResult.id, serverPaymentsReady, subscriptionSynced],
+  );
 
-  const reportUnlocked = isReportPaidUnlocked(latestResult.id, serverPaymentsReady);
+  const goToReportGate = async () => {
+    if (skipNativePayment || reportUnlocked) {
+      unlockFullReport(latestResult.id);
+      return;
+    }
+    if (payerEmail) {
+      setReportGateBusy(true);
+      try {
+        const active = await syncSubscriptionAccessFromServer(payerEmail);
+        setSubscriptionSynced(true);
+        if (active) {
+          unlockFullReport(latestResult.id);
+          return;
+        }
+      } finally {
+        setReportGateBusy(false);
+      }
+    }
+    setStep('report-offer');
+  };
 
   const retryPaymentRecovery = async () => {
     if (recoverBusy || !latestResult?.id) return;
@@ -277,17 +344,18 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       if (fromUrl?.sessionId) {
         const session = loadSessionFromHistory(fromUrl.sessionId);
         if (session) setLatestResult(session);
-        if (fromUrl.product === 'full_report') {
-          localStorage.setItem(reportPaidStorageKey(fromUrl.sessionId), '1');
-          setStage('full-report');
-          return;
-        }
         if (fromUrl.product === 'consultation') {
           localStorage.setItem(consultationPaidStorageKey(fromUrl.sessionId), '1');
           window.dispatchEvent(new Event('consultation-paid'));
           setSessionPaid(true);
           setStep('session-offer');
           setPayNotice(null);
+          return;
+        }
+        if (isReportOfferProduct(fromUrl.product)) {
+          localStorage.setItem(reportPaidStorageKey(fromUrl.sessionId), '1');
+          setStage('full-report');
+          return;
         }
         return;
       }
@@ -312,11 +380,12 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     }
   };
 
-  const openCheckout = () => {
+  const openCheckout = (product: ReportUnlockProduct = 'full_report') => {
     if (skipNativePayment || reportUnlocked) {
       unlockFullReport(latestResult.id);
       return;
     }
+    setCheckoutProduct(product);
     setPayNotice(null);
     setCheckoutOpen(true);
   };
@@ -344,7 +413,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const reportCheckoutSheet = (
     <PaymentCheckoutSheet
       open={checkoutOpen}
-      product="full_report"
+      product={checkoutProduct}
       sessionId={latestResult.id}
       onClose={() => setCheckoutOpen(false)}
       onPaid={unlockFullReport}
@@ -445,8 +514,13 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       <CalmScreen
         contentAlign="readable"
         footer={
-          <Button type="button" className={calmBtnClass} onClick={() => setStep('report-offer')}>
-            Далее
+          <Button
+            type="button"
+            className={calmBtnClass}
+            disabled={reportGateBusy}
+            onClick={() => void goToReportGate()}
+          >
+            {reportGateBusy ? 'Проверяем подписку…' : 'Далее'}
           </Button>
         }
       >
@@ -509,31 +583,25 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
                   {recoverBusy ? 'Проверяем оплату…' : 'Проверить оплату и открыть отчёт'}
                 </Button>
               ) : null}
-              <Button type="button" variant="sell" className={calmBtnClass} onClick={openCheckout}>
-                {reportUnlocked ? 'Открыть расшифровку' : `Восстановить ресурс — ${reportPriceRub} ₽`}
-              </Button>
+              {reportUnlocked ? (
+                <Button
+                  type="button"
+                  variant="sell"
+                  className={calmBtnClass}
+                  onClick={() => unlockFullReport(latestResult.id)}
+                >
+                  Открыть расшифровку
+                </Button>
+              ) : null}
+              <CabinetAccessLink variant="button" />
             </div>
           }
         >
-          <div className="mx-auto w-full max-w-md results-prose space-y-5">
-            <p className="app-heading leading-snug text-white/95">
-              Узнайте, почему сейчас мозг работает именно так и что поможет быстрее восстановить
-              ресурс
-            </p>
-            <div className="calm-inset space-y-3 text-base leading-relaxed text-white/88 sm:text-lg">
-              <p>Внутри вы получите:</p>
-              <ul className="space-y-3">
-                {reportOfferBullets.map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <span className="shrink-0 text-emerald-400" aria-hidden>
-                      ✓
-                    </span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+          <ReportTariffOffer
+            reportUnlocked={reportUnlocked}
+            payerEmail={latestResult.participant?.email ?? participant?.email}
+            onSelect={(product) => openCheckout(product)}
+          />
         </CalmScreen>
         {reportCheckoutSheet}
       </>
@@ -648,7 +716,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
             <Button
               type="button"
               className={`cta-shimmer border-0 !bg-none !from-transparent !to-transparent hover:!from-transparent hover:!to-transparent ${calmBtnClass}`}
-              onClick={openCheckout}
+              onClick={() => openCheckout('full_report')}
             >
               {reportUnlocked
                 ? 'Открыть расширенный отчёт'

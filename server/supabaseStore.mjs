@@ -314,6 +314,155 @@ export async function recordPayment(
   return data;
 }
 
+function formatDateOnly(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+export function isSubscriptionProduct(product) {
+  return product === 'subscription_1m' || product === 'subscription_3m';
+}
+
+export function subscriptionDaysForProduct(product) {
+  if (product === 'subscription_3m') return 90;
+  if (product === 'subscription_1m') return 30;
+  return 0;
+}
+
+export async function findActiveSubscriptionByEmail(email, env = process.env) {
+  const supabase = getClient(env);
+  const normalized = normalizeEmail(email);
+  if (!supabase || !normalized) return null;
+
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('id')
+    .eq('email', normalized)
+    .maybeSingle();
+  if (userError || !user?.id) return null;
+
+  const today = formatDateOnly(new Date());
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('id, status, start_date, end_date')
+    .eq('user_id', user.id)
+    .gte('end_date', today)
+    .neq('status', 'inactive')
+    .order('end_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.error('[supabase] find subscription', error.message);
+    return null;
+  }
+  return data ?? null;
+}
+
+export async function activateSubscription({ email, product, days }, env = process.env) {
+  const supabase = getClient(env);
+  const normalized = normalizeEmail(email);
+  const periodDays = Number(days) || subscriptionDaysForProduct(product);
+  if (!supabase || !normalized || periodDays <= 0) return null;
+
+  const user = await upsertUserByEmail(normalized, env);
+  if (!user?.id) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = formatDateOnly(today);
+
+  const { data: existing, error: findError } = await supabase
+    .from('subscriptions')
+    .select('id, status, start_date, end_date')
+    .eq('user_id', user.id)
+    .order('end_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (findError) {
+    console.error('[supabase] find subscription for activate', findError.message);
+    return null;
+  }
+
+  let baseEnd = today;
+  if (existing?.end_date) {
+    const existingEnd = new Date(`${existing.end_date}T12:00:00`);
+    if (Number.isFinite(existingEnd.getTime()) && existingEnd >= today) {
+      baseEnd = existingEnd;
+    }
+  }
+  const endDate = formatDateOnly(addDays(baseEnd, periodDays));
+
+  if (existing?.id) {
+    const { error } = await supabase
+      .from('subscriptions')
+      .update({
+        status: 'active',
+        end_date: endDate,
+        start_date: existing.start_date ?? todayStr,
+      })
+      .eq('id', existing.id);
+    if (error) {
+      console.error('[supabase] update subscription', error.message);
+      return null;
+    }
+  } else {
+    const { error } = await supabase.from('subscriptions').insert({
+      user_id: user.id,
+      status: 'active',
+      start_date: todayStr,
+      end_date: endDate,
+    });
+    if (error) {
+      console.error('[supabase] insert subscription', error.message);
+      return null;
+    }
+  }
+
+  console.info('[supabase] subscription activated', normalized, product, endDate);
+  return { endDate, product };
+}
+
+export async function cancelSubscription(email, env = process.env) {
+  const supabase = getClient(env);
+  const normalized = normalizeEmail(email);
+  if (!supabase || !normalized) return { ok: false, error: 'not_configured' };
+
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('id')
+    .eq('email', normalized)
+    .maybeSingle();
+  if (userError || !user?.id) return { ok: false, error: 'user_not_found' };
+
+  const { data: sub, error: subError } = await supabase
+    .from('subscriptions')
+    .select('id, end_date')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .maybeSingle();
+  if (subError) {
+    console.error('[supabase] find active subscription', subError.message);
+    return { ok: false, error: 'load_failed' };
+  }
+  if (!sub?.id) return { ok: false, error: 'no_active_subscription' };
+
+  const { error } = await supabase
+    .from('subscriptions')
+    .update({ status: 'cancelled' })
+    .eq('id', sub.id);
+  if (error) {
+    console.error('[supabase] cancel subscription', error.message);
+    return { ok: false, error: 'cancel_failed' };
+  }
+
+  return { ok: true, endDate: sub.end_date };
+}
+
 function clampScore(n) {
   const v = Math.round(Number(n));
   if (!Number.isFinite(v)) return 0;

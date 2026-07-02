@@ -1,7 +1,13 @@
 /**
  * Личный кабинет: проверка JWT Supabase Auth и данные пользователя.
  */
-import { getClient, getPublicSupabaseConfig, isSupabaseConfigured, upsertUserByEmail } from './supabaseStore.mjs';
+import {
+  cancelSubscription,
+  getClient,
+  getPublicSupabaseConfig,
+  isSupabaseConfigured,
+  upsertUserByEmail,
+} from './supabaseStore.mjs';
 
 const HISTORY_ALL_LIMIT = 200;
 const HISTORY_7D_CAP = 100;
@@ -23,19 +29,34 @@ export async function verifySupabaseAccessToken(accessToken, env = process.env) 
   return data.user.email.trim().toLowerCase();
 }
 
+function isSubscriptionAccessActive(subscription) {
+  if (!subscription?.end_date) return subscription?.status === 'active';
+  const end = new Date(`${subscription.end_date}T23:59:59`);
+  return Number.isFinite(end.getTime()) && end >= new Date() && subscription.status !== 'inactive';
+}
+
+function subscriptionPlanLabel(payments) {
+  const subPayment = (payments ?? []).find((p) => p.type === 'subscription' && p.status === 'paid');
+  if (subPayment?.product === 'subscription_3m') return 'Подписка «Corta» — 3 месяца';
+  if (subPayment?.product === 'subscription_1m') return 'Подписка Corta — 1 месяц';
+  return 'Подписка Corta';
+}
+
 function resolveAccessType(subscription, payments) {
-  if (subscription?.status === 'active') {
+  if (subscription && isSubscriptionAccessActive(subscription)) {
     return {
       type: 'subscription',
-      label: 'Подписка активна',
+      label: subscriptionPlanLabel(payments),
       endDate: subscription.end_date ?? null,
     };
   }
-  const hasOneTime = (payments ?? []).some((p) => p.type === 'one_time' && p.status === 'paid');
+  const hasOneTime = (payments ?? []).some(
+    (p) => p.type === 'one_time' && p.status === 'paid' && p.product === 'full_report',
+  );
   if (hasOneTime) {
     return {
       type: 'one_time',
-      label: 'Разовая покупка отчёта',
+      label: 'Разовый разбор',
       endDate: null,
     };
   }
@@ -64,7 +85,7 @@ function mapAssessment(row, { canOpenReport = false, hasReportData = false } = {
 }
 
 function canOpenReportForSession(sessionId, subscription, payments) {
-  if (subscription?.status === 'active') return true;
+  if (subscription && isSubscriptionAccessActive(subscription)) return true;
   const paidReports = (payments ?? []).filter(
     (p) => p.status === 'paid' && p.product === 'full_report',
   );
@@ -86,6 +107,24 @@ function enrichAssessments(rows, subscription, payments) {
   });
 }
 
+async function loadCurrentSubscription(supabase, userId) {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('id, status, start_date, end_date')
+    .eq('user_id', userId)
+    .gte('end_date', today)
+    .neq('status', 'inactive')
+    .order('end_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.error('[cabinet] subscription', error.message);
+    return null;
+  }
+  return data;
+}
+
 export async function getCabinetData(email, env = process.env) {
   const supabase = getClient(env);
   const normalized = String(email ?? '').trim().toLowerCase();
@@ -97,7 +136,7 @@ export async function getCabinetData(email, env = process.env) {
   const since = new Date();
   since.setUTCDate(since.getUTCDate() - 7);
 
-  const [history7dRes, historyAllRes, subscriptionRes, paymentsRes] = await Promise.all([
+  const [history7dRes, historyAllRes, paymentsRes] = await Promise.all([
     supabase
       .from('assessments')
       .select(ASSESSMENT_SELECT)
@@ -111,12 +150,6 @@ export async function getCabinetData(email, env = process.env) {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(HISTORY_ALL_LIMIT),
-    supabase
-      .from('subscriptions')
-      .select('status, start_date, end_date')
-      .eq('user_id', user.id)
-      .eq('status', 'active')
-      .maybeSingle(),
     supabase
       .from('payments')
       .select('type, status, amount, product, session_id, external_id, created_at')
@@ -132,10 +165,20 @@ export async function getCabinetData(email, env = process.env) {
   }
 
   const payments = paymentsRes.data ?? [];
-  const subscription = subscriptionRes.data;
+  const subscription = await loadCurrentSubscription(supabase, user.id);
   const history7d = enrichAssessments(history7dRes.data, subscription, payments);
   const historyAll = enrichAssessments(historyAllRes.data, subscription, payments);
   const latest = history7d[0] ?? historyAll[0] ?? null;
+
+  const subscriptionInfo =
+    subscription && isSubscriptionAccessActive(subscription)
+      ? {
+          planLabel: subscriptionPlanLabel(payments),
+          status: subscription.status,
+          endDate: subscription.end_date,
+          canCancel: subscription.status === 'active',
+        }
+      : null;
 
   return {
     email: user.email,
@@ -145,6 +188,7 @@ export async function getCabinetData(email, env = process.env) {
     historyAll,
     compensationTip: latest?.compensationTip ?? null,
     access: resolveAccessType(subscription, payments),
+    subscription: subscriptionInfo,
     payments: payments.map((p) => ({
       type: p.type,
       amount: Number(p.amount),
@@ -154,6 +198,10 @@ export async function getCabinetData(email, env = process.env) {
       createdAt: p.created_at,
     })),
   };
+}
+
+export async function cancelCabinetSubscription(email, env = process.env) {
+  return cancelSubscription(email, env);
 }
 
 export async function getCabinetReportSession(email, sessionId, env = process.env) {
@@ -169,18 +217,12 @@ export async function getCabinetReportSession(email, sessionId, env = process.en
     .maybeSingle();
   if (userError || !user?.id) return null;
 
-  const [assessmentRes, subscriptionRes, paymentsRes] = await Promise.all([
+  const [assessmentRes, paymentsRes] = await Promise.all([
     supabase
       .from('assessments')
       .select('session_id, session_data, user_id')
       .eq('user_id', user.id)
       .eq('session_id', sid)
-      .maybeSingle(),
-    supabase
-      .from('subscriptions')
-      .select('status')
-      .eq('user_id', user.id)
-      .eq('status', 'active')
       .maybeSingle(),
     supabase
       .from('payments')
@@ -194,7 +236,8 @@ export async function getCabinetReportSession(email, sessionId, env = process.en
   }
 
   const payments = paymentsRes.data ?? [];
-  const canOpen = canOpenReportForSession(sid, subscriptionRes.data, payments);
+  const subscription = await loadCurrentSubscription(supabase, user.id);
+  const canOpen = canOpenReportForSession(sid, subscription, payments);
   if (!canOpen) {
     return { error: 'payment_required' };
   }
@@ -212,7 +255,7 @@ export function getCabinetHealthInfo(env = process.env) {
     browserReady: Boolean(pub),
     url: '/cabinet',
     reportUrl: '/cabinet/report',
-    auth: 'supabase_magic_link',
+    auth: 'supabase_email_otp',
     publicConfigUrl: '/api/public-config',
   };
 }

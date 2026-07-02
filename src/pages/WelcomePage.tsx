@@ -2,6 +2,8 @@ import { useRef, useState, useEffect, type FocusEvent, type ReactNode } from 're
 import { BackArrowButton } from '../components/BackArrowButton';
 import { CalmCardShell } from '../components/CalmCardShell';
 import { Button } from '../components/Button';
+import { CabinetAccessLink } from '../components/CabinetAccessLink';
+import { SameEmailHint } from '../components/SameEmailHint';
 import { ScreenBottomCta } from '../components/ScreenBottomCta';
 import { IconArrowRight } from '../components/landing/LandingIcons';
 import { ProgressBar } from '../components/ProgressBar';
@@ -201,7 +203,12 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
         </p>
       </div>
     );
-    stepFooter = nextButton(0);
+    stepFooter = (
+      <div className="space-y-3">
+        {nextButton(0)}
+        <CabinetAccessLink variant="button" />
+      </div>
+    );
   } else if (step === 1) {
     stepBody = (
       <div className="space-y-4">
@@ -278,7 +285,8 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
       <div className="space-y-4">
         <div className="text-center text-4xl">✉️</div>
         <h2 className="app-heading text-center">Ваш email</h2>
-        <p className="text-center calm-caption">Чтобы сохранить ваш отчёт</p>
+        <p className="text-center calm-caption">Чтобы сохранить отчёт и историю в личном кабинете</p>
+        <SameEmailHint />
         <input
           className={inputClass}
           placeholder="name@example.com"

@@ -69,6 +69,7 @@ import {
   getCabinetHealthInfo,
   isCabinetConfigured,
   verifySupabaseAccessToken,
+  cancelCabinetSubscription,
 } from './cabinetStore.mjs';
 import {
   getSupabaseHealthInfo,
@@ -79,6 +80,10 @@ import {
   reassignPaidPaymentSession,
   upsertAssessment,
   upsertFunnelSession,
+  activateSubscription,
+  findActiveSubscriptionByEmail,
+  isSubscriptionProduct,
+  subscriptionDaysForProduct,
 } from './supabaseStore.mjs';
 import {
   findLatestTelegramPaidForUser,
@@ -127,6 +132,18 @@ const PRODUCTS = {
     amount: 14900,
     priceRub: 149,
   },
+  subscription_1m: {
+    title: 'Подписка Corta 1 мес',
+    description: 'Подписка Corta: ежедневная оценка, полный разбор и история',
+    amount: 39900,
+    priceRub: 399,
+  },
+  subscription_3m: {
+    title: 'Подписка Corta 3 мес',
+    description: 'Подписка Corta на 3 месяца: полный разбор и история',
+    amount: 99000,
+    priceRub: 990,
+  },
   consultation: {
     title: 'Сессия с экспертом Corta',
     description: 'Персональная сессия 30–40 минут, разбор метрик, удалённо',
@@ -135,22 +152,77 @@ const PRODUCTS = {
   },
 };
 
-function normalizeRecoverEmail(raw) {
-  const e = String(raw ?? '').trim().toLowerCase();
-  return e.includes('@') ? e : null;
+function isReportUnlockProduct(product) {
+  return (
+    product === 'full_report' || product === 'subscription_1m' || product === 'subscription_3m'
+  );
+}
+
+async function fulfillPaidOrder({ sessionId, product, amountRub, invId, email }) {
+  const sid = String(sessionId ?? '').trim();
+  const prod = String(product ?? '');
+  const normalizedEmail = normalizeRecoverEmail(email);
+
+  if (isReportUnlockProduct(prod)) {
+    markWebPaid({ sessionId: sid, product: 'full_report', invId: String(invId ?? '') });
+  } else if (prod) {
+    markWebPaid({ sessionId: sid, product: prod, invId: String(invId ?? '') });
+  }
+
+  if (!isSupabaseConfigured()) return { subscriptionUntil: null };
+
+  let subscriptionUntil = null;
+  if (isSubscriptionProduct(prod)) {
+    const activated = await activateSubscription({
+      email: normalizedEmail,
+      product: prod,
+      days: subscriptionDaysForProduct(prod),
+    });
+    subscriptionUntil = activated?.endDate ?? null;
+    await recordPayment({
+      sessionId: sid,
+      product: prod,
+      amountRub,
+      type: 'subscription',
+      status: 'paid',
+      externalId: invId != null ? String(invId) : undefined,
+      email: normalizedEmail,
+    });
+  } else if (prod === 'full_report') {
+    await recordPayment({
+      sessionId: sid,
+      product: prod,
+      amountRub,
+      type: 'one_time',
+      status: 'paid',
+      externalId: invId != null ? String(invId) : undefined,
+      email: normalizedEmail,
+    });
+  } else if (prod === 'consultation') {
+    await recordPayment({
+      sessionId: sid,
+      product: prod,
+      amountRub,
+      type: 'one_time',
+      status: 'paid',
+      externalId: invId != null ? String(invId) : undefined,
+      email: normalizedEmail,
+    });
+  }
+
+  return { subscriptionUntil };
 }
 
 function syncPaidToSupabase({ sessionId, product, amountRub, invId, email }) {
   if (!isSupabaseConfigured()) return;
-  void recordPayment({
-    sessionId,
-    product,
-    amountRub,
-    type: 'one_time',
-    status: 'paid',
-    externalId: invId != null ? String(invId) : undefined,
-    email: normalizeRecoverEmail(email),
-  }).catch((e) => console.error('[supabase] sync payment', e));
+  void fulfillPaidOrder({ sessionId, product, amountRub, invId, email }).catch((e) =>
+    console.error('[supabase] sync payment', e),
+  );
+}
+
+function normalizeRecoverEmail(raw) {
+  const e = String(raw ?? '').trim().toLowerCase();
+  return e.includes('@') ? e : null;
 }
 
 async function resolveWebPaymentRecovery({ sessionId, product = 'full_report', email, invId }) {
@@ -159,9 +231,18 @@ async function resolveWebPaymentRecovery({ sessionId, product = 'full_report', e
   const normalizedEmail = normalizeRecoverEmail(email);
   if (!sid) return { paid: false };
 
+  const reportUnlock = isReportUnlockProduct(prod);
+
   const exact = isWebPaidForSession(sid, prod);
   if (exact.paid) {
     return { paid: true, sessionId: exact.sessionId, product: exact.product };
+  }
+
+  if (reportUnlock) {
+    const reportPaid = isWebPaidForSession(sid, 'full_report');
+    if (reportPaid.paid) {
+      return { paid: true, sessionId: reportPaid.sessionId, product: prod };
+    }
   }
 
   const invKey = String(invId ?? '').trim();
@@ -193,13 +274,30 @@ async function resolveWebPaymentRecovery({ sessionId, product = 'full_report', e
           });
           if (supa?.id) await reassignPaidPaymentSession(supa.id, sid);
         }
-        markWebPaid({ sessionId: sid, product: prod, invId: invKey });
+        markWebPaid({ sessionId: sid, product: reportUnlock ? 'full_report' : prod, invId: invKey });
       }
-      return { paid: true, sessionId: sid, product: prod };
+      const sub =
+        normalizedEmail || order.email
+          ? await findActiveSubscriptionByEmail(normalizedEmail || order.email)
+          : null;
+      return {
+        paid: true,
+        sessionId: sid,
+        product: prod,
+        subscriptionUntil: sub?.end_date ?? undefined,
+      };
     }
   }
 
   if (isSupabaseConfigured()) {
+    if (normalizedEmail && reportUnlock) {
+      const sub = await findActiveSubscriptionByEmail(normalizedEmail);
+      if (sub?.end_date) {
+        markWebPaid({ sessionId: sid, product: 'full_report', invId: invKey });
+        return { paid: true, sessionId: sid, product: prod, subscriptionUntil: sub.end_date };
+      }
+    }
+
     const supa = await findPaidProductPayment({
       sessionId: sid,
       email: normalizedEmail,
@@ -213,10 +311,40 @@ async function resolveWebPaymentRecovery({ sessionId, product = 'full_report', e
       }
       markWebPaid({
         sessionId: resolvedSessionId,
-        product: prod,
+        product: reportUnlock ? 'full_report' : prod,
         invId: supa.external_id ?? '',
       });
-      return { paid: true, sessionId: resolvedSessionId, product: prod };
+      const sub = normalizedEmail ? await findActiveSubscriptionByEmail(normalizedEmail) : null;
+      return {
+        paid: true,
+        sessionId: resolvedSessionId,
+        product: prod,
+        subscriptionUntil: sub?.end_date ?? undefined,
+      };
+    }
+
+    if (reportUnlock && normalizedEmail) {
+      for (const candidate of ['full_report', 'subscription_1m', 'subscription_3m']) {
+        if (candidate === prod) continue;
+        const alt = await findPaidProductPayment({
+          sessionId: sid,
+          email: normalizedEmail,
+          product: candidate,
+        });
+        if (!alt) continue;
+        markWebPaid({
+          sessionId: sid,
+          product: 'full_report',
+          invId: alt.external_id ?? '',
+        });
+        const sub = await findActiveSubscriptionByEmail(normalizedEmail);
+        return {
+          paid: true,
+          sessionId: sid,
+          product: prod,
+          subscriptionUntil: sub?.end_date ?? undefined,
+        };
+      }
     }
   }
 
@@ -260,12 +388,7 @@ function confirmRobokassaSuccessReturn({ invId, outSum, signatureValue, shp, ord
   if (!resolved?.sessionId) return null;
   if (Number(outSum).toFixed(2) !== Number(resolved.amountRub).toFixed(2)) return null;
 
-  markWebPaid({
-    sessionId: resolved.sessionId,
-    product: resolved.product,
-    invId: String(invId),
-  });
-  syncPaidToSupabase({
+  void fulfillPaidOrder({
     sessionId: resolved.sessionId,
     product: resolved.product,
     amountRub: resolved.amountRub,
@@ -1088,10 +1211,10 @@ app.all('/robokassa/result', async (req, res) => {
     }
     markWebPaid({
       sessionId: order.sessionId,
-      product: order.product,
+      product: isReportUnlockProduct(order.product) ? 'full_report' : order.product,
       invId: order.invId,
     });
-    syncPaidToSupabase({
+    void fulfillPaidOrder({
       sessionId: order.sessionId,
       product: order.product,
       amountRub: order.amountRub,
@@ -1275,6 +1398,27 @@ app.post('/api/sync-assessment', async (req, res) => {
   }
 });
 
+/** Активная подписка по email (для автоматического доступа к отчёту без экрана тарифов). */
+app.post('/api/subscription-status', async (req, res) => {
+  try {
+    const email = normalizeRecoverEmail(req.body?.email);
+    if (!email) {
+      return res.status(400).json({ active: false, endDate: null, error: 'email required' });
+    }
+    if (!isSupabaseConfigured()) {
+      return res.json({ active: false, endDate: null });
+    }
+    const sub = await findActiveSubscriptionByEmail(email);
+    if (!sub?.end_date) {
+      return res.json({ active: false, endDate: null });
+    }
+    return res.json({ active: true, endDate: sub.end_date });
+  } catch (e) {
+    console.error('[api/subscription-status]', e);
+    return res.status(500).json({ active: false, endDate: null, error: 'server_error' });
+  }
+});
+
 /** Воронка: email + последний экран (в т.ч. если тест не завершён). */
 app.post('/api/sync-funnel', async (req, res) => {
   try {
@@ -1373,6 +1517,29 @@ app.get('/api/public-config', (_req, res) => {
     });
   }
   return res.json({ ok: true, ...cfg });
+});
+
+app.post('/api/cabinet/cancel-subscription', async (req, res) => {
+  try {
+    if (!isCabinetConfigured()) {
+      return res.status(503).json({ ok: false, error: 'cabinet_not_configured' });
+    }
+    const auth = req.get('Authorization');
+    const token = auth?.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+    const email = await verifySupabaseAccessToken(token);
+    if (!email) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' });
+    }
+    const result = await cancelCabinetSubscription(email);
+    if (!result.ok) {
+      const status = result.error === 'no_active_subscription' ? 404 : 500;
+      return res.status(status).json({ ok: false, error: result.error });
+    }
+    return res.json({ ok: true, endDate: result.endDate });
+  } catch (e) {
+    console.error('[api/cabinet/cancel-subscription]', e);
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
 });
 
 app.get('/api/cabinet/me', async (req, res) => {

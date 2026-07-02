@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ensureSupabaseBrowserConfig, getSupabaseBrowser } from './supabaseBrowser';
+import { ensureSupabaseBrowserConfig, completeCabinetAuthFromUrl, getSupabaseBrowser } from './supabaseBrowser';
 
 export function useCabinetSession() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -14,6 +14,7 @@ export function useCabinetSession() {
       setReady(true);
       return;
     }
+    await completeCabinetAuthFromUrl();
     const supabase = await getSupabaseBrowser();
     const { data } = await supabase.auth.getSession();
     setAccessToken(data.session?.access_token ?? null);

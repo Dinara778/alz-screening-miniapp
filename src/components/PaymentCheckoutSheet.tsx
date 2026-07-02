@@ -4,8 +4,10 @@ import { Button } from './Button';
 import { CalmCardShell } from './CalmCardShell';
 import { TELEGRAM_SUPPORT_URL } from './SupportFooter';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
+import { isReportUnlockProduct } from '../utils/paymentProductTypes';
+import { SameEmailHint } from './SameEmailHint';
 import { isStandaloneWeb } from '../utils/runtime';
-import { openWebPayment, recoverRobokassaPaymentFromUrl, verifyWebProductPayment, verifyWebReportPayment } from '../utils/webPayments';
+import { openWebPayment, recoverRobokassaPaymentFromUrl, verifyWebProductPayment } from '../utils/webPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import {
   consultationPaidStorageKey,
@@ -42,7 +44,7 @@ export const PaymentCheckoutSheet = ({
   const [awaitingReturn, setAwaitingReturn] = useState(false);
   const [alreadyPaidHelpOpen, setAlreadyPaidHelpOpen] = useState(false);
   const [alreadyPaid, setAlreadyPaid] = useState(() =>
-    product === 'full_report' ? isReportPaidUnlocked(sessionId, false) : false,
+    isReportUnlockProduct(product) ? isReportPaidUnlocked(sessionId, false) : false,
   );
   const [sheetNotice, setSheetNotice] = useState<string | null>(null);
   const [checkBusy, setCheckBusy] = useState(false);
@@ -86,7 +88,7 @@ export const PaymentCheckoutSheet = ({
     setAwaitingReturn(false);
     setSheetNotice(null);
     payInFlightRef.current = false;
-    if (product !== 'full_report') return;
+    if (!isReportUnlockProduct(product)) return;
     setAlreadyPaid(isReportPaidUnlocked(sessionId, serverPaymentsReady));
   }, [open, product, sessionId, serverPaymentsReady]);
 
@@ -133,7 +135,7 @@ export const PaymentCheckoutSheet = ({
   }, [open, product, awaitingReturn, tryConfirmConsultationPaid]);
 
   useEffect(() => {
-    if (!open || product !== 'full_report') return;
+    if (!open || !isReportUnlockProduct(product)) return;
     const onVis = () => {
       if (document.visibilityState !== 'visible') return;
       if (isReportPaidUnlocked(sessionId, serverPaymentsReady)) {
@@ -162,7 +164,7 @@ export const PaymentCheckoutSheet = ({
 
   const handlePay = async () => {
     if (payBusy || payInFlightRef.current) return;
-    if (product === 'full_report' && isReportPaidUnlocked(sessionId, serverPaymentsReady)) {
+    if (isReportUnlockProduct(product) && isReportPaidUnlocked(sessionId, serverPaymentsReady)) {
       onPaid(sessionId);
       onClose();
       return;
@@ -269,26 +271,26 @@ export const PaymentCheckoutSheet = ({
   };
 
   const handleAlreadyPaidHelp = () => {
-    if (product !== 'full_report' || payBusy) return;
+    if (!isReportUnlockProduct(product) || payBusy) return;
     showNotice(null);
     setAlreadyPaidHelpOpen(true);
   };
 
   const handleCheckPayment = async () => {
-    if (product !== 'full_report' || payBusy || checkBusy) return;
+    if (!isReportUnlockProduct(product) || payBusy || checkBusy) return;
     setCheckBusy(true);
     showNotice('Проверяем оплату на сервере…');
     trackPaymentEvent('payment_recover_click');
     try {
       const fromUrl = await recoverRobokassaPaymentFromUrl();
-      if (fromUrl?.product === 'full_report') {
+      if (fromUrl && isReportUnlockProduct(fromUrl.product)) {
         trackPaymentEvent('payment_recover_paid', { paidSessionId: fromUrl.sessionId });
         onPaid(fromUrl.sessionId);
         onClose();
         return;
       }
       const r = isStandaloneWeb()
-        ? await verifyWebReportPayment(sessionId, payerEmail)
+        ? await verifyWebProductPayment(sessionId, product, payerEmail)
         : await verifyReportPaymentOnServer(sessionId, payerEmail);
       if (r.ok) {
         trackPaymentEvent('payment_recover_paid', { paidSessionId: r.sessionId });
@@ -306,7 +308,7 @@ export const PaymentCheckoutSheet = ({
     }
   };
 
-  const reportAlreadyPaidHelp = alreadyPaidHelpOpen && product === 'full_report';
+  const reportAlreadyPaidHelp = alreadyPaidHelpOpen && isReportUnlockProduct(product);
 
   return (
     <div
@@ -336,7 +338,7 @@ export const PaymentCheckoutSheet = ({
               <h2 id="payment-checkout-title" className="app-heading mt-1 leading-snug">
                 {reportAlreadyPaidHelp
                   ? 'я уже оплатил(а)'
-                  : alreadyPaid && product === 'full_report'
+                  : alreadyPaid && isReportUnlockProduct(product)
                     ? 'Доступ уже есть'
                     : meta.title}
               </h2>
@@ -390,7 +392,7 @@ export const PaymentCheckoutSheet = ({
                 <p className="text-center text-xs leading-relaxed text-amber-200/95">{sheetNotice}</p>
               ) : null}
             </div>
-          ) : alreadyPaid && product === 'full_report' ? (
+          ) : alreadyPaid && isReportUnlockProduct(product) ? (
             <div className="mt-4 space-y-4">
               <p className="calm-body text-sm text-emerald-100/95">
                 Оплата учтена. Откройте расширенный отчёт.
@@ -409,6 +411,9 @@ export const PaymentCheckoutSheet = ({
             </div>
           ) : (
             <div className="mt-4 space-y-4">
+              {isReportUnlockProduct(product) ? (
+                <SameEmailHint email={payerEmail} />
+              ) : null}
               {meta.subtitle ? (
                 <p className="calm-body text-sm text-white/80">{meta.subtitle}</p>
               ) : null}
@@ -448,7 +453,7 @@ export const PaymentCheckoutSheet = ({
               Назад
             </Button>
           </div>
-        ) : !alreadyPaid || product !== 'full_report' ? (
+        ) : !alreadyPaid || !isReportUnlockProduct(product) ? (
           <div className="relative z-20 shrink-0 space-y-3 border-t border-white/10 px-5 py-4 sm:px-6">
             {sheetNotice ? (
               <p className="text-center text-xs leading-relaxed text-amber-200/95">{sheetNotice}</p>
@@ -467,7 +472,7 @@ export const PaymentCheckoutSheet = ({
               {payLabel}
             </Button>
 
-            {product === 'full_report' ? (
+            {isReportUnlockProduct(product) ? (
               <Button
                 type="button"
                 variant="secondary"

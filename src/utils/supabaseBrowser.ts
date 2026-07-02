@@ -61,10 +61,47 @@ export async function getSupabaseBrowser(): Promise<SupabaseClient> {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
+        flowType: 'pkce',
       },
     });
   }
   return browserClient;
+}
+
+/** Обработка возврата по старой magic-link (?code= / #access_token) без поломки SPA. */
+export async function completeCabinetAuthFromUrl(): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+
+  const supabase = await getSupabaseBrowser();
+  const url = new URL(window.location.href);
+  const code = url.searchParams.get('code')?.trim();
+
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    stripCabinetAuthParamsFromUrl();
+    return !error;
+  }
+
+  const hash = window.location.hash?.replace(/^#/, '') ?? '';
+  if (hash.includes('access_token=') || hash.includes('error=')) {
+    const { data, error } = await supabase.auth.getSession();
+    stripCabinetAuthParamsFromUrl();
+    return !error && Boolean(data.session);
+  }
+
+  return false;
+}
+
+function stripCabinetAuthParamsFromUrl(): void {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  url.searchParams.delete('code');
+  url.searchParams.delete('type');
+  url.searchParams.delete('error');
+  url.searchParams.delete('error_description');
+  url.hash = '';
+  const next = `${url.pathname}${url.search}`;
+  window.history.replaceState({}, '', next || url.pathname);
 }
 
 export function getCabinetRedirectUrl(): string {
