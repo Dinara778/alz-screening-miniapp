@@ -8,6 +8,7 @@ import { isReportUnlockProduct } from '../utils/paymentProductTypes';
 import { isStandaloneWeb } from '../utils/runtime';
 import { openWebPayment, recoverRobokassaPaymentFromUrl, verifyWebProductPayment } from '../utils/webPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
+import { REPORT_TARIFF_PAYMENT_BUTTON_CLASS } from '../constants/ctaButton';
 import type { ReportUnlockProduct } from '../utils/paymentProductTypes';
 import {
   isReportPaidUnlocked,
@@ -334,7 +335,7 @@ export const PaymentCheckoutSheet = ({
                 type="button"
                 variant="sell"
                 disabled={checkBusy}
-                className="relative z-20 w-full touch-manipulation rounded-2xl py-3.5 text-sm font-semibold"
+                className={`relative z-20 touch-manipulation ${REPORT_TARIFF_PAYMENT_BUTTON_CLASS}`}
                 onClick={() => void handleCheckPayment()}
               >
                 {checkBusy ? 'Проверяем оплату…' : meta.alreadyPaidCheckLabel}
@@ -351,7 +352,7 @@ export const PaymentCheckoutSheet = ({
               <Button
                 type="button"
                 variant="sell"
-                className="w-full rounded-2xl py-4 text-[1.0625rem] font-bold sm:text-lg"
+                className={REPORT_TARIFF_PAYMENT_BUTTON_CLASS}
                 onClick={() => {
                   onPaid(sessionId);
                   onClose();
@@ -395,7 +396,7 @@ export const PaymentCheckoutSheet = ({
             <Button
               type="button"
               variant="secondary"
-              className="w-full shrink-0 rounded-2xl py-3.5 text-sm font-semibold"
+              className="report-tariff-cta mt-0 w-full shrink-0 py-3.5 text-sm font-semibold"
               onClick={() => setAlreadyPaidHelpOpen(false)}
             >
               Назад
@@ -410,7 +411,7 @@ export const PaymentCheckoutSheet = ({
               type="button"
               variant="sell"
               disabled={payBusy}
-              className="relative z-20 w-full shrink-0 touch-manipulation rounded-2xl py-4 text-[1.0625rem] font-bold sm:text-lg"
+              className={`relative z-20 shrink-0 touch-manipulation ${REPORT_TARIFF_PAYMENT_BUTTON_CLASS}`}
               onClick={() => void handlePay()}
               onPointerDown={(e) => {
                 if (payBusy || payInFlightRef.current) return;
@@ -425,7 +426,7 @@ export const PaymentCheckoutSheet = ({
                 type="button"
                 variant="secondary"
                 disabled={payBusy}
-                className="relative z-20 w-full shrink-0 touch-manipulation rounded-2xl py-3.5 text-sm font-semibold"
+                className="report-tariff-cta relative z-20 mt-0 w-full shrink-0 touch-manipulation py-3.5 text-sm font-semibold"
                 onClick={handleAlreadyPaidHelp}
               >
                 я уже оплатил(а)
