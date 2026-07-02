@@ -1,5 +1,7 @@
 import { getPublicSupabaseConfig } from './supabaseStore.mjs';
 
+const AUTH_FETCH_TIMEOUT_MS = 15000;
+
 function authConfig(env = process.env) {
   const cfg = getPublicSupabaseConfig(env);
   if (!cfg) return null;
@@ -19,6 +21,21 @@ function mapAuthError(json, fallback = 'auth_failed') {
   return { error: code || fallback, message: msg || undefined };
 }
 
+async function fetchAuth(url, options) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), AUTH_FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...options, signal: ctrl.signal });
+  } catch (e) {
+    if (e?.name === 'AbortError') {
+      throw Object.assign(new Error('supabase_timeout'), { code: 'supabase_timeout' });
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function requestCabinetOtp(email, env = process.env) {
   const normalized = String(email ?? '').trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
@@ -31,7 +48,7 @@ export async function requestCabinetOtp(email, env = process.env) {
   }
 
   try {
-    const res = await fetch(`${cfg.baseUrl}/auth/v1/otp`, {
+    const res = await fetchAuth(`${cfg.baseUrl}/auth/v1/otp`, {
       method: 'POST',
       headers: cfg.headers,
       body: JSON.stringify({
@@ -46,9 +63,34 @@ export async function requestCabinetOtp(email, env = process.env) {
     }
     return { ok: true };
   } catch (e) {
+    if (e?.code === 'supabase_timeout') {
+      return { ok: false, error: 'supabase_timeout', message: 'Отправка кода заняла слишком много времени' };
+    }
     console.error('[cabinetOtp] request', e?.message || e);
     return { ok: false, error: 'supabase_unreachable', message: 'Сервер Corta не смог связаться с Supabase' };
   }
+}
+
+async function verifyCabinetOtpType(cfg, normalized, code, type) {
+  const res = await fetchAuth(`${cfg.baseUrl}/auth/v1/verify`, {
+    method: 'POST',
+    headers: cfg.headers,
+    body: JSON.stringify({
+      email: normalized,
+      token: code,
+      type,
+    }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (res.ok && json?.access_token && json?.refresh_token) {
+    return {
+      ok: true,
+      access_token: json.access_token,
+      refresh_token: json.refresh_token,
+    };
+  }
+  const mapped = mapAuthError(json);
+  throw Object.assign(new Error(mapped.message || mapped.error || 'invalid_token'), mapped);
 }
 
 export async function verifyCabinetOtp(email, token, env = process.env) {
@@ -70,33 +112,24 @@ export async function verifyCabinetOtp(email, token, env = process.env) {
   }
 
   const types = ['email', 'signup'];
-  let last = null;
 
-  for (const type of types) {
-    try {
-      const res = await fetch(`${cfg.baseUrl}/auth/v1/verify`, {
-        method: 'POST',
-        headers: cfg.headers,
-        body: JSON.stringify({
-          email: normalized,
-          token: code,
-          type,
-        }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (res.ok && json?.access_token && json?.refresh_token) {
-        return {
-          ok: true,
-          access_token: json.access_token,
-          refresh_token: json.refresh_token,
-        };
+  try {
+    return await Promise.any(types.map((type) => verifyCabinetOtpType(cfg, normalized, code, type)));
+  } catch (e) {
+    if (e instanceof AggregateError) {
+      const timeout = e.errors.find((err) => err?.code === 'supabase_timeout');
+      if (timeout) {
+        return { ok: false, error: 'supabase_timeout', message: 'Проверка кода заняла слишком много времени' };
       }
-      last = mapAuthError(json);
-    } catch (e) {
-      console.error('[cabinetOtp] verify', e?.message || e);
-      return { ok: false, error: 'supabase_unreachable', message: 'Сервер Corta не смог связаться с Supabase' };
+      const last = e.errors[e.errors.length - 1];
+      if (last?.message) {
+        return { ok: false, error: last.code || 'invalid_token', message: last.message };
+      }
     }
+    if (e?.code === 'supabase_timeout') {
+      return { ok: false, error: 'supabase_timeout', message: 'Проверка кода заняла слишком много времени' };
+    }
+    console.error('[cabinetOtp] verify', e?.message || e);
+    return { ok: false, error: 'supabase_unreachable', message: 'Сервер Corta не смог связаться с Supabase' };
   }
-
-  return { ok: false, ...(last || { error: 'invalid_token' }) };
 }

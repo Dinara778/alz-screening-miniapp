@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { getPaymentsApiUrl } from './telegramPayments';
+import { saveCabinetSession } from './cabinetSessionStorage';
 
 type SupabasePublicConfig = { url: string; anonKey: string };
 
@@ -154,12 +155,12 @@ export async function completeCabinetAuthFromUrl(): Promise<boolean> {
     const accessToken = hashParams.get('access_token')?.trim();
     const refreshToken = hashParams.get('refresh_token')?.trim();
     if (accessToken && refreshToken) {
-      const { error } = await supabase.auth.setSession({
+      saveCabinetSession({
         access_token: accessToken,
         refresh_token: refreshToken,
       });
       stripCabinetAuthParamsFromUrl();
-      return !error;
+      return true;
     }
     const { data, error } = await supabase.auth.getSession();
     stripCabinetAuthParamsFromUrl();

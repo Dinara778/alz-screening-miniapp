@@ -2,6 +2,11 @@ import type { ParticipantProfile, SessionResult } from '../types';
 import { getPaymentsApiUrl } from './telegramPayments';
 import { parseParticipantProfile } from './participantProfileStore';
 import { getCabinetRedirectUrl, getSupabaseBrowser, resetSupabaseBrowserClient, warmCabinetAuthClient } from './supabaseBrowser';
+import {
+  clearCabinetSession,
+  readCabinetSession,
+  saveCabinetSession,
+} from './cabinetSessionStorage';
 
 export type CabinetAssessment = {
   sessionId: string;
@@ -127,6 +132,9 @@ export function formatCabinetAuthError(error: unknown): string {
   if (/supabase_unreachable/i.test(`${errorCode} ${message}`)) {
     return 'Не удалось отправить код. Попробуйте через минуту.';
   }
+  if (/supabase_timeout|слишком много времени/i.test(`${errorCode} ${message}`)) {
+    return 'Проверка заняла слишком много времени. Попробуйте снова.';
+  }
   if (/load failed|failed to fetch|networkerror|network error|fetch/i.test(message)) {
     return 'Нет связи с сервером Corta. Проверьте интернет и попробуйте снова.';
   }
@@ -160,16 +168,25 @@ function cabinetApiBase(): string {
 async function postCabinetAuth<T extends Record<string, unknown>>(
   path: string,
   body: Record<string, unknown>,
+  timeoutMs = 20000,
 ): Promise<T> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   let res: Response;
   try {
     res = await fetch(`${cabinetApiBase()}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal: ctrl.signal,
     });
-  } catch {
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      throw new Error('Проверка заняла слишком много времени. Попробуйте снова.');
+    }
     throw new Error(formatCabinetAuthError('load failed'));
+  } finally {
+    clearTimeout(timer);
   }
   const json = (await res.json().catch(() => ({}))) as T & { ok?: boolean; message?: string; error?: string };
   if (!res.ok || !json.ok) {
@@ -198,15 +215,9 @@ export async function verifyLoginOtp(email: string, code: string): Promise<void>
   }>('/api/cabinet/verify-otp', {
     email: normalizedEmail,
     token,
-  });
+  }, 25000);
 
-  await warmCabinetAuthClient();
-  const supabase = await getSupabaseBrowser();
-  const { error } = await supabase.auth.setSession({
-    access_token: json.access_token,
-    refresh_token: json.refresh_token,
-  });
-  if (error) throw new Error(formatCabinetAuthError(error));
+  saveCabinetSession(json, normalizedEmail);
 }
 
 export { warmCabinetAuthClient };
@@ -235,10 +246,14 @@ export async function verifyLoginCode(email: string, code: string): Promise<void
 }
 
 export async function signOutCabinet(): Promise<void> {
-  const supabase = await getSupabaseBrowser();
-  const { error } = await supabase.auth.signOut({ scope: 'global' });
+  clearCabinetSession();
   resetSupabaseBrowserClient();
-  if (error) throw error;
+  try {
+    const supabase = await getSupabaseBrowser();
+    await supabase.auth.signOut({ scope: 'local' });
+  } catch {
+    // Выход не должен зависеть от доступности supabase.co в браузере.
+  }
 }
 
 export { useCabinetSession } from './useCabinetSession';
