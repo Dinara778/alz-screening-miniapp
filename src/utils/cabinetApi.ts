@@ -1,9 +1,6 @@
 import type { SessionResult } from '../types';
 import { getPaymentsApiUrl } from './telegramPayments';
-import {
-  ensureSupabaseBrowserConfig,
-  getSupabaseBrowser,
-} from './supabaseBrowser';
+import { getCabinetRedirectUrl, getSupabaseBrowser } from './supabaseBrowser';
 
 export type CabinetAssessment = {
   sessionId: string;
@@ -98,17 +95,24 @@ export async function fetchCabinetReport(
   return json.session as SessionResult;
 }
 
-export async function requestLoginCode(email: string): Promise<void> {
+export async function requestMagicLink(email: string): Promise<void> {
   const supabase = await getSupabaseBrowser();
   const { error } = await supabase.auth.signInWithOtp({
     email: email.trim().toLowerCase(),
     options: {
       shouldCreateUser: true,
+      emailRedirectTo: getCabinetRedirectUrl(),
     },
   });
   if (error) throw error;
 }
 
+/** @deprecated Используйте requestMagicLink */
+export async function requestLoginCode(email: string): Promise<void> {
+  return requestMagicLink(email);
+}
+
+/** @deprecated Вход по ссылке — код на экране не нужен */
 export async function verifyLoginCode(email: string, code: string): Promise<void> {
   const supabase = await getSupabaseBrowser();
   const token = code.replace(/\D/g, '').trim();
@@ -118,11 +122,6 @@ export async function verifyLoginCode(email: string, code: string): Promise<void
     type: 'email',
   });
   if (error) throw error;
-}
-
-/** @deprecated Используйте requestLoginCode */
-export async function requestMagicLink(email: string): Promise<void> {
-  return requestLoginCode(email);
 }
 
 export async function signOutCabinet(): Promise<void> {

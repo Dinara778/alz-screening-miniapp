@@ -1,28 +1,28 @@
 import { useState } from 'react';
 import { SameEmailHint } from './SameEmailHint';
-import { requestLoginCode, verifyLoginCode } from '../utils/cabinetApi';
+import { requestMagicLink } from '../utils/cabinetApi';
 
 type Props = {
   title?: string;
   subtitle?: string;
+  /** Не используется при входе по ссылке — сессия подхватывается автоматически */
   onLoggedIn?: () => void;
 };
 
 export const CabinetLoginForm = ({
   title = 'Личный кабинет Corta',
-  subtitle = 'Войдите по email — пришлём код для входа.',
+  subtitle = 'Войдите по email — пришлём ссылку для входа.',
   onLoggedIn,
 }: Props) => {
-  const [step, setStep] = useState<'email' | 'code'>('email');
+  const [step, setStep] = useState<'email' | 'link-sent'>('email');
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
   const [msg, setMsg] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   const normalizedEmail = email.trim().toLowerCase();
 
-  const onSendCode = async () => {
+  const onSendLink = async () => {
     if (!normalizedEmail.includes('@')) {
       setError('Введите корректный email');
       return;
@@ -31,31 +31,13 @@ export const CabinetLoginForm = ({
     setError('');
     setMsg('');
     try {
-      await requestLoginCode(normalizedEmail);
-      setStep('code');
-      setCode('');
-      setMsg(`Код отправлен на ${normalizedEmail}. Проверьте почту (и папку «Спам»).`);
+      await requestMagicLink(normalizedEmail);
+      setStep('link-sent');
+      setMsg(
+        `Ссылка отправлена на ${normalizedEmail}. Откройте письмо и нажмите «Войти» — лучше в том же браузере, где вы запрашивали вход. Проверьте папку «Спам».`,
+      );
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось отправить код');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const onVerifyCode = async () => {
-    const token = code.replace(/\D/g, '').trim();
-    if (token.length < 6) {
-      setError('Введите 6-значный код из письма');
-      return;
-    }
-    setBusy(true);
-    setError('');
-    setMsg('');
-    try {
-      await verifyLoginCode(normalizedEmail, token);
-      onLoggedIn?.();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Неверный или просроченный код');
+      setError(e instanceof Error ? e.message : 'Не удалось отправить ссылку');
     } finally {
       setBusy(false);
     }
@@ -77,34 +59,21 @@ export const CabinetLoginForm = ({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') void onSendCode();
+              if (e.key === 'Enter') void onSendLink();
             }}
           />
-          <button type="button" className="cabinet-btn" disabled={busy} onClick={() => void onSendCode()}>
-            {busy ? 'Отправка…' : 'Получить код для входа'}
+          <button type="button" className="cabinet-btn" disabled={busy} onClick={() => void onSendLink()}>
+            {busy ? 'Отправка…' : 'Получить ссылку для входа'}
           </button>
         </>
       ) : (
         <>
           <p className="cabinet-muted" style={{ marginBottom: 12 }}>
-            Код отправлен на <strong>{normalizedEmail}</strong>
+            Письмо отправлено на <strong>{normalizedEmail}</strong>
           </p>
-          <input
-            className="cabinet-input"
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            placeholder="123456"
-            maxLength={8}
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') void onVerifyCode();
-            }}
-          />
-          <button type="button" className="cabinet-btn" disabled={busy} onClick={() => void onVerifyCode()}>
-            {busy ? 'Проверяем…' : 'Войти'}
-          </button>
+          <p className="cabinet-muted" style={{ marginBottom: 12, fontSize: '0.85rem' }}>
+            После перехода по ссылке эта страница откроет кабинет автоматически.
+          </p>
           <button
             type="button"
             className="cabinet-btn-secondary"
@@ -112,7 +81,6 @@ export const CabinetLoginForm = ({
             disabled={busy}
             onClick={() => {
               setStep('email');
-              setCode('');
               setError('');
               setMsg('');
             }}
@@ -124,9 +92,9 @@ export const CabinetLoginForm = ({
             className="cabinet-btn-secondary"
             style={{ marginTop: 8 }}
             disabled={busy}
-            onClick={() => void onSendCode()}
+            onClick={() => void onSendLink()}
           >
-            Отправить код ещё раз
+            Отправить ссылку ещё раз
           </button>
         </>
       )}

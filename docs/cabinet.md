@@ -1,6 +1,6 @@
 # Личный кабинет Corta
 
-Вход по **magic link** (Supabase Auth) — ссылка на email, без пароля.
+Вход по **ссылке из email** (Supabase magic link) — без пароля и без SMTP.
 
 URL: **https://cortaapp.ru/cabinet**
 
@@ -11,36 +11,40 @@ URL: **https://cortaapp.ru/cabinet**
    - **Site URL:** `https://cortaapp.ru`
    - **Redirect URLs:** добавить `https://cortaapp.ru/cabinet`
 
+Шаблон **Magic Link** можно оставить стандартным (со ссылкой `{{ .ConfirmationURL }}`). SMTP не обязателен.
+
 ## 2. SQL-миграция
 
-В SQL Editor выполните `supabase/migrations/004_cabinet.sql` (колонка `compensation_tip` + триггер пользователя).
+В SQL Editor выполните `supabase/migrations/004_cabinet.sql`.
 
 ## 3. Переменные Amvera
 
-**Сборка** (как VITE_TELEGRAM_PAYMENTS_URL):
+**Сборка:**
 
 ```env
-VITE_SUPABASE_URL=https://keboaqukrbjuhktdcfqv.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJ...   # anon public из Settings → API
+VITE_SUPABASE_URL=https://....supabase.co
+VITE_SUPABASE_ANON_KEY=eyJ...
 ```
 
-**Запуск** (уже должны быть):
+**Запуск:**
 
 ```env
 SUPABASE_URL=...
 SUPABASE_SERVICE_ROLE_KEY=...
 ```
 
-## 4. Что видит пользователь
-
-- Текущий индекс и домены (последняя оценка)
-- История за 7 дней
-- Последнее упражнение-компенсация из отчёта
-- Статус: бесплатно / разовая покупка / подписка
-
-## 5. Как войти
+## 4. Как войти
 
 1. Открыть `/cabinet`
 2. Ввести email (тот же, что при тесте)
-3. Получить письмо от Supabase → нажать ссылку
-4. Откроется кабинет с данными
+3. Получить письмо → нажать ссылку **в том же браузере**
+4. Откроется кабинет
+
+## 5. Имя отправителя «Corta»
+
+| Вариант | Имя «от кого» | Нужен SMTP? |
+|--------|----------------|-------------|
+| Стандартная почта Supabase | Обычно «Supabase» / технический адрес | Нет |
+| Свой SMTP (Resend и т.д.) | **Corta**, `noreply@cortaapp.ru` | Да |
+
+Без SMTP изменить имя отправителя на **Corta** почти нельзя — только тема/текст письма (и то после настройки SMTP в Supabase).
