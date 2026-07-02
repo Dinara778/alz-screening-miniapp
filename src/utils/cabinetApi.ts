@@ -3,6 +3,31 @@ import { getPaymentsApiUrl } from './telegramPayments';
 import { parseParticipantProfile } from './participantProfileStore';
 import { getCabinetRedirectUrl, getSupabaseBrowser, resetSupabaseBrowserClient } from './supabaseBrowser';
 
+function cabinetLoginLinkErrorMessage(
+  json: { error?: string; message?: string; retryAfterSec?: number },
+  fallback?: string,
+): string {
+  if (json.message?.trim()) return json.message.trim();
+  switch (json.error) {
+    case 'invalid_email':
+      return 'Введите корректный email';
+    case 'rate_limit':
+      return json.retryAfterSec
+        ? `Слишком частые запросы. Подождите ${json.retryAfterSec} сек. и попробуйте снова.`
+        : 'Слишком частые запросы. Подождите минуту и попробуйте снова.';
+    case 'hourly_limit':
+      return 'Слишком много запросов за час. Попробуйте позже или напишите в техподдержку.';
+    case 'smtp_not_configured':
+      return 'Отправка писем временно недоступна. Напишите в техподдержку Corta.';
+    case 'smtp_send_failed':
+      return 'Не удалось отправить письмо. Попробуйте позже или напишите в техподдержку.';
+    case 'cabinet_not_configured':
+      return 'Личный кабинет пока не настроен на сервере.';
+    default:
+      return fallback || 'Не удалось отправить ссылку. Попробуйте позже.';
+  }
+}
+
 export type CabinetAssessment = {
   sessionId: string;
   score: number;
@@ -110,15 +135,29 @@ export async function fetchCabinetParticipantProfile(
 }
 
 export async function requestMagicLink(email: string): Promise<void> {
-  const supabase = await getSupabaseBrowser();
-  const { error } = await supabase.auth.signInWithOtp({
-    email: email.trim().toLowerCase(),
-    options: {
-      shouldCreateUser: true,
-      emailRedirectTo: getCabinetRedirectUrl(),
-    },
-  });
-  if (error) throw error;
+  const api = getPaymentsApiUrl();
+  if (!api) {
+    throw new Error('Сервер не настроен');
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${api.replace(/\/$/, '')}/api/cabinet/request-login-link`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email.trim().toLowerCase(),
+        redirectTo: getCabinetRedirectUrl(),
+      }),
+    });
+  } catch {
+    throw new Error('Нет связи с сервером. Проверьте интернет и попробуйте снова.');
+  }
+
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json.ok) {
+    throw new Error(cabinetLoginLinkErrorMessage(json));
+  }
 }
 
 /** @deprecated Используйте requestMagicLink */

@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SameEmailHint } from './SameEmailHint';
 import { requestMagicLink } from '../utils/cabinetApi';
+
+const RESEND_COOLDOWN_SEC = 60;
 
 type Props = {
   title?: string;
@@ -19,10 +21,20 @@ export const CabinetLoginForm = ({
   const [msg, setMsg] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const normalizedEmail = email.trim().toLowerCase();
 
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = window.setInterval(() => {
+      setResendCooldown((s) => (s <= 1 ? 0 : s - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [resendCooldown]);
+
   const onSendLink = async () => {
+    if (resendCooldown > 0) return;
     if (!normalizedEmail.includes('@')) {
       setError('Введите корректный email');
       return;
@@ -33,11 +45,17 @@ export const CabinetLoginForm = ({
     try {
       await requestMagicLink(normalizedEmail);
       setStep('link-sent');
+      setResendCooldown(RESEND_COOLDOWN_SEC);
       setMsg(
         `Ссылка отправлена на ${normalizedEmail}. Откройте письмо и нажмите «Войти» — лучше в том же браузере, где вы запрашивали вход. Проверьте папку «Спам».`,
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось отправить ссылку');
+      const message = e instanceof Error ? e.message : 'Не удалось отправить ссылку';
+      setError(message);
+      if (/подождите \d+ сек/i.test(message)) {
+        const match = message.match(/(\d+)/);
+        if (match) setResendCooldown(Number(match[1]));
+      }
     } finally {
       setBusy(false);
     }
@@ -91,10 +109,12 @@ export const CabinetLoginForm = ({
             type="button"
             className="cabinet-btn-secondary"
             style={{ marginTop: 8 }}
-            disabled={busy}
+            disabled={busy || resendCooldown > 0}
             onClick={() => void onSendLink()}
           >
-            Отправить ссылку ещё раз
+            {resendCooldown > 0
+              ? `Отправить ещё раз через ${resendCooldown} сек.`
+              : 'Отправить ссылку ещё раз'}
           </button>
         </>
       )}
