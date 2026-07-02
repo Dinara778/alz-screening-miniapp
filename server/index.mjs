@@ -72,6 +72,7 @@ import {
   verifySupabaseAccessToken,
   cancelCabinetSubscription,
 } from './cabinetStore.mjs';
+import { requestCabinetOtp, verifyCabinetOtp } from './cabinetOtp.mjs';
 import {
   getSupabaseHealthInfo,
   getPublicSupabaseConfig,
@@ -1515,6 +1516,51 @@ app.get('/api/public-config', (_req, res) => {
     });
   }
   return res.json({ ok: true, ...cfg });
+});
+
+app.post('/api/cabinet/request-otp', async (req, res) => {
+  try {
+    const result = await requestCabinetOtp(req.body?.email);
+    if (!result.ok) {
+      const status =
+        result.error === 'invalid_email'
+          ? 400
+          : result.error === 'supabase_unreachable'
+            ? 502
+            : /rate|429/i.test(`${result.error} ${result.message ?? ''}`)
+              ? 429
+              : 500;
+      return res.status(status).json(result);
+    }
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('[cabinet request-otp]', e);
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
+app.post('/api/cabinet/verify-otp', async (req, res) => {
+  try {
+    const token = req.body?.token ?? req.body?.code;
+    const result = await verifyCabinetOtp(req.body?.email, token);
+    if (!result.ok) {
+      const status =
+        result.error === 'invalid_email' || result.error === 'invalid_token'
+          ? 400
+          : result.error === 'supabase_unreachable'
+            ? 502
+            : 401;
+      return res.status(status).json(result);
+    }
+    return res.json({
+      ok: true,
+      access_token: result.access_token,
+      refresh_token: result.refresh_token,
+    });
+  } catch (e) {
+    console.error('[cabinet verify-otp]', e);
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
 });
 
 app.post('/api/cabinet/cancel-subscription', async (req, res) => {

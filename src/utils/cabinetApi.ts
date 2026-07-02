@@ -110,24 +110,28 @@ export async function fetchCabinetParticipantProfile(
 }
 
 export function formatCabinetAuthError(error: unknown): string {
-  if (!error) return 'Не удалось отправить ссылку. Попробуйте позже.';
+  if (!error) return 'Не удалось отправить код. Попробуйте позже.';
   if (typeof error === 'string' && error.trim()) return error.trim();
 
   const record =
     typeof error === 'object' && error !== null
-      ? (error as { message?: string; code?: string; status?: number })
+      ? (error as { message?: string; code?: string; status?: number; error?: string })
       : null;
   const message = record?.message?.trim() ?? '';
   const code = record?.code?.trim() ?? '';
+  const errorCode = record?.error?.trim() ?? '';
 
-  if (/rate limit|over_email_send_rate_limit/i.test(`${code} ${message}`)) {
+  if (/rate limit|over_email_send_rate_limit/i.test(`${code} ${errorCode} ${message}`)) {
     return 'Слишком частые запросы. Подождите 1–2 минуты и попробуйте снова.';
   }
-  if (/load failed|failed to fetch|networkerror|network error|fetch/i.test(message)) {
-    return 'Нет связи с сервером входа. Проверьте интернет. Если ошибка повторяется — на Amvera указан неверный Supabase ключ (нужен anon public, не service_role).';
+  if (/supabase_unreachable/i.test(`${errorCode} ${message}`)) {
+    return 'Не удалось отправить код. Попробуйте через минуту.';
   }
-  if (/not configured|anon public|service_role/i.test(message)) {
-    return 'Кабинет не настроен на сервере. В Amvera укажите anon public ключ из Supabase → API (не service_role).';
+  if (/load failed|failed to fetch|networkerror|network error|fetch/i.test(message)) {
+    return 'Нет связи с сервером Corta. Проверьте интернет и попробуйте снова.';
+  }
+  if (/not configured|cabinet_not_configured|anon public|service_role/i.test(`${errorCode} ${message}`)) {
+    return 'Кабинет временно недоступен. Попробуйте позже.';
   }
   if (/smtp|sending confirmation email|error sending/i.test(message)) {
     return 'Письмо не отправилось. Проверьте SMTP в Supabase (Яндекс: smtp.yandex.ru, пароль приложения для «Почта»).';
@@ -147,45 +151,62 @@ export function formatCabinetAuthError(error: unknown): string {
   return 'Не удалось выполнить вход. Проверьте email и попробуйте снова.';
 }
 
-/** Отправить одноразовый код на email (шаблон Magic Link в Supabase должен содержать {{ .Token }}). */
-export async function requestLoginOtp(email: string): Promise<void> {
-  await warmCabinetAuthClient();
-  const supabase = await getSupabaseBrowser();
-  const { error } = await supabase.auth.signInWithOtp({
-    email: email.trim().toLowerCase(),
-    options: {
-      shouldCreateUser: true,
-    },
-  });
-  if (error) throw new Error(formatCabinetAuthError(error));
+function cabinetApiBase(): string {
+  const api = getPaymentsApiUrl();
+  if (!api) throw new Error('Сервер Corta не настроен');
+  return api.replace(/\/$/, '');
 }
 
-const OTP_VERIFY_TYPES = ['email', 'signup'] as const;
+async function postCabinetAuth<T extends Record<string, unknown>>(
+  path: string,
+  body: Record<string, unknown>,
+): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`${cabinetApiBase()}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error(formatCabinetAuthError('load failed'));
+  }
+  const json = (await res.json().catch(() => ({}))) as T & { ok?: boolean; message?: string; error?: string };
+  if (!res.ok || !json.ok) {
+    throw new Error(formatCabinetAuthError(json.message || json.error || json));
+  }
+  return json;
+}
+
+/** Отправить одноразовый код на email (шаблон Magic Link в Supabase должен содержать {{ .Token }}). */
+export async function requestLoginOtp(email: string): Promise<void> {
+  await postCabinetAuth('/api/cabinet/request-otp', {
+    email: email.trim().toLowerCase(),
+  });
+}
 
 export async function verifyLoginOtp(email: string, code: string): Promise<void> {
-  await warmCabinetAuthClient();
-  const supabase = await getSupabaseBrowser();
   const token = code.replace(/\D/g, '').trim();
   if (token.length < 6) {
     throw new Error('Введите код из письма полностью');
   }
   const normalizedEmail = email.trim().toLowerCase();
 
-  let lastError: unknown = null;
-  for (const type of OTP_VERIFY_TYPES) {
-    const { data, error } = await supabase.auth.verifyOtp({
-      email: normalizedEmail,
-      token,
-      type,
-    });
-    if (!error && data.session) return;
-    lastError = error;
-  }
+  const json = await postCabinetAuth<{
+    access_token: string;
+    refresh_token: string;
+  }>('/api/cabinet/verify-otp', {
+    email: normalizedEmail,
+    token,
+  });
 
-  const { data: sessionData } = await supabase.auth.getSession();
-  if (sessionData.session) return;
-
-  throw new Error(formatCabinetAuthError(lastError));
+  await warmCabinetAuthClient();
+  const supabase = await getSupabaseBrowser();
+  const { error } = await supabase.auth.setSession({
+    access_token: json.access_token,
+    refresh_token: json.refresh_token,
+  });
+  if (error) throw new Error(formatCabinetAuthError(error));
 }
 
 export { warmCabinetAuthClient };
