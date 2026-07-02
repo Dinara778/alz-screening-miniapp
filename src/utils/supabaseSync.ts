@@ -12,6 +12,7 @@ export type SyncAssessmentPayload = {
   stabilityScore: number;
   flexibilityScore: number;
   compensationTip?: string | null;
+  sessionData?: SessionResult;
 };
 
 function domainScore(
@@ -37,6 +38,7 @@ export function buildSyncAssessmentPayload(session: SessionResult): SyncAssessme
     stabilityScore: domainScore(analytics.domains, 'reactionStability'),
     flexibilityScore: domainScore(analytics.domains, 'cognitiveFlexibility'),
     compensationTip,
+    sessionData: session,
   };
 }
 

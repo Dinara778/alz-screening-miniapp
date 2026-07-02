@@ -65,6 +65,7 @@ import {
 import { importSheetsCsvText } from './sheetsCsvImport.mjs';
 import {
   getCabinetData,
+  getCabinetReportSession,
   getCabinetHealthInfo,
   isCabinetConfigured,
   verifySupabaseAccessToken,
@@ -1244,6 +1245,7 @@ app.post('/api/sync-assessment', async (req, res) => {
       stabilityScore,
       flexibilityScore,
       compensationTip,
+      sessionData,
     } = req.body ?? {};
 
     if (!sessionId || !email) {
@@ -1260,6 +1262,7 @@ app.post('/api/sync-assessment', async (req, res) => {
       stabilityScore,
       flexibilityScore,
       compensationTip,
+      sessionData,
     });
 
     if (!saved) {
@@ -1390,6 +1393,47 @@ app.get('/api/cabinet/me', async (req, res) => {
     return res.json({ ok: true, data });
   } catch (e) {
     console.error('[api/cabinet/me]', e);
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
+app.get('/api/cabinet/report/:sessionId', async (req, res) => {
+  try {
+    if (!isCabinetConfigured()) {
+      return res.status(503).json({ ok: false, error: 'cabinet_not_configured' });
+    }
+    const auth = req.get('Authorization');
+    const token = auth?.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+    const email = await verifySupabaseAccessToken(token);
+    if (!email) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' });
+    }
+    const sessionId = String(req.params.sessionId ?? '').trim();
+    if (!sessionId) {
+      return res.status(400).json({ ok: false, error: 'session_required' });
+    }
+    const result = await getCabinetReportSession(email, sessionId);
+    if (!result) {
+      return res.status(404).json({ ok: false, error: 'not_found' });
+    }
+    if (result.error === 'no_report_data') {
+      return res.status(404).json({
+        ok: false,
+        error: 'no_report_data',
+        message:
+          'Данные отчёта для этого прохождения не сохранены. Пройдите оценку заново на этом устройстве или откройте отчёт там, где проходили.',
+      });
+    }
+    if (result.error === 'payment_required') {
+      return res.status(403).json({
+        ok: false,
+        error: 'payment_required',
+        message: 'Расширенный отчёт доступен после оплаты.',
+      });
+    }
+    return res.json({ ok: true, session: result.session, sessionId: result.sessionId });
+  } catch (e) {
+    console.error('[api/cabinet/report]', e);
     return res.status(500).json({ ok: false, error: 'server_error' });
   }
 });

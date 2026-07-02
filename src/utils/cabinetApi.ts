@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import type { SessionResult } from '../types';
 import { getPaymentsApiUrl } from './telegramPayments';
 import {
   ensureSupabaseBrowserConfig,
@@ -16,11 +16,25 @@ export type CabinetAssessment = {
   flexibilityScore: number | null;
   compensationTip: string | null;
   createdAt: string;
+  canOpenReport: boolean;
+  hasReportData: boolean;
+};
+
+export type CabinetPayment = {
+  type: string;
+  amount: number;
+  product: string | null;
+  sessionId: string | null;
+  externalId: string | null;
+  createdAt: string;
 };
 
 export type CabinetData = {
   email: string;
   latest: CabinetAssessment | null;
+  history7d: CabinetAssessment[];
+  historyAll: CabinetAssessment[];
+  /** @deprecated используйте history7d */
   history: CabinetAssessment[];
   compensationTip: string | null;
   access: {
@@ -28,7 +42,12 @@ export type CabinetData = {
     label: string;
     endDate: string | null;
   };
+  payments: CabinetPayment[];
 };
+
+export function cabinetReportUrl(sessionId: string): string {
+  return `/cabinet/report?session=${encodeURIComponent(sessionId)}`;
+}
 
 export async function fetchCabinetData(accessToken: string): Promise<CabinetData> {
   const api = getPaymentsApiUrl();
@@ -41,6 +60,23 @@ export async function fetchCabinetData(accessToken: string): Promise<CabinetData
     throw new Error(json.error || 'Не удалось загрузить кабинет');
   }
   return json.data as CabinetData;
+}
+
+export async function fetchCabinetReport(
+  accessToken: string,
+  sessionId: string,
+): Promise<SessionResult> {
+  const api = getPaymentsApiUrl();
+  if (!api) throw new Error('API не настроен');
+  const res = await fetch(
+    `${api.replace(/\/$/, '')}/api/cabinet/report/${encodeURIComponent(sessionId)}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json.ok) {
+    throw new Error(json.message || json.error || 'Не удалось открыть отчёт');
+  }
+  return json.session as SessionResult;
 }
 
 export async function requestMagicLink(email: string): Promise<void> {
@@ -59,42 +95,4 @@ export async function signOutCabinet(): Promise<void> {
   await supabase.auth.signOut();
 }
 
-export function useCabinetSession() {
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [email, setEmail] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
-  const [configured, setConfigured] = useState<boolean | null>(null);
-
-  const refresh = useCallback(async () => {
-    const cfg = await ensureSupabaseBrowserConfig();
-    setConfigured(Boolean(cfg));
-    if (!cfg) {
-      setReady(true);
-      return;
-    }
-    const supabase = await getSupabaseBrowser();
-    const { data } = await supabase.auth.getSession();
-    setAccessToken(data.session?.access_token ?? null);
-    setEmail(data.session?.user?.email?.toLowerCase() ?? null);
-    setReady(true);
-  }, []);
-
-  useEffect(() => {
-    let unsub: (() => void) | undefined;
-    void (async () => {
-      await refresh();
-      const cfg = await ensureSupabaseBrowserConfig();
-      if (!cfg) return;
-      const supabase = await getSupabaseBrowser();
-      const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-        setAccessToken(session?.access_token ?? null);
-        setEmail(session?.user?.email?.toLowerCase() ?? null);
-        setReady(true);
-      });
-      unsub = () => sub.subscription.unsubscribe();
-    })();
-    return () => unsub?.();
-  }, [refresh]);
-
-  return { accessToken, email, ready, configured, refresh };
-}
+export { useCabinetSession } from './useCabinetSession';

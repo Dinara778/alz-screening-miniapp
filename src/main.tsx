@@ -5,10 +5,12 @@ import './index.css';
 import { AppProvider } from './context/AppContext';
 import { registerServiceWorker } from './utils/pwaInstall';
 import { CabinetPage } from './pages/CabinetPage';
+import { CabinetReportPage } from './pages/CabinetReportPage';
 
+const path = typeof window !== 'undefined' ? window.location.pathname : '';
+const isCabinetReportRoute = path === '/cabinet/report' || path.startsWith('/cabinet/report/');
 const isCabinetRoute =
-  typeof window !== 'undefined' &&
-  (window.location.pathname === '/cabinet' || window.location.pathname === '/cabinet/');
+  path === '/cabinet' || path === '/cabinet/' || isCabinetReportRoute;
 
 /** Dev: в консоли `__COGNITIVE_SELF_TEST__()` — текстовый отчёт по синтетическим кейсам scoring. */
 if (import.meta.env.DEV) {
@@ -23,7 +25,9 @@ if (!isCabinetRoute) {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {isCabinetRoute ? (
+    {isCabinetReportRoute ? (
+      <CabinetReportPage />
+    ) : isCabinetRoute ? (
       <CabinetPage />
     ) : (
       <AppProvider>

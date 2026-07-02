@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import {
+  cabinetReportUrl,
   fetchCabinetData,
   requestMagicLink,
   signOutCabinet,
   useCabinetSession,
+  type CabinetAssessment,
   type CabinetData,
+  type CabinetPayment,
 } from '../utils/cabinetApi';
 
 function fmtDate(iso: string): string {
@@ -13,12 +16,57 @@ function fmtDate(iso: string): string {
       timeZone: 'Europe/Moscow',
       day: 'numeric',
       month: 'short',
+      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
     });
   } catch {
     return iso;
   }
+}
+
+function fmtRub(amount: number): string {
+  return new Intl.NumberFormat('ru-RU', {
+    style: 'currency',
+    currency: 'RUB',
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function paymentLabel(p: CabinetPayment): string {
+  if (p.product === 'full_report') return 'Расширенный отчёт';
+  if (p.product === 'consultation') return 'Сессия с экспертом';
+  if (p.type === 'subscription') return 'Подписка';
+  return 'Оплата';
+}
+
+function HistoryList({ rows, emptyText }: { rows: CabinetAssessment[]; emptyText: string }) {
+  if (!rows.length) {
+    return <p className="cabinet-muted">{emptyText}</p>;
+  }
+  return (
+    <ul className="cabinet-history">
+      {rows.map((row) => (
+        <li key={row.sessionId} className="cabinet-history-row">
+          <div className="cabinet-history-main">
+            <span>{fmtDate(row.createdAt)}</span>
+            <strong>{row.score}</strong>
+          </div>
+          <div className="cabinet-history-actions">
+            {row.canOpenReport ? (
+              <a className="cabinet-link-btn" href={cabinetReportUrl(row.sessionId)}>
+                Открыть отчёт
+              </a>
+            ) : row.hasReportData ? (
+              <span className="cabinet-muted cabinet-history-hint">Нужна оплата отчёта</span>
+            ) : (
+              <span className="cabinet-muted cabinet-history-hint">Отчёт не сохранён</span>
+            )}
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 export const CabinetPage = () => {
@@ -119,6 +167,11 @@ export const CabinetPage = () => {
   }
 
   const latest = data?.latest;
+  const history7d = data?.history7d ?? data?.history ?? [];
+  const historyAll = data?.historyAll ?? history7d;
+  const olderThan7d = historyAll.filter(
+    (row) => !history7d.some((r) => r.sessionId === row.sessionId),
+  );
 
   return (
     <div className="cabinet-shell">
@@ -157,6 +210,13 @@ export const CabinetPage = () => {
                   <li><span>Стабильность</span><strong>{latest.stabilityScore ?? '—'}</strong></li>
                   <li><span>Гибкость</span><strong>{latest.flexibilityScore ?? '—'}</strong></li>
                 </ul>
+                {latest.canOpenReport ? (
+                  <p className="cabinet-foot" style={{ marginTop: 12 }}>
+                    <a className="cabinet-link-btn" href={cabinetReportUrl(latest.sessionId)}>
+                      Открыть расширенный отчёт
+                    </a>
+                  </p>
+                ) : null}
               </>
             ) : (
               <p className="cabinet-muted">Пока нет завершённых оценок. Пройдите оценку на главной.</p>
@@ -174,18 +234,41 @@ export const CabinetPage = () => {
         </section>
 
         <section className="cabinet-card" style={{ marginTop: 16 }}>
-          <h2>История за 7 дней</h2>
-          {data?.history?.length ? (
-            <ul className="cabinet-history">
-              {data.history.map((row) => (
-                <li key={row.sessionId}>
-                  <span>{fmtDate(row.createdAt)}</span>
-                  <strong>{row.score}</strong>
+          <h2>
+            За последние 7 дней
+            {history7d.length ? (
+              <span className="cabinet-count">{history7d.length}</span>
+            ) : null}
+          </h2>
+          <HistoryList rows={history7d} emptyText="Нет оценок за последние 7 дней." />
+        </section>
+
+        {olderThan7d.length > 0 ? (
+          <section className="cabinet-card" style={{ marginTop: 16 }}>
+            <h2>
+              Ранее
+              <span className="cabinet-count">{olderThan7d.length}</span>
+            </h2>
+            <HistoryList rows={olderThan7d} emptyText="Нет более ранних оценок." />
+          </section>
+        ) : null}
+
+        <section className="cabinet-card" style={{ marginTop: 16 }}>
+          <h2>Оплаты</h2>
+          {data?.payments?.length ? (
+            <ul className="cabinet-payments">
+              {data.payments.map((p, i) => (
+                <li key={`${p.createdAt}-${p.externalId ?? i}`}>
+                  <div>
+                    <strong>{paymentLabel(p)}</strong>
+                    <span className="cabinet-muted cabinet-payment-date">{fmtDate(p.createdAt)}</span>
+                  </div>
+                  <span className="cabinet-payment-amount">{fmtRub(p.amount)}</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="cabinet-muted">Нет оценок за последние 7 дней.</p>
+            <p className="cabinet-muted">Пока нет оплаченных заказов.</p>
           )}
         </section>
 

@@ -572,3 +572,68 @@ input:focus-visible {
 .cabinet-foot a {
   color: #5eead4;
 }
+.cabinet-history-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.cabinet-history-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cabinet-history-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.cabinet-history-hint {
+  font-size: 0.8rem;
+}
+.cabinet-link-btn {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  color: #6ee7b7;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.cabinet-link-btn:hover {
+  background: rgba(16, 185, 129, 0.32);
+}
+.cabinet-count {
+  margin-left: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.45);
+}
+.cabinet-payments {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cabinet-payments li {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.92rem;
+}
+.cabinet-payments li strong {
+  display: block;
+  font-weight: 600;
+}
+.cabinet-payment-date {
+  display: block;
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+.cabinet-payment-amount {
+  font-weight: 600;
+  white-space: nowrap;
+  color: #a7f3d0;
+}

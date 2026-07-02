@@ -86,6 +86,7 @@ export async function upsertAssessment(
     stabilityScore,
     flexibilityScore,
     compensationTip,
+    sessionData,
   },
   env = process.env,
 ) {
@@ -106,6 +107,7 @@ export async function upsertAssessment(
     stability_score: stabilityScore == null ? null : clampScore(stabilityScore),
     flexibility_score: flexibilityScore == null ? null : clampScore(flexibilityScore),
     compensation_tip: compensationTip ? String(compensationTip).slice(0, 2000) : null,
+    session_data: sessionData && typeof sessionData === 'object' ? sessionData : null,
   };
 
   const { data, error } = await supabase
