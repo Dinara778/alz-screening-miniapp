@@ -572,7 +572,10 @@ const VERIFY_PAYMENT_FAIL_MSG =
  * «Проверить оплату» — только подтверждение на сервере (или Prodamus-заказ этой сессии).
  * Не доверяет чужим report_paid_* в localStorage и не открывает отчёт без реальной оплаты.
  */
-export async function verifyReportPaymentOnServer(sessionId: string): Promise<RecoverReportResult> {
+export async function verifyReportPaymentOnServer(
+  sessionId: string,
+  payerEmail?: string,
+): Promise<RecoverReportResult> {
   if (isDevPaymentBypass()) return { ok: true, sessionId };
 
   const fromRobokassa = await recoverRobokassaPaymentFromUrl();
@@ -581,7 +584,7 @@ export async function verifyReportPaymentOnServer(sessionId: string): Promise<Re
   }
 
   if (isStandaloneWeb()) {
-    return verifyWebReportPayment(sessionId);
+    return verifyWebReportPayment(sessionId, payerEmail);
   }
 
   const tg = window.Telegram?.WebApp;
@@ -598,7 +601,12 @@ export async function verifyReportPaymentOnServer(sessionId: string): Promise<Re
     const res = await fetch(`${trimApi(base)}/payment-recover-session`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData: tg.initData, sessionId, product: 'full_report' }),
+      body: JSON.stringify({
+        initData: tg.initData,
+        sessionId,
+        product: 'full_report',
+        email: payerEmail?.trim().toLowerCase() || undefined,
+      }),
     });
     const data = (await res.json()) as PaidOrderPayload;
     if (res.ok && data.paid === true && data.sessionId) {
@@ -638,7 +646,10 @@ function unlockReportSession(sessionId: string): RecoverReportResult {
 }
 
 /** Восстановить доступ к отчёту (сайт / Telegram / Prodamus / Robokassa). */
-export async function recoverFullReportAccess(sessionId: string): Promise<RecoverReportResult> {
+export async function recoverFullReportAccess(
+  sessionId: string,
+  payerEmail?: string,
+): Promise<RecoverReportResult> {
   if (isReportPaidInStorage(sessionId)) {
     return { ok: true, sessionId };
   }
@@ -649,7 +660,7 @@ export async function recoverFullReportAccess(sessionId: string): Promise<Recove
   }
 
   if (isStandaloneWeb()) {
-    const verified = await verifyWebReportPayment(sessionId);
+    const verified = await verifyWebReportPayment(sessionId, payerEmail);
     if (verified.ok) return unlockReportSession(verified.sessionId);
     return { ok: false, message: verified.message };
   }
@@ -670,7 +681,12 @@ export async function recoverFullReportAccess(sessionId: string): Promise<Recove
       const res = await fetch(`${trimApi(base)}/payment-recover-session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData: tg.initData, sessionId, product: 'full_report' }),
+        body: JSON.stringify({
+        initData: tg.initData,
+        sessionId,
+        product: 'full_report',
+        email: payerEmail?.trim().toLowerCase() || undefined,
+      }),
       });
       const data = (await res.json()) as PaidOrderPayload;
       if (res.ok && data.paid && data.sessionId && applyPaidOrder(data)) {
@@ -688,7 +704,7 @@ export async function recoverFullReportAccess(sessionId: string): Promise<Recove
 
     if (await confirmReportPaymentFast(sessionId)) return { ok: true, sessionId };
 
-    const verified = await verifyWebReportPayment(sessionId);
+    const verified = await verifyWebReportPayment(sessionId, payerEmail);
     if (verified.ok) return unlockReportSession(verified.sessionId);
   }
 

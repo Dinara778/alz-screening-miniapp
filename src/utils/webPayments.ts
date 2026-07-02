@@ -41,6 +41,7 @@ function markWebProductPaid(sessionId: string, product: TelegramInvoiceProduct):
 export async function openWebPayment(
   product: TelegramInvoiceProduct,
   sessionId: string,
+  payerEmail?: string,
 ): Promise<WebPaymentResult> {
   const api = getPaymentsApiUrl();
   if (!api) {
@@ -51,7 +52,11 @@ export async function openWebPayment(
     const res = await fetch(`${trimApi(api)}/invoice-web`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId, product }),
+      body: JSON.stringify({
+        sessionId,
+        product,
+        email: payerEmail?.trim().toLowerCase() || undefined,
+      }),
     });
     const data = (await res.json().catch(() => ({}))) as {
       error?: string;
@@ -92,17 +97,25 @@ export async function openWebPayment(
 export async function verifyWebProductPayment(
   sessionId: string,
   product: TelegramInvoiceProduct,
+  payerEmail?: string,
 ): Promise<{ ok: true; sessionId: string } | { ok: false; message: string }> {
   const api = getPaymentsApiUrl();
   if (!api) {
     return { ok: false, message: 'Сервер оплаты не настроен.' };
   }
 
+  const invId = peekRobokassaReturnInvId();
+
   try {
     const res = await fetch(`${trimApi(api)}/payment-recover-session-web`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId, product }),
+      body: JSON.stringify({
+        sessionId,
+        product,
+        email: payerEmail?.trim().toLowerCase() || undefined,
+        invId: invId ?? undefined,
+      }),
     });
     const data = (await res.json()) as { paid?: boolean; sessionId?: string };
     if (res.ok && data.paid && data.sessionId) {
@@ -158,11 +171,14 @@ async function verifyWebPaymentByInvId(
 }
 
 /** @deprecated используйте verifyWebProductPayment */
-export async function verifyWebReportPayment(sessionId: string): Promise<
+export async function verifyWebReportPayment(
+  sessionId: string,
+  payerEmail?: string,
+): Promise<
   | { ok: true; sessionId: string }
   | { ok: false; message: string }
 > {
-  return verifyWebProductPayment(sessionId, 'full_report');
+  return verifyWebProductPayment(sessionId, 'full_report', payerEmail);
 }
 
 /** Возврат с Робокассы: OutSum+InvId или ?robokassa=success&sessionId=… */

@@ -296,12 +296,12 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     const key = `${stage}:${sid}`;
     if (reportRecoverKeyRef.current === key) return;
     reportRecoverKeyRef.current = key;
-    void recoverFullReportAccess(sid).then((recovered) => {
+    void recoverFullReportAccess(sid, participant?.email).then((recovered) => {
       if (!recovered.ok) return;
       const paidSession = loadSessionFromHistory(recovered.sessionId);
       if (paidSession) setLatestResult(paidSession);
     });
-  }, [stage, latestResult?.id]);
+  }, [stage, latestResult?.id, participant?.email]);
 
   useEffect(() => {
     const onVis = async () => {
@@ -313,7 +313,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         loadSessionFromHistory(loadProgress()?.latestSessionId ?? loadLastSessionId());
       if (session && !latestResult) setLatestResult(session);
       if (!session?.id) return;
-      const recovered = await recoverFullReportAccess(session.id);
+      const recovered = await recoverFullReportAccess(session.id, participant?.email);
       if (recovered.ok) {
         const paidSession = loadSessionFromHistory(recovered.sessionId);
         if (paidSession) setLatestResult(paidSession);
@@ -325,7 +325,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
-  }, [stage, latestResult?.id]);
+  }, [stage, latestResult?.id, participant?.email]);
 
   useEffect(() => {
     if (!hasPaymentReturnInUrl() && !hasPendingRobokassaReturn()) return;

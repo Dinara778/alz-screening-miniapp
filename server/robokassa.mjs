@@ -174,7 +174,7 @@ export function buildPaymentSignatureBase({
   return `${parts.join(':')}${sortedShpSignaturePart(shp)}`;
 }
 
-export function robokassaRegisterOrder({ sessionId, product, amountRub }) {
+export function robokassaRegisterOrder({ sessionId, product, amountRub, email = '' }) {
   const minFromTime = Math.floor(Date.now() / 1000);
   if (nextInvId < minFromTime) nextInvId = minFromTime;
   const invId = nextInvId;
@@ -184,6 +184,7 @@ export function robokassaRegisterOrder({ sessionId, product, amountRub }) {
     sessionId: String(sessionId),
     product,
     amountRub,
+    email: String(email ?? '').trim().toLowerCase().slice(0, 80),
     createdAt: Date.now(),
   };
   ordersByInvId.set(String(invId), row);
@@ -240,7 +241,7 @@ export function getRobokassaHealthInfo(env = process.env) {
 }
 
 export function buildRobokassaPaymentUrl(
-  { invId, amountRub, description, receiptItemName, sessionId, product },
+  { invId, amountRub, description, receiptItemName, sessionId, product, email = '' },
   env = process.env,
 ) {
   if (!isRobokassaConfigured(env)) {
@@ -258,6 +259,8 @@ export function buildRobokassaPaymentUrl(
   const shp = {};
   if (sessionId) shp.Shp_sessionId = String(sessionId).slice(0, 80);
   if (product) shp.Shp_product = String(product);
+  const normalizedEmail = String(email ?? '').trim().toLowerCase();
+  if (normalizedEmail.includes('@')) shp.Shp_email = normalizedEmail.slice(0, 80);
 
   const redirect = buildRobokassaAutoRedirect(env);
 

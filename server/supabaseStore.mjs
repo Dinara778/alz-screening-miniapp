@@ -183,6 +183,73 @@ export async function findUserIdBySessionId(sessionId, env = process.env) {
   return data?.user_id ?? null;
 }
 
+export async function findPaidProductPayment({ sessionId, email, product }, env = process.env) {
+  const supabase = getClient(env);
+  if (!supabase) return null;
+  const sid = String(sessionId ?? '').trim();
+  const prod = String(product ?? '').trim();
+  const normalizedEmail = normalizeEmail(email);
+  if (!prod) return null;
+
+  if (sid) {
+    const { data, error } = await supabase
+      .from('payments')
+      .select('id, session_id, product, external_id, created_at')
+      .eq('session_id', sid)
+      .eq('product', prod)
+      .eq('status', 'paid')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      console.error('[supabase] find payment by session', error.message);
+    } else if (data) {
+      return data;
+    }
+  }
+
+  if (!normalizedEmail) return null;
+
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('id')
+    .eq('email', normalizedEmail)
+    .maybeSingle();
+  if (userError) {
+    console.error('[supabase] find user for payment', userError.message);
+    return null;
+  }
+  if (!user?.id) return null;
+
+  const { data, error } = await supabase
+    .from('payments')
+    .select('id, session_id, product, external_id, created_at')
+    .eq('user_id', user.id)
+    .eq('product', prod)
+    .eq('status', 'paid')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.error('[supabase] find payment by email', error.message);
+    return null;
+  }
+  return data ?? null;
+}
+
+export async function reassignPaidPaymentSession(paymentId, sessionId, env = process.env) {
+  const supabase = getClient(env);
+  const sid = String(sessionId ?? '').trim();
+  if (!supabase || !paymentId || !sid) return false;
+
+  const { error } = await supabase.from('payments').update({ session_id: sid }).eq('id', paymentId);
+  if (error) {
+    console.error('[supabase] reassign payment session', error.message);
+    return false;
+  }
+  return true;
+}
+
 export async function recordPayment(
   {
     email,
@@ -198,6 +265,20 @@ export async function recordPayment(
   const supabase = getClient(env);
   if (!supabase) return null;
 
+  const extId = externalId ? String(externalId) : null;
+  if (extId) {
+    const { data: existing, error: existingError } = await supabase
+      .from('payments')
+      .select('id')
+      .eq('external_id', extId)
+      .maybeSingle();
+    if (existingError) {
+      console.error('[supabase] find payment by external_id', existingError.message);
+    } else if (existing?.id) {
+      return existing;
+    }
+  }
+
   let userId = null;
   if (email) {
     const user = await upsertUserByEmail(email, env);
@@ -207,7 +288,7 @@ export async function recordPayment(
     userId = await findUserIdBySessionId(sessionId, env);
   }
   if (!userId) {
-    console.warn('[supabase] recordPayment: user not found for', sessionId);
+    console.warn('[supabase] recordPayment: user not found for', sessionId, email ?? '');
     return null;
   }
 
@@ -218,7 +299,7 @@ export async function recordPayment(
     status,
     product: product ?? null,
     session_id: sessionId ? String(sessionId) : null,
-    external_id: externalId ? String(externalId) : null,
+    external_id: extId,
   };
 
   const { data, error } = await supabase.from('payments').insert(row).select('id').single();

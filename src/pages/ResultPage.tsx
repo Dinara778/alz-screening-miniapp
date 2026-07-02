@@ -36,6 +36,7 @@ import {
   isReportPaidUnlocked,
   reportPaidStorageKey,
   recoverProdamusPaymentFromUrl,
+  recoverFullReportAccess,
 } from '../utils/telegramPayments';
 
 type ResultStep = 'index' | 'index-detail' | 'measured' | 'report-offer' | 'hub' | 'session-offer';
@@ -271,28 +272,41 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     setRecoverBusy(true);
     setPayNotice('Проверяем оплату на сервере…');
     try {
-      const recovery =
+      const fromUrl =
         (await recoverRobokassaPaymentFromUrl()) ?? (await recoverProdamusPaymentFromUrl());
-      if (!recovery?.sessionId) {
-        setPayNotice(
-          'Оплату пока не видим. Если деньги списались — напишите hello@bookvolon.ru с датой и email из чека.',
-        );
+      if (fromUrl?.sessionId) {
+        const session = loadSessionFromHistory(fromUrl.sessionId);
+        if (session) setLatestResult(session);
+        if (fromUrl.product === 'full_report') {
+          localStorage.setItem(reportPaidStorageKey(fromUrl.sessionId), '1');
+          setStage('full-report');
+          return;
+        }
+        if (fromUrl.product === 'consultation') {
+          localStorage.setItem(consultationPaidStorageKey(fromUrl.sessionId), '1');
+          window.dispatchEvent(new Event('consultation-paid'));
+          setSessionPaid(true);
+          setStep('session-offer');
+          setPayNotice(null);
+        }
         return;
       }
-      const session = loadSessionFromHistory(recovery.sessionId);
-      if (session) setLatestResult(session);
-      if (recovery.product === 'full_report') {
-        localStorage.setItem(reportPaidStorageKey(recovery.sessionId), '1');
+
+      const payerEmail =
+        latestResult.participant?.email?.trim() || participant?.email?.trim();
+      const recovered = await recoverFullReportAccess(latestResult.id, payerEmail);
+      if (recovered.ok) {
+        const session = loadSessionFromHistory(recovered.sessionId);
+        if (session) setLatestResult(session);
+        localStorage.setItem(reportPaidStorageKey(recovered.sessionId), '1');
         setStage('full-report');
         return;
       }
-      if (recovery.product === 'consultation') {
-        localStorage.setItem(consultationPaidStorageKey(recovery.sessionId), '1');
-        window.dispatchEvent(new Event('consultation-paid'));
-        setSessionPaid(true);
-        setStep('session-offer');
-        setPayNotice(null);
-      }
+
+      setPayNotice(
+        recovered.message ||
+          'Оплату пока не видим. Если деньги списались — напишите hello@bookvolon.ru с датой и email из чека.',
+      );
     } finally {
       setRecoverBusy(false);
     }

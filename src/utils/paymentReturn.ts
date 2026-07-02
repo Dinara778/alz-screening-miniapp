@@ -13,11 +13,15 @@ function parseRobokassaProduct(raw: string | null | undefined): TelegramInvoiceP
   return null;
 }
 
+const ROBOKASSA_PENDING_INV_LS_KEY = 'alz_robokassa_pending_inv';
+
 /** Перед уходом на Робокассу — запомнить InvId для возврата без Shp_* в URL. */
 export function rememberRobokassaPendingInvId(invId: number | string): void {
   if (typeof sessionStorage === 'undefined') return;
+  const value = String(invId);
   try {
-    sessionStorage.setItem(ROBOKASSA_RETURN_INV_KEY, String(invId));
+    sessionStorage.setItem(ROBOKASSA_RETURN_INV_KEY, value);
+    localStorage.setItem(ROBOKASSA_PENDING_INV_LS_KEY, value);
   } catch {
     /* ignore */
   }
@@ -100,7 +104,9 @@ export function peekRobokassaReturnInvId(): string | null {
     const q = new URLSearchParams(window.location.search);
     const fromUrl = q.get('InvId')?.trim();
     if (fromUrl) return fromUrl;
-    return sessionStorage.getItem(ROBOKASSA_RETURN_INV_KEY)?.trim() || null;
+    const fromSession = sessionStorage.getItem(ROBOKASSA_RETURN_INV_KEY)?.trim();
+    if (fromSession) return fromSession;
+    return localStorage.getItem(ROBOKASSA_PENDING_INV_LS_KEY)?.trim() || null;
   } catch {
     return null;
   }
@@ -193,6 +199,7 @@ export function clearRobokassaReturnSession(): void {
     sessionStorage.removeItem(ROBOKASSA_RETURN_INV_KEY);
     sessionStorage.removeItem(ROBOKASSA_PENDING_PRODUCT_KEY);
     sessionStorage.removeItem(ROBOKASSA_RETURN_PROOF_KEY);
+    localStorage.removeItem(ROBOKASSA_PENDING_INV_LS_KEY);
   } catch {
     /* ignore */
   }

@@ -74,6 +74,8 @@ import {
   getPublicSupabaseConfig,
   isSupabaseConfigured,
   recordPayment,
+  findPaidProductPayment,
+  reassignPaidPaymentSession,
   upsertAssessment,
   upsertFunnelSession,
 } from './supabaseStore.mjs';
@@ -132,7 +134,12 @@ const PRODUCTS = {
   },
 };
 
-function syncPaidToSupabase({ sessionId, product, amountRub, invId }) {
+function normalizeRecoverEmail(raw) {
+  const e = String(raw ?? '').trim().toLowerCase();
+  return e.includes('@') ? e : null;
+}
+
+function syncPaidToSupabase({ sessionId, product, amountRub, invId, email }) {
   if (!isSupabaseConfigured()) return;
   void recordPayment({
     sessionId,
@@ -141,7 +148,78 @@ function syncPaidToSupabase({ sessionId, product, amountRub, invId }) {
     type: 'one_time',
     status: 'paid',
     externalId: invId != null ? String(invId) : undefined,
+    email: normalizeRecoverEmail(email),
   }).catch((e) => console.error('[supabase] sync payment', e));
+}
+
+async function resolveWebPaymentRecovery({ sessionId, product = 'full_report', email, invId }) {
+  const sid = String(sessionId ?? '').trim();
+  const prod = String(product ?? 'full_report');
+  const normalizedEmail = normalizeRecoverEmail(email);
+  if (!sid) return { paid: false };
+
+  const exact = isWebPaidForSession(sid, prod);
+  if (exact.paid) {
+    return { paid: true, sessionId: exact.sessionId, product: exact.product };
+  }
+
+  const invKey = String(invId ?? '').trim();
+  if (invKey) {
+    const order = robokassaGetOrder(invKey);
+    if (order) {
+      const prior = isWebPaidForSession(order.sessionId, order.product);
+      const paidSessionId = prior.paid ? prior.sessionId : order.sessionId;
+      if (!prior.paid) {
+        markWebPaid({
+          sessionId: order.sessionId,
+          product: order.product,
+          invId: invKey,
+        });
+        syncPaidToSupabase({
+          sessionId: order.sessionId,
+          product: order.product,
+          amountRub: order.amountRub,
+          invId: invKey,
+          email: order.email || normalizedEmail,
+        });
+      }
+      if (paidSessionId !== sid) {
+        if (isSupabaseConfigured()) {
+          const supa = await findPaidProductPayment({
+            sessionId: paidSessionId,
+            email: normalizedEmail || order.email,
+            product: prod,
+          });
+          if (supa?.id) await reassignPaidPaymentSession(supa.id, sid);
+        }
+        markWebPaid({ sessionId: sid, product: prod, invId: invKey });
+      }
+      return { paid: true, sessionId: sid, product: prod };
+    }
+  }
+
+  if (isSupabaseConfigured()) {
+    const supa = await findPaidProductPayment({
+      sessionId: sid,
+      email: normalizedEmail,
+      product: prod,
+    });
+    if (supa) {
+      let resolvedSessionId = supa.session_id ?? sid;
+      if (resolvedSessionId !== sid) {
+        await reassignPaidPaymentSession(supa.id, sid);
+        resolvedSessionId = sid;
+      }
+      markWebPaid({
+        sessionId: resolvedSessionId,
+        product: prod,
+        invId: supa.external_id ?? '',
+      });
+      return { paid: true, sessionId: resolvedSessionId, product: prod };
+    }
+  }
+
+  return { paid: false };
 }
 
 function extractRobokassaShp(body) {
@@ -168,9 +246,17 @@ function confirmRobokassaSuccessReturn({ invId, outSum, signatureValue, shp, ord
   if (!verifyRobokassaSuccessSignature(sigBody, process.env)) return null;
 
   const resolved = order
-    ? { sessionId: order.sessionId, product: order.product, amountRub: order.amountRub }
-    : resolveRobokassaPaidFromShp(outSum, shp);
-  if (!resolved) return null;
+    ? {
+        sessionId: order.sessionId,
+        product: order.product,
+        amountRub: order.amountRub,
+        email: order.email || String(shp.Shp_email ?? ''),
+      }
+    : {
+        ...resolveRobokassaPaidFromShp(outSum, shp),
+        email: String(shp.Shp_email ?? ''),
+      };
+  if (!resolved?.sessionId) return null;
   if (Number(outSum).toFixed(2) !== Number(resolved.amountRub).toFixed(2)) return null;
 
   markWebPaid({
@@ -183,6 +269,7 @@ function confirmRobokassaSuccessReturn({ invId, outSum, signatureValue, shp, ord
     product: resolved.product,
     amountRub: resolved.amountRub,
     invId,
+    email: resolved.email,
   });
   payAnalytics.trackPaidOnServer({
     sessionId: resolved.sessionId,
@@ -834,8 +921,9 @@ app.post('/invoice', async (req, res) => {
 
 /** Оплата с сайта (без Telegram initData). Робокасса — когда заданы ROBOKASSA_* в Amvera. */
 app.post('/invoice-web', async (req, res) => {
-  const { sessionId, product = 'full_report' } = req.body ?? {};
+  const { sessionId, product = 'full_report', email } = req.body ?? {};
   const sessionKey = String(sessionId ?? '').slice(0, 80);
+  const payerEmail = normalizeRecoverEmail(email);
   const payCtx = () => ({ sessionId: sessionKey, product, tgUserId: null });
 
   try {
@@ -857,7 +945,11 @@ app.post('/invoice-web', async (req, res) => {
         code: 'robokassa_pending',
       });
     }
-    const prior = isWebPaidForSession(sessionKey, product);
+    const prior = await resolveWebPaymentRecovery({
+      sessionId: sessionKey,
+      product,
+      email: payerEmail,
+    });
     if (prior.paid) {
       return res.json({
         provider: 'robokassa',
@@ -870,6 +962,7 @@ app.post('/invoice-web', async (req, res) => {
       sessionId: sessionKey,
       product,
       amountRub: spec.priceRub,
+      email: payerEmail,
     });
     const paymentUrl = buildRobokassaPaymentUrl({
       invId: order.invId,
@@ -878,6 +971,7 @@ app.post('/invoice-web', async (req, res) => {
       receiptItemName: spec.title,
       sessionId: sessionKey,
       product,
+      email: payerEmail,
     });
     payAnalytics.trackInvoiceCreated(payCtx());
     return res.json({ provider: 'robokassa', paymentUrl, invId: order.invId });
@@ -895,9 +989,15 @@ app.post('/invoice-web', async (req, res) => {
 /** Проверка оплаты с сайта по sessionId (после возврата с Робокассы). */
 app.post('/payment-recover-session-web', async (req, res) => {
   try {
-    const { sessionId, product = 'full_report' } = req.body ?? {};
+    const { sessionId, product = 'full_report', email, invId } = req.body ?? {};
     if (!sessionId) return res.status(400).json({ paid: false });
-    return res.json(isWebPaidForSession(String(sessionId), product));
+    const result = await resolveWebPaymentRecovery({
+      sessionId: String(sessionId),
+      product,
+      email,
+      invId,
+    });
+    return res.json(result);
   } catch (e) {
     console.error(e);
     return res.status(500).json({ paid: false });
@@ -968,9 +1068,10 @@ app.all('/robokassa/result', async (req, res) => {
     }
     const invId = String(body.InvId ?? body.inv_id ?? '');
     let order = robokassaGetOrder(invId);
+    const shpFromBody = extractRobokassaShp(body);
     if (!order) {
       const outSum = String(body.OutSum ?? body.out_summ ?? '');
-      const shp = extractRobokassaShp(body);
+      const shp = shpFromBody;
       const resolved = resolveRobokassaPaidFromShp(outSum, shp);
       if (!resolved) {
         console.warn('[robokassa/result] unknown invId', invId);
@@ -981,6 +1082,7 @@ app.all('/robokassa/result', async (req, res) => {
         sessionId: resolved.sessionId,
         product: resolved.product,
         amountRub: resolved.amountRub,
+        email: String(shp.Shp_email ?? ''),
       };
     }
     markWebPaid({
@@ -993,6 +1095,7 @@ app.all('/robokassa/result', async (req, res) => {
       product: order.product,
       amountRub: order.amountRub,
       invId: order.invId,
+      email: order.email || shpFromBody.Shp_email,
     });
     payAnalytics.trackPaidOnServer({
       sessionId: order.sessionId,
@@ -1049,7 +1152,14 @@ app.post('/payment-recover-session', async (req, res) => {
       return res.json(anyPaid);
     }
     if (PAYMENT_PROVIDER === 'robokassa') {
-      return res.json(isWebPaidForSession(String(sessionId), product));
+      const { email } = req.body ?? {};
+      return res.json(
+        await resolveWebPaymentRecovery({
+          sessionId: String(sessionId),
+          product,
+          email,
+        }),
+      );
     }
     if (PAYMENT_PROVIDER !== 'prodamus') {
       return res.json({ paid: false });

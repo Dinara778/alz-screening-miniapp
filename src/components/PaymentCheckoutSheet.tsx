@@ -90,6 +90,8 @@ export const PaymentCheckoutSheet = ({
     setAlreadyPaid(isReportPaidUnlocked(sessionId, serverPaymentsReady));
   }, [open, product, sessionId, serverPaymentsReady]);
 
+  const payerEmail = participant?.email?.trim();
+
   const tryConfirmConsultationPaid = useCallback(async (): Promise<boolean> => {
     if (product !== 'consultation') return false;
     if (isStandaloneWeb()) {
@@ -139,7 +141,7 @@ export const PaymentCheckoutSheet = ({
         onClose();
         return;
       }
-      void verifyReportPaymentOnServer(sessionId).then((r) => {
+      void verifyReportPaymentOnServer(sessionId, payerEmail).then((r) => {
         if (r.ok) {
           onPaid(r.sessionId);
           onClose();
@@ -148,7 +150,7 @@ export const PaymentCheckoutSheet = ({
     };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
-  }, [open, product, sessionId, serverPaymentsReady, onPaid, onClose]);
+  }, [open, product, sessionId, serverPaymentsReady, onPaid, onClose, payerEmail]);
 
   if (!open) return null;
 
@@ -173,7 +175,7 @@ export const PaymentCheckoutSheet = ({
         showNotice(null);
         trackPaymentEvent('payment_click', { source: 'report_checkout', channel: 'web' });
         try {
-          const r = await openWebPayment(product, sessionId);
+          const r = await openWebPayment(product, sessionId, payerEmail);
           if (r.status === 'already_paid') {
             trackPaymentEvent('payment_paid', { channel: 'web' });
             onPaid(sessionId);
@@ -286,8 +288,8 @@ export const PaymentCheckoutSheet = ({
         return;
       }
       const r = isStandaloneWeb()
-        ? await verifyWebReportPayment(sessionId)
-        : await verifyReportPaymentOnServer(sessionId);
+        ? await verifyWebReportPayment(sessionId, payerEmail)
+        : await verifyReportPaymentOnServer(sessionId, payerEmail);
       if (r.ok) {
         trackPaymentEvent('payment_recover_paid', { paidSessionId: r.sessionId });
         onPaid(r.sessionId);

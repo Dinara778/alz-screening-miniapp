@@ -62,3 +62,16 @@ export function isWebPaidForSession(sessionId, product) {
   }
   return { paid: false };
 }
+
+/** Любая оплаченная сессия по продукту (если файл web-paid ещё жив после рестарта). */
+export function findAnyWebPaidForProduct(product) {
+  const prod = String(product ?? '').trim();
+  if (!prod) return null;
+  let latest = null;
+  for (const row of paid.values()) {
+    if (row.product !== prod) continue;
+    if (!latest || (row.paidAt ?? 0) > (latest.paidAt ?? 0)) latest = row;
+  }
+  if (!latest) return null;
+  return { paid: true, product: latest.product, sessionId: latest.sessionId, invId: latest.invId };
+}
