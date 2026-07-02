@@ -11,6 +11,24 @@ if (typeof globalThis.WebSocket === 'undefined') {
 
 let client = null;
 
+function decodeJwtPayload(jwt) {
+  try {
+    const part = jwt.split('.')[1];
+    if (!part) return null;
+    const padded = part.replace(/-/g, '+').replace(/_/g, '/');
+    const json = Buffer.from(padded, 'base64').toString('utf8');
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+/** anon public — для браузера; service_role в SUPABASE_ANON_KEY ломает вход в кабинет. */
+export function isAnonPublicKey(key) {
+  const payload = decodeJwtPayload(String(key ?? '').trim());
+  return payload?.role === 'anon';
+}
+
 export function isSupabaseConfigured(env = process.env) {
   return Boolean(env.SUPABASE_URL?.trim() && env.SUPABASE_SERVICE_ROLE_KEY?.trim());
 }
@@ -532,10 +550,12 @@ function clampScore(n) {
 export function getSupabaseHealthInfo(env = process.env) {
   const url = env.SUPABASE_URL?.trim() ? env.SUPABASE_URL.trim().replace(/\/$/, '') : null;
   const anonKey = env.SUPABASE_ANON_KEY?.trim() || env.VITE_SUPABASE_ANON_KEY?.trim() || null;
+  const anonKeyValid = Boolean(anonKey && isAnonPublicKey(anonKey));
   return {
     configured: isSupabaseConfigured(env),
     url,
-    publicBrowser: Boolean(url && anonKey),
+    publicBrowser: Boolean(url && anonKeyValid),
+    anonKeyMisconfigured: Boolean(anonKey && !anonKeyValid),
   };
 }
 
@@ -543,5 +563,11 @@ export function getPublicSupabaseConfig(env = process.env) {
   const url = env.SUPABASE_URL?.trim()?.replace(/\/$/, '');
   const anonKey = env.SUPABASE_ANON_KEY?.trim() || env.VITE_SUPABASE_ANON_KEY?.trim();
   if (!url || !anonKey) return null;
+  if (!isAnonPublicKey(anonKey)) {
+    console.error(
+      '[supabase] SUPABASE_ANON_KEY must be anon public from Supabase → API, not service_role',
+    );
+    return null;
+  }
   return { supabaseUrl: url, supabaseAnonKey: anonKey };
 }

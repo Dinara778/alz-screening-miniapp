@@ -9,8 +9,24 @@ let runtimeConfig: SupabasePublicConfig | null | undefined;
 function getBuildConfig(): SupabasePublicConfig | null {
   const url = import.meta.env.VITE_SUPABASE_URL?.trim();
   const anon = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
-  if (url && anon) return { url, anonKey: anon };
+  if (url && anon && isAnonPublicKey(anon)) return { url, anonKey: anon };
   return null;
+}
+
+function decodeJwtPayload(jwt: string): { role?: string } | null {
+  try {
+    const part = jwt.split('.')[1];
+    if (!part) return null;
+    const padded = part.replace(/-/g, '+').replace(/_/g, '/');
+    const json = atob(padded);
+    return JSON.parse(json) as { role?: string };
+  } catch {
+    return null;
+  }
+}
+
+function isAnonPublicKey(key: string): boolean {
+  return decodeJwtPayload(key)?.role === 'anon';
 }
 
 /** Ключи из сборки или GET /api/public-config (Amvera «Запуск»: SUPABASE_ANON_KEY). */
@@ -29,9 +45,14 @@ export async function ensureSupabaseBrowserConfig(): Promise<SupabasePublicConfi
     const res = await fetch(`${api.replace(/\/$/, '')}/api/public-config`);
     const json = await res.json().catch(() => ({}));
     if (res.ok && json.ok && json.supabaseUrl && json.supabaseAnonKey) {
+      const anonKey = String(json.supabaseAnonKey).trim();
+      if (!isAnonPublicKey(anonKey)) {
+        runtimeConfig = null;
+        return null;
+      }
       runtimeConfig = {
         url: String(json.supabaseUrl).trim(),
-        anonKey: String(json.supabaseAnonKey).trim(),
+        anonKey,
       };
     } else {
       runtimeConfig = null;
@@ -53,7 +74,9 @@ export async function isSupabaseBrowserConfiguredAsync(): Promise<boolean> {
 export async function getSupabaseBrowser(): Promise<SupabaseClient> {
   const cfg = await ensureSupabaseBrowserConfig();
   if (!cfg) {
-    throw new Error('VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY not configured');
+    throw new Error(
+      'Кабинет не настроен: на Amvera нужен anon public ключ (не service_role) в VITE_SUPABASE_ANON_KEY и SUPABASE_ANON_KEY',
+    );
   }
   if (!browserClient) {
     browserClient = createClient(cfg.url, cfg.anonKey, {

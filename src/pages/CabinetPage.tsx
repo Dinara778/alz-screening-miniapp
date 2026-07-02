@@ -161,8 +161,9 @@ export const CabinetPage = () => {
         <div className="cabinet-card">
           <h1>Личный кабинет</h1>
           <p className="cabinet-muted">
-            Кабинет пока не настроен: добавьте SUPABASE_ANON_KEY на Amvera (этап «Запуск») или
-            VITE_SUPABASE_* на «Сборка».
+            Кабинет не настроен: на Amvera укажите <strong>anon public</strong> ключ из Supabase → API
+            в <code>VITE_SUPABASE_ANON_KEY</code> (сборка) и <code>SUPABASE_ANON_KEY</code> (запуск).
+            Не подставляйте <code>service_role</code>.
           </p>
         </div>
       </div>

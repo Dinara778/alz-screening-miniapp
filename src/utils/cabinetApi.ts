@@ -123,6 +123,12 @@ export function formatCabinetAuthError(error: unknown): string {
   if (/rate limit|over_email_send_rate_limit/i.test(`${code} ${message}`)) {
     return 'Слишком частые запросы. Подождите 1–2 минуты и попробуйте снова.';
   }
+  if (/load failed|failed to fetch|networkerror|network error|fetch/i.test(message)) {
+    return 'Нет связи с сервером входа. Проверьте интернет. Если ошибка повторяется — на Amvera указан неверный Supabase ключ (нужен anon public, не service_role).';
+  }
+  if (/not configured|anon public|service_role/i.test(message)) {
+    return 'Кабинет не настроен на сервере. В Amvera укажите anon public ключ из Supabase → API (не service_role).';
+  }
   if (/smtp|sending confirmation email|error sending/i.test(message)) {
     return 'Письмо не отправилось. Проверьте SMTP в Supabase (Яндекс: smtp.yandex.ru, пароль приложения для «Почта»).';
   }

@@ -33,15 +33,18 @@ SMTP (Яндекс): **Project Settings → Authentication → SMTP Settings**.
 
 ```env
 VITE_SUPABASE_URL=https://....supabase.co
-VITE_SUPABASE_ANON_KEY=eyJ...
+VITE_SUPABASE_ANON_KEY=eyJ...   # anon public, тот же что SUPABASE_ANON_KEY
 ```
 
 **Запуск:**
 
 ```env
 SUPABASE_URL=...
-SUPABASE_SERVICE_ROLE_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...   # только сервер, секретный
+SUPABASE_ANON_KEY=eyJ...        # anon public из Supabase → API (НЕ service_role!)
 ```
+
+В Supabase: **Project Settings → API** → скопируйте **anon public**, не **service_role**.
 
 ## 4. Как войти
 
