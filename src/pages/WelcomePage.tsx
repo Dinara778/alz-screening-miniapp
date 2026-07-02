@@ -10,7 +10,14 @@ import { ProgressBar } from '../components/ProgressBar';
 import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { ParticipantProfile } from '../types';
 import { TEST_DURATION_LABEL } from '../constants/testDuration';
+import { fetchCabinetParticipantProfile } from '../utils/cabinetApi';
+import {
+  formatProfileResumeLabel,
+  loadLocalParticipantProfile,
+  saveSavedParticipantProfile,
+} from '../utils/participantProfileStore';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
+import { ensureSupabaseBrowserConfig, getSupabaseBrowser } from '../utils/supabaseBrowser';
 import { syncFunnelToSupabase } from '../utils/supabaseFunnelSync';
 
 type Props = {
@@ -40,8 +47,51 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
   const [sex, setSex] = useState<ParticipantProfile['sex']>('Женский');
   const [age, setAge] = useState('');
   const [email, setEmail] = useState('');
+  const [resumeProfile, setResumeProfile] = useState<ParticipantProfile | null>(null);
   const formSessionIdRef = useRef(`welcome-${Date.now()}`);
   const hasSentFormStartRef = useRef(false);
+
+  const applyProfileToForm = (profile: ParticipantProfile) => {
+    setName(profile.name);
+    setSex(profile.sex);
+    setAge(String(profile.age));
+    setEmail(profile.email);
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const adoptProfile = (profile: ParticipantProfile) => {
+      if (cancelled) return;
+      applyProfileToForm(profile);
+      setResumeProfile(profile);
+    };
+
+    const local = loadLocalParticipantProfile();
+    if (local) adoptProfile(local);
+
+    void (async () => {
+      const cfg = await ensureSupabaseBrowserConfig();
+      if (!cfg || cancelled) return;
+      try {
+        const supabase = await getSupabaseBrowser();
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+        if (!token || cancelled) return;
+        const remote = await fetchCabinetParticipantProfile(token);
+        if (remote && !cancelled) {
+          saveSavedParticipantProfile(remote);
+          adoptProfile(remote);
+        }
+      } catch {
+        /* кабинет не настроен или нет сессии */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const sendFormStartedEvent = (triggerField: string) => {
     if (hasSentFormStartRef.current) return;
@@ -118,6 +168,7 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
     });
 
     onProfileReady?.(profile);
+    saveSavedParticipantProfile(profile);
 
     goNext();
   };
@@ -125,6 +176,7 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
   const startAssessment = () => {
     const profile = buildProfile();
     if (!profile) return;
+    saveSavedParticipantProfile(profile);
     void syncFunnelToSupabase({
       email: profile.email,
       visitId,
@@ -194,7 +246,40 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
   let stepFooter: React.ReactNode = nextButton(step);
   const introStep = step === 0;
 
-  if (step === 0) {
+  if (step === 0 && resumeProfile) {
+    stepBody = (
+      <div className="space-y-5 text-center sm:text-left">
+        <h2 className="app-heading text-center">С возвращением!</h2>
+        <p className="calm-caption sm:text-base">Продолжить с сохранёнными данными?</p>
+        <div className="calm-inset space-y-2 rounded-2xl px-4 py-3 text-left text-sm text-white/90">
+          <p className="font-semibold text-white">{formatProfileResumeLabel(resumeProfile)}</p>
+          <p className="text-white/65">{resumeProfile.email}</p>
+        </div>
+      </div>
+    );
+    stepFooter = (
+      <div className="space-y-3">
+        <Button type="button" className={CTA_BUTTON_CLASS} onClick={() => setStep(5)}>
+          <span className="flex items-center justify-center gap-2">
+            Продолжить
+            <IconArrowRight className="h-5 w-5 shrink-0" />
+          </span>
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          className={`${CTA_BUTTON_CLASS} font-semibold`}
+          onClick={() => {
+            setResumeProfile(null);
+            setStep(1);
+          }}
+        >
+          Изменить данные
+        </Button>
+        <CabinetAccessLink variant="button" />
+      </div>
+    );
+  } else if (step === 0) {
     stepBody = (
       <div className="space-y-5 text-center sm:text-left">
         <h2 className="app-heading text-center">Несколько вопросов перед началом оценки</h2>

@@ -123,6 +123,76 @@ function enrichAssessments(rows, subscription, payments) {
   });
 }
 
+function participantFromSessionData(sessionData) {
+  if (!sessionData || typeof sessionData !== 'object') return null;
+  const p = sessionData.participant;
+  if (!p || typeof p !== 'object') return null;
+
+  const email = String(p.email ?? '')
+    .trim()
+    .toLowerCase();
+  if (!email.includes('@')) return null;
+
+  const age = Number(p.age);
+  if (!Number.isFinite(age) || age < 18 || age > 100) return null;
+
+  const sex = p.sex === 'Мужской' ? 'Мужской' : p.sex === 'Женский' ? 'Женский' : null;
+  if (!sex) return null;
+
+  return {
+    name: String(p.name ?? '').trim(),
+    email,
+    phone: String(p.phone ?? 'Не указано'),
+    sex,
+    age,
+    education: String(p.education ?? 'Не указано'),
+    educationYears: Number(p.educationYears) > 0 ? Number(p.educationYears) : 12,
+    pcConfidence: [1, 2, 3, 4, 5].includes(Number(p.pcConfidence))
+      ? Number(p.pcConfidence)
+      : 3,
+  };
+}
+
+async function loadParticipantProfileForUser(supabase, userId) {
+  const { data, error } = await supabase
+    .from('assessments')
+    .select('session_data')
+    .eq('user_id', userId)
+    .not('session_data', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(8);
+
+  if (error) {
+    console.error('[cabinet] participant profile', error.message);
+    return null;
+  }
+
+  for (const row of data ?? []) {
+    const profile = participantFromSessionData(row.session_data);
+    if (profile) return profile;
+  }
+  return null;
+}
+
+export async function getCabinetParticipantProfile(email, env = process.env) {
+  const supabase = getClient(env);
+  const normalized = String(email ?? '').trim().toLowerCase();
+  if (!supabase || !normalized) return null;
+
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('id')
+    .eq('email', normalized)
+    .maybeSingle();
+  if (userError) {
+    console.error('[cabinet] participant profile user', userError.message);
+    return null;
+  }
+  if (!user?.id) return null;
+
+  return loadParticipantProfileForUser(supabase, user.id);
+}
+
 async function loadCurrentSubscription(supabase, userId) {
   const today = new Date().toISOString().slice(0, 10);
   const { data, error } = await supabase

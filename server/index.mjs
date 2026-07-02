@@ -65,6 +65,7 @@ import {
 import { importSheetsCsvText } from './sheetsCsvImport.mjs';
 import {
   getCabinetData,
+  getCabinetParticipantProfile,
   getCabinetReportSession,
   getCabinetHealthInfo,
   isCabinetConfigured,
@@ -1557,6 +1558,26 @@ app.get('/api/cabinet/me', async (req, res) => {
     return res.json({ ok: true, data });
   } catch (e) {
     console.error('[api/cabinet/me]', e);
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
+/** Анкета участника из последнего теста (только для вошедшего в кабинет). */
+app.get('/api/cabinet/participant-profile', async (req, res) => {
+  try {
+    if (!isCabinetConfigured()) {
+      return res.status(503).json({ ok: false, error: 'cabinet_not_configured' });
+    }
+    const auth = req.get('Authorization');
+    const token = auth?.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+    const email = await verifySupabaseAccessToken(token);
+    if (!email) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' });
+    }
+    const profile = await getCabinetParticipantProfile(email);
+    return res.json({ ok: true, profile: profile ?? null });
+  } catch (e) {
+    console.error('[api/cabinet/participant-profile]', e);
     return res.status(500).json({ ok: false, error: 'server_error' });
   }
 });

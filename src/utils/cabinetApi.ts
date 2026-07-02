@@ -1,5 +1,6 @@
-import type { SessionResult } from '../types';
+import type { ParticipantProfile, SessionResult } from '../types';
 import { getPaymentsApiUrl } from './telegramPayments';
+import { parseParticipantProfile } from './participantProfileStore';
 import { getCabinetRedirectUrl, getSupabaseBrowser } from './supabaseBrowser';
 
 export type CabinetAssessment = {
@@ -93,6 +94,19 @@ export async function fetchCabinetReport(
     throw new Error(json.message || json.error || 'Не удалось открыть отчёт');
   }
   return json.session as SessionResult;
+}
+
+export async function fetchCabinetParticipantProfile(
+  accessToken: string,
+): Promise<ParticipantProfile | null> {
+  const api = getPaymentsApiUrl();
+  if (!api) return null;
+  const res = await fetch(`${api.replace(/\/$/, '')}/api/cabinet/participant-profile`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json.ok) return null;
+  return parseParticipantProfile(json.profile);
 }
 
 export async function requestMagicLink(email: string): Promise<void> {

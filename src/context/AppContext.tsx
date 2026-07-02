@@ -44,6 +44,7 @@ import { sendSessionToSheets } from '../utils/sheetsWebhook';
 import { sendSessionToSupabase } from '../utils/supabaseSync';
 import { syncSubscriptionAccessFromServer } from '../utils/webPayments';
 import { syncFunnelToSupabase } from '../utils/supabaseFunnelSync';
+import { saveSavedParticipantProfile } from '../utils/participantProfileStore';
 
 
 const FUNNEL_MILESTONE_STAGES = new Set([
@@ -552,6 +553,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     void sendSessionToSheets(result, getVisitFunnelKey(sessionSeed)).catch(() => {
       // Ignore webhook errors to keep UX stable.
     });
+    saveSavedParticipantProfile(result.participant);
     void sendSessionToSupabase(result);
     const email = result.participant?.email?.trim().toLowerCase();
     if (email && email.includes('@')) {
