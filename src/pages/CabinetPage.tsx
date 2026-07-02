@@ -172,7 +172,7 @@ export const CabinetPage = () => {
   if (!accessToken) {
     return (
       <div className="cabinet-shell">
-        <CabinetLoginForm onLoggedIn={() => void refresh()} />
+        <CabinetLoginForm onLoggedIn={refresh} />
         <p className="cabinet-foot" style={{ textAlign: 'center', marginTop: 16 }}>
           <a href="/">← Вернуться к оценке</a>
         </p>

@@ -1,7 +1,7 @@
 import type { ParticipantProfile, SessionResult } from '../types';
 import { getPaymentsApiUrl } from './telegramPayments';
 import { parseParticipantProfile } from './participantProfileStore';
-import { getCabinetRedirectUrl, getSupabaseBrowser, resetSupabaseBrowserClient } from './supabaseBrowser';
+import { getCabinetRedirectUrl, getSupabaseBrowser, resetSupabaseBrowserClient, warmCabinetAuthClient } from './supabaseBrowser';
 
 export type CabinetAssessment = {
   sessionId: string;
@@ -129,8 +129,11 @@ export function formatCabinetAuthError(error: unknown): string {
   if (/redirect|url configuration|invalid.*url/i.test(message)) {
     return 'Неверный адрес возврата. В Supabase добавьте https://cortaapp.ru/cabinet в Redirect URLs.';
   }
-  if (/invalid|expired|otp|token/i.test(message)) {
-    return 'Неверный или просроченный код. Запросите новый.';
+  if (/expired/i.test(message)) {
+    return 'Код уже недействителен. Нажмите «Отправить код ещё раз» и введите только новый код.';
+  }
+  if (/invalid|otp|token/i.test(message)) {
+    return 'Неверный код. Проверьте цифры или запросите новый.';
   }
   if (message) return message;
 
@@ -140,6 +143,7 @@ export function formatCabinetAuthError(error: unknown): string {
 
 /** Отправить одноразовый код на email (шаблон Magic Link в Supabase должен содержать {{ .Token }}). */
 export async function requestLoginOtp(email: string): Promise<void> {
+  await warmCabinetAuthClient();
   const supabase = await getSupabaseBrowser();
   const { error } = await supabase.auth.signInWithOtp({
     email: email.trim().toLowerCase(),
@@ -150,19 +154,35 @@ export async function requestLoginOtp(email: string): Promise<void> {
   if (error) throw new Error(formatCabinetAuthError(error));
 }
 
+const OTP_VERIFY_TYPES = ['email', 'signup'] as const;
+
 export async function verifyLoginOtp(email: string, code: string): Promise<void> {
+  await warmCabinetAuthClient();
   const supabase = await getSupabaseBrowser();
   const token = code.replace(/\D/g, '').trim();
   if (token.length < 6) {
-    throw new Error('Введите 6-значный код из письма');
+    throw new Error('Введите код из письма полностью');
   }
-  const { error } = await supabase.auth.verifyOtp({
-    email: email.trim().toLowerCase(),
-    token,
-    type: 'email',
-  });
-  if (error) throw new Error(formatCabinetAuthError(error));
+  const normalizedEmail = email.trim().toLowerCase();
+
+  let lastError: unknown = null;
+  for (const type of OTP_VERIFY_TYPES) {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: normalizedEmail,
+      token,
+      type,
+    });
+    if (!error && data.session) return;
+    lastError = error;
+  }
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (sessionData.session) return;
+
+  throw new Error(formatCabinetAuthError(lastError));
 }
+
+export { warmCabinetAuthClient };
 
 /** @deprecated Используйте requestLoginOtp */
 export async function requestMagicLink(email: string): Promise<void> {

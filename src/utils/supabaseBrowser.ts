@@ -72,6 +72,16 @@ export function resetSupabaseBrowserClient(): void {
   browserClient = null;
 }
 
+/** Прогрев клиента и конфига — чтобы проверка кода не ждала сеть. */
+export async function warmCabinetAuthClient(): Promise<boolean> {
+  try {
+    await getSupabaseBrowser();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function peekCabinetAuthErrorFromUrl(): string | null {
   if (typeof window === 'undefined') return null;
   const url = new URL(window.location.href);

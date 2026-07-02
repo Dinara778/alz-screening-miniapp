@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SameEmailHint } from './SameEmailHint';
-import { requestLoginOtp, verifyLoginOtp } from '../utils/cabinetApi';
+import { requestLoginOtp, verifyLoginOtp, warmCabinetAuthClient } from '../utils/cabinetApi';
 import { peekCabinetAuthErrorFromUrl } from '../utils/supabaseBrowser';
 
 type Props = {
   title?: string;
   subtitle?: string;
-  onLoggedIn?: () => void;
+  onLoggedIn?: () => void | Promise<void>;
 };
 
 export const CabinetLoginForm = ({
@@ -20,8 +20,17 @@ export const CabinetLoginForm = ({
   const [msg, setMsg] = useState('');
   const [error, setError] = useState(() => peekCabinetAuthErrorFromUrl() ?? '');
   const [busy, setBusy] = useState(false);
+  const verifyInFlightRef = useRef(false);
 
   const normalizedEmail = email.trim().toLowerCase();
+
+  useEffect(() => {
+    void warmCabinetAuthClient();
+  }, []);
+
+  useEffect(() => {
+    if (step === 'code') void warmCabinetAuthClient();
+  }, [step]);
 
   const onSendCode = async () => {
     if (!normalizedEmail.includes('@')) {
@@ -35,7 +44,9 @@ export const CabinetLoginForm = ({
       await requestLoginOtp(normalizedEmail);
       setStep('code');
       setCode('');
-      setMsg(`Код отправлен на ${normalizedEmail}. Проверьте входящие и папку «Спам».`);
+      setMsg(
+        `Код отправлен на ${normalizedEmail}. Введите только последний код из письма. Новый запрос отменяет предыдущий.`,
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось отправить код');
     } finally {
@@ -44,16 +55,19 @@ export const CabinetLoginForm = ({
   };
 
   const onVerifyCode = async () => {
+    if (verifyInFlightRef.current || busy) return;
+    verifyInFlightRef.current = true;
     setBusy(true);
     setError('');
     setMsg('');
     try {
       await verifyLoginOtp(normalizedEmail, code);
-      onLoggedIn?.();
+      await onLoggedIn?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Неверный код');
     } finally {
       setBusy(false);
+      verifyInFlightRef.current = false;
     }
   };
 
@@ -93,11 +107,14 @@ export const CabinetLoginForm = ({
             placeholder="000000"
             maxLength={8}
             value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
             onKeyDown={(e) => {
               if (e.key === 'Enter') void onVerifyCode();
             }}
           />
+          <p className="cabinet-muted" style={{ marginTop: -4, marginBottom: 12, fontSize: '0.8rem' }}>
+            Код действует около часа. Не нажимайте «Войти» повторно — дождитесь проверки.
+          </p>
           <button
             type="button"
             className="cabinet-btn"
