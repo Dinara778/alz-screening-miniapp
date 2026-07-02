@@ -759,3 +759,58 @@ input:focus-visible {
   font-size: 0.75rem;
   word-break: break-all;
 }
+
+/* Экран завершения после платного отчёта */
+.assessment-complete-table {
+  padding: 0;
+}
+.assessment-complete-table-head {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: 12px;
+  padding: 0.65rem 0.9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+.assessment-complete-table-body {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.assessment-complete-table-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: 12px;
+  padding: 0.75rem 0.9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+.assessment-complete-table-row:last-child {
+  border-bottom: 0;
+}
+.assessment-complete-situation {
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 500;
+}
+.assessment-complete-why {
+  color: rgba(255, 255, 255, 0.72);
+}
+@media (max-width: 380px) {
+  .assessment-complete-table-head,
+  .assessment-complete-table-row {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+  .assessment-complete-table-head {
+    display: none;
+  }
+  .assessment-complete-table-row {
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+  }
+}

@@ -6,6 +6,7 @@ import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { OrganicMetricHalo } from '../components/results/OrganicMetricHalo';
 import { SketchHighlightTitle } from '../components/results/SketchHighlightTitle';
 import { SupportFooter } from '../components/SupportFooter';
+import { AssessmentCompleteScreen } from '../components/AssessmentCompleteScreen';
 import { CabinetAccessLink } from '../components/CabinetAccessLink';
 import { scoreAccentFromValue } from '../components/results/scoreAccent';
 import { useApp } from '../context/AppContext';
@@ -46,7 +47,14 @@ import {
   recoverFullReportAccess,
 } from '../utils/telegramPayments';
 
-type ResultStep = 'index' | 'index-detail' | 'measured' | 'report-offer' | 'hub' | 'session-offer';
+type ResultStep =
+  | 'index'
+  | 'index-detail'
+  | 'measured'
+  | 'report-offer'
+  | 'complete'
+  | 'hub'
+  | 'session-offer';
 
 const sessionUpsellFeatures = [
   'Онлайн-расшифровку результатов простым языком с опытным экспертом по когнитивной устойчивости (созвон)',
@@ -191,6 +199,9 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   useEffect(() => {
     if (resultEntryStep === 'session-offer') {
       setStep('session-offer');
+      clearResultEntryStep();
+    } else if (resultEntryStep === 'complete') {
+      setStep('complete');
       clearResultEntryStep();
     } else if (resultEntryStep === 'hub') {
       setStep('hub');
@@ -695,6 +706,10 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     'Расшифровка сильных и слабых зон',
     'Адресные рекомендации именно под ваш профиль',
   ] as const;
+
+  if (step === 'complete') {
+    return <AssessmentCompleteScreen onDone={onRestart} />;
+  }
 
   return (
     <>

@@ -58,7 +58,7 @@ const FUNNEL_MILESTONE_STAGES = new Set([
 ]);
 
 /** С какого шага открыть ResultPage (например, продажа сессии после отчёта). */
-export type ResultEntryStep = 'hub' | 'session-offer';
+export type ResultEntryStep = 'hub' | 'session-offer' | 'complete';
 
 type FaceAnswer = { faceId: number; selected: string; correct: string };
 

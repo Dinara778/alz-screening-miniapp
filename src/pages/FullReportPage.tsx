@@ -56,7 +56,8 @@ export const FullReportPage = () => {
   return (
     <FullReportContent
       session={latestResult}
-      onDone={() => openResultAtStep('hub')}
+      onDone={() => openResultAtStep('complete')}
+      doneButtonLabel="Далее"
       onAnalyticsDetail={setAnalyticsScreenDetail}
     />
   );
