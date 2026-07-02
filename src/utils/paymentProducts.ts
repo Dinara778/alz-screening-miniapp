@@ -11,6 +11,10 @@ export type PaymentProductMeta = {
   awaitingReturnHint: string;
   /** Подсказка на экране записи / в уведомлении после открытия оплаты */
   redirectOpenedMessage: string;
+  /** Экран «я уже оплатил(а)» */
+  alreadyPaidHelpMain: string;
+  alreadyPaidHelpNote: string;
+  alreadyPaidCheckLabel: string;
 };
 
 export const PAYMENT_PRODUCTS: Record<TelegramInvoiceProduct, PaymentProductMeta> = {
@@ -28,6 +32,11 @@ export const PAYMENT_PRODUCTS: Record<TelegramInvoiceProduct, PaymentProductMeta
       'После успешной оплаты отчёт откроется автоматически. Если этого не произошло — напишите в техподдержку.',
     redirectOpenedMessage:
       'Страница оплаты открыта. После успешной оплаты отчёт откроется автоматически. Если этого не произошло — напишите в техподдержку.',
+    alreadyPaidHelpMain:
+      'Если вы оплатили 149 ₽ за один расширенный отчёт, а он вам не открылся, пожалуйста, напишите нам в',
+    alreadyPaidHelpNote:
+      'Одна сессия оценки когнитивного профиля стоит 149 ₽. Это разовый платёж за расширенный отчёт, не подписка.',
+    alreadyPaidCheckLabel: 'Проверить оплату и открыть отчёт',
   },
   subscription_1m: {
     title: 'Подписка Corta — ежедневный контроль когнитивного состояния',
@@ -43,6 +52,11 @@ export const PAYMENT_PRODUCTS: Record<TelegramInvoiceProduct, PaymentProductMeta
       'После успешной оплаты отчёт откроется автоматически, подписка появится в личном кабинете.',
     redirectOpenedMessage:
       'Страница оплаты открыта. После оплаты откроется расширенный отчёт, подписка активируется автоматически.',
+    alreadyPaidHelpMain:
+      'Если вы оплатили 399 ₽ за подписку Corta на 1 месяц, а доступ не открылся, пожалуйста, напишите нам в',
+    alreadyPaidHelpNote:
+      'Подписка на 1 месяц стоит 399 ₽. После активации расширенные отчёты открываются при каждой оценке в период подписки.',
+    alreadyPaidCheckLabel: 'Проверить оплату и активировать подписку',
   },
   subscription_3m: {
     title: 'Подписка Corta на 3 месяца — выгоднее помесячной оплаты',
@@ -58,5 +72,10 @@ export const PAYMENT_PRODUCTS: Record<TelegramInvoiceProduct, PaymentProductMeta
       'После успешной оплаты отчёт откроется автоматически, подписка появится в личном кабинете.',
     redirectOpenedMessage:
       'Страница оплаты открыта. После оплаты откроется расширенный отчёт, подписка активируется автоматически.',
+    alreadyPaidHelpMain:
+      'Если вы оплатили 990 ₽ за подписку «Corta» на 3 месяца, а доступ не открылся, пожалуйста, напишите нам в',
+    alreadyPaidHelpNote:
+      'Подписка на 3 месяца стоит 990 ₽. После активации расширенные отчёты открываются при каждой оценке в период подписки.',
+    alreadyPaidCheckLabel: 'Проверить оплату и активировать подписку',
   },
 };

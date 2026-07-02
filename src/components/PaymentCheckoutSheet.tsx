@@ -35,7 +35,6 @@ export const PaymentCheckoutSheet = ({
 }: Props) => {
   const { serverPaymentsReady, participant } = useApp();
   const meta = PAYMENT_PRODUCTS[product];
-  const reportPriceRub = PAYMENT_PRODUCTS.full_report.priceRub;
   const [payBusy, setPayBusy] = useState(false);
   const [awaitingReturn, setAwaitingReturn] = useState(false);
   const [alreadyPaidHelpOpen, setAlreadyPaidHelpOpen] = useState(false);
@@ -312,8 +311,7 @@ export const PaymentCheckoutSheet = ({
           {reportAlreadyPaidHelp ? (
             <div className="mt-4 space-y-4">
               <p className="calm-body text-sm leading-relaxed text-white/90">
-                Если вы оплатили {reportPriceRub} ₽ за один расширенный отчёт, а он вам не открылся,
-                пожалуйста, напишите нам в{' '}
+                {meta.alreadyPaidHelpMain}{' '}
                 <a
                   href={TELEGRAM_SUPPORT_URL}
                   target="_blank"
@@ -331,10 +329,7 @@ export const PaymentCheckoutSheet = ({
                 </a>
                 .
               </p>
-              <p className="text-xs leading-relaxed text-white/55">
-                Одна сессия оценки когнитивного профиля стоит {reportPriceRub} ₽. Это разовый платёж за
-                расширенный отчёт, не подписка.
-              </p>
+              <p className="text-xs leading-relaxed text-white/55">{meta.alreadyPaidHelpNote}</p>
               <Button
                 type="button"
                 variant="sell"
@@ -342,7 +337,7 @@ export const PaymentCheckoutSheet = ({
                 className="relative z-20 w-full touch-manipulation rounded-2xl py-3.5 text-sm font-semibold"
                 onClick={() => void handleCheckPayment()}
               >
-                {checkBusy ? 'Проверяем оплату…' : 'Проверить оплату и открыть отчёт'}
+                {checkBusy ? 'Проверяем оплату…' : meta.alreadyPaidCheckLabel}
               </Button>
               {sheetNotice ? (
                 <p className="text-center text-xs leading-relaxed text-amber-200/95">{sheetNotice}</p>
