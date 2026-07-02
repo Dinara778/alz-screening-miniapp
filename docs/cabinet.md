@@ -1,6 +1,6 @@
 # Личный кабинет Corta
 
-Вход по **ссылке из email** (Supabase magic link) — без пароля и без SMTP.
+Вход по **коду из email** (Supabase OTP) — без пароля.
 
 URL: **https://cortaapp.ru/cabinet**
 
@@ -11,13 +11,15 @@ URL: **https://cortaapp.ru/cabinet**
    - **Site URL:** `https://cortaapp.ru`
    - **Redirect URLs:** добавить `https://cortaapp.ru/cabinet`
 
-3. **Authentication** → **Email Templates** → **Magic Link** — в теле письма ссылка:
+3. **Authentication** → **Email Templates** → **Magic Link** — тело письма с **кодом** (не ссылкой):
 
-```html
-<a href="https://cortaapp.ru/cabinet?token_hash={{ .TokenHash }}&type=magiclink">Войти в личный кабинет</a>
+```text
+Ваш код для входа в Corta: {{ .Token }}
+
+Код действует ограниченное время. Если вы не запрашивали вход — проигнорируйте письмо.
 ```
 
-Так ссылка работает **в любом браузере** (не только там, где запрашивали вход). Альтернатива — стандартная `{{ .ConfirmationURL }}`, но тогда ссылку нужно открывать **в том же браузере**.
+Тема письма, например: `Код для входа в Corta`.
 
 SMTP (Яндекс): **Project Settings → Authentication → SMTP Settings**.
 
@@ -45,8 +47,8 @@ SUPABASE_SERVICE_ROLE_KEY=...
 
 1. Открыть `/cabinet`
 2. Ввести email (тот же, что при тесте)
-3. Получить письмо → нажать ссылку **в том же браузере**
-4. Откроется кабинет
+3. Получить письмо с **6-значным кодом**
+4. Ввести код на экране → «Войти»
 
 ## 5. Имя отправителя «Corta»
 

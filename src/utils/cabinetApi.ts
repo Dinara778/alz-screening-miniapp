@@ -129,12 +129,42 @@ export function formatCabinetAuthError(error: unknown): string {
   if (/redirect|url configuration|invalid.*url/i.test(message)) {
     return 'Неверный адрес возврата. В Supabase добавьте https://cortaapp.ru/cabinet в Redirect URLs.';
   }
+  if (/invalid|expired|otp|token/i.test(message)) {
+    return 'Неверный или просроченный код. Запросите новый.';
+  }
   if (message) return message;
 
   if (error instanceof Error && error.message.trim()) return error.message.trim();
-  return 'Не удалось отправить ссылку. Проверьте email и настройки почты в Supabase.';
+  return 'Не удалось выполнить вход. Проверьте email и попробуйте снова.';
 }
 
+/** Отправить одноразовый код на email (шаблон Magic Link в Supabase должен содержать {{ .Token }}). */
+export async function requestLoginOtp(email: string): Promise<void> {
+  const supabase = await getSupabaseBrowser();
+  const { error } = await supabase.auth.signInWithOtp({
+    email: email.trim().toLowerCase(),
+    options: {
+      shouldCreateUser: true,
+    },
+  });
+  if (error) throw new Error(formatCabinetAuthError(error));
+}
+
+export async function verifyLoginOtp(email: string, code: string): Promise<void> {
+  const supabase = await getSupabaseBrowser();
+  const token = code.replace(/\D/g, '').trim();
+  if (token.length < 6) {
+    throw new Error('Введите 6-значный код из письма');
+  }
+  const { error } = await supabase.auth.verifyOtp({
+    email: email.trim().toLowerCase(),
+    token,
+    type: 'email',
+  });
+  if (error) throw new Error(formatCabinetAuthError(error));
+}
+
+/** @deprecated Используйте requestLoginOtp */
 export async function requestMagicLink(email: string): Promise<void> {
   const supabase = await getSupabaseBrowser();
   const { error } = await supabase.auth.signInWithOtp({
@@ -147,21 +177,14 @@ export async function requestMagicLink(email: string): Promise<void> {
   if (error) throw new Error(formatCabinetAuthError(error));
 }
 
-/** @deprecated Используйте requestMagicLink */
+/** @deprecated Используйте requestLoginOtp */
 export async function requestLoginCode(email: string): Promise<void> {
-  return requestMagicLink(email);
+  return requestLoginOtp(email);
 }
 
-/** @deprecated Вход по ссылке — код на экране не нужен */
+/** @deprecated Используйте verifyLoginOtp */
 export async function verifyLoginCode(email: string, code: string): Promise<void> {
-  const supabase = await getSupabaseBrowser();
-  const token = code.replace(/\D/g, '').trim();
-  const { error } = await supabase.auth.verifyOtp({
-    email: email.trim().toLowerCase(),
-    token,
-    type: 'email',
-  });
-  if (error) throw error;
+  return verifyLoginOtp(email, code);
 }
 
 export async function signOutCabinet(): Promise<void> {
