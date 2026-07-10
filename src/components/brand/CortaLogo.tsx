@@ -2,33 +2,22 @@ type Props = {
   className?: string;
 };
 
-/** Логотип Corta daily — зонтик CORTA + DAILY строкой ниже. */
+/** Логотип Corta daily — Nunito, как раньше: corta + daily строкой ниже. */
 export const CortaLogo = ({ className = '' }: Props) => (
   <span
-    className={`select-none inline-flex flex-col leading-none ${className}`}
+    className={`select-none inline-flex flex-col leading-none lowercase text-[#14b5a4] ${className}`}
     style={{
-      fontFamily: "'Bradley Hand', 'Marker Felt', 'Segoe Print', 'Comic Sans MS', cursive",
-      color: '#14b5a4',
+      fontFamily: 'Nunito, Plus Jakarta Sans, system-ui, sans-serif',
       letterSpacing: '-0.04em',
-      textTransform: 'uppercase',
     }}
     aria-label="Corta daily"
   >
+    <span className="text-[2rem] font-black sm:text-[2.25rem]">corta</span>
     <span
-      className="text-[2rem] font-black sm:text-[2.25rem]"
-      style={{
-        transform: 'rotate(-1deg)',
-      }}
+      className="mt-[-0.22em] text-[1.2rem] font-black sm:text-[1.3rem]"
+      style={{ transform: 'translateX(0.42em)' }}
     >
-      CORTA
-    </span>
-    <span
-      className="mt-[-0.28em] text-[1.35rem] font-black sm:text-[1.45rem]"
-      style={{
-        transform: 'translateX(0.25em) rotate(-0.65deg)',
-      }}
-    >
-      DAILY
+      daily
     </span>
   </span>
 );
