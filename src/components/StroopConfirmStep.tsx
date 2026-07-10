@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Button } from './Button';
 
 type Props = {
@@ -6,8 +5,6 @@ type Props = {
 };
 
 export const StroopConfirmStep = ({ onConfirm }: Props) => {
-  const [understood, setUnderstood] = useState(false);
-
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col gap-4">
       <div className="calm-inset min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
@@ -31,24 +28,11 @@ export const StroopConfirmStep = ({ onConfirm }: Props) => {
             <div className="rounded-lg bg-green-600/40 px-2 py-2 font-bold text-white/80">Зелёный</div>
           </div>
         </div>
-
-        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/15 bg-white/[0.03] p-4">
-          <input
-            type="checkbox"
-            className="mt-1 h-5 w-5 shrink-0 accent-emerald-600"
-            checked={understood}
-            onChange={(e) => setUnderstood(e.target.checked)}
-          />
-          <span className="text-left calm-body">
-            Я понимаю: нажимаю кнопку с <strong>цветом букв</strong>, а не со значением слова.
-          </span>
-        </label>
       </div>
 
       <Button
         type="button"
-        disabled={!understood}
-        className="w-full shrink-0 rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug disabled:opacity-50 sm:py-[1.125rem] sm:text-xl"
+        className="w-full shrink-0 rounded-2xl py-4 text-[1.0625rem] font-bold leading-snug sm:py-[1.125rem] sm:text-xl"
         onClick={onConfirm}
       >
         Понятно, далее

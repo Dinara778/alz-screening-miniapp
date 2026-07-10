@@ -158,7 +158,7 @@ export const PaymentCheckoutSheet = ({
         }
         return;
       }
-      showNotice('Откройте Corta из Telegram (кнопка у бота), не во внешнем браузере');
+      showNotice('Откройте Corta daily из Telegram (кнопка у бота), не во внешнем браузере');
       return;
     }
     payInFlightRef.current = true;
@@ -190,7 +190,7 @@ export const PaymentCheckoutSheet = ({
         const byReason: Record<(typeof r)['reason'], string> = {
           not_telegram: 'Оплата доступна только в Telegram',
           no_api_url: 'Сервер оплаты не настроен',
-          no_init_data: 'Откройте приложение из бота Corta',
+          no_init_data: 'Откройте приложение из бота Corta daily',
           no_open_invoice: 'Обновите Telegram до последней версии',
           no_open_link: 'Обновите Telegram до последней версии',
           payments_disabled:
@@ -304,7 +304,7 @@ export const PaymentCheckoutSheet = ({
                   rel="noopener noreferrer"
                   className="font-medium text-teal-300 underline underline-offset-2"
                 >
-                  Техподдержку Corta в Telegram
+                  Техподдержку Corta daily в Telegram
                 </a>{' '}
                 или по почте{' '}
                 <a

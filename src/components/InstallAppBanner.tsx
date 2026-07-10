@@ -56,11 +56,11 @@ export const InstallAppBanner = () => {
   const platform = getInstallPlatform();
   const isIosChrome = platform === 'ios' && /CriOS/i.test(navigator.userAgent);
 
-  let title = 'Добавьте Corta на главный экран';
+  let title = 'Добавьте Corta daily на главный экран';
   let body = 'Так оценка и отчёт будут открываться в один тап — как приложение.';
 
   if (mode === 'in-app-browser') {
-    title = 'Откройте Corta в браузере';
+    title = 'Откройте Corta daily в браузере';
     body = `Сейчас сайт открыт внутри мессенджера. Нажмите «⋯» → «Открыть в браузере» или скопируйте ссылку: ${SITE_URL}`;
   } else if (mode === 'ios') {
     if (isIosChrome) {
@@ -72,7 +72,7 @@ export const InstallAppBanner = () => {
   } else if (mode === 'android-manual') {
     body = 'В Chrome: меню «⋮» → «Добавить на главный экран» или «Установить приложение».';
   } else if (mode === 'native' && !nativeEvent) {
-    body = 'В Chrome: иконка «Установить» в адресной строке или меню браузера → «Установить Corta».';
+    body = 'В Chrome: иконка «Установить» в адресной строке или меню браузера → «Установить Corta daily».';
   }
 
   return (

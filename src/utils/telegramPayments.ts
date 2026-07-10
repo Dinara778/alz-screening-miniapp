@@ -598,7 +598,7 @@ export async function verifyReportPaymentOnServer(
 
   const tg = window.Telegram?.WebApp;
   if (!tg?.initData) {
-    return { ok: false, message: 'Откройте Corta из Telegram (кнопка у бота), не во внешнем браузере.' };
+    return { ok: false, message: 'Откройте Corta daily из Telegram (кнопка у бота), не во внешнем браузере.' };
   }
 
   const base = getPaymentsApiUrl();
@@ -625,7 +625,7 @@ export async function verifyReportPaymentOnServer(
     if (res.status === 404) {
       return {
         ok: false,
-        message: 'Сервер ещё без обновления. Обновите Corta и повторите через минуту.',
+        message: 'Сервер ещё без обновления. Обновите Corta daily и повторите через минуту.',
       };
     }
   } catch {
@@ -686,7 +686,7 @@ export async function recoverFullReportAccess(
 
   const tg = window.Telegram?.WebApp;
   if (!tg?.initData) {
-    return { ok: false, message: 'Откройте Corta из Telegram (кнопка у бота), не во внешнем браузере.' };
+    return { ok: false, message: 'Откройте Corta daily из Telegram (кнопка у бота), не во внешнем браузере.' };
   }
 
   const fromUrl = await recoverProdamusPaymentFromUrl();
@@ -714,7 +714,7 @@ export async function recoverFullReportAccess(
       if (res.status === 404) {
         return {
           ok: false,
-          message: 'Сервер ещё без обновления. Обновите Corta и повторите через минуту.',
+          message: 'Сервер ещё без обновления. Обновите Corta daily и повторите через минуту.',
         };
       }
     } catch {

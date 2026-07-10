@@ -33,9 +33,9 @@ export const REPORT_TARIFFS: ReportTariff[] = [
   },
   {
     product: 'subscription_1m',
-    name: 'Подписка Corta',
+    name: 'Подписка Corta daily',
     emoji: '🧠',
-    tagline: 'Используйте Corta как инструмент ежедневного контроля когнитивного состояния:',
+    tagline: 'Используйте Corta daily как инструмент ежедневного контроля когнитивного состояния:',
     priceLabel: '399 ₽ / месяц',
     highlighted: true,
     features: [
@@ -48,7 +48,7 @@ export const REPORT_TARIFFS: ReportTariff[] = [
   },
   {
     product: 'subscription_3m',
-    name: 'Подписка «Corta»',
+    name: 'Подписка «Corta daily»',
     emoji: '✨',
     tagline: 'Всё то же самое. Просто дешевле.',
     priceLabel: '990 ₽ / 3 месяца',

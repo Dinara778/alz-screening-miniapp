@@ -39,7 +39,7 @@ export async function shareResultWithCard({
 
   if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
     try {
-      const payload = { files: [file], text: caption, title: 'Corta — когнитивный профиль' };
+      const payload = { files: [file], text: caption, title: 'Corta daily — когнитивный профиль' };
       if (!navigator.canShare || navigator.canShare(payload)) {
         await navigator.share(payload);
         return 'native';

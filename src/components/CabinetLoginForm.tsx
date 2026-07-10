@@ -10,7 +10,7 @@ type Props = {
 };
 
 export const CabinetLoginForm = ({
-  title = 'Личный кабинет Corta',
+  title = 'Личный кабинет Corta daily',
   subtitle = 'Войдите по email — пришлём код для входа.',
   onLoggedIn,
 }: Props) => {

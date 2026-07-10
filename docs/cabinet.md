@@ -21,7 +21,44 @@ URL: **https://cortaapp.ru/cabinet**
 
 Тема письма, например: `Код для входа в Corta`.
 
-SMTP (Яндекс): **Project Settings → Authentication → SMTP Settings**.
+## 1.1. SMTP — важно для Gmail, Mail.ru и др.
+
+Коды входа отправляет **Supabase**, не сервер Corta. Если работает только `@yandex.ru` — проблема в **SMTP в Supabase**, не в приложении.
+
+Проверка: Supabase → **Authentication** → **Logs** — при ошибке будет `Error sending confirmation email`.
+
+### Почему Яндекс SMTP не подходит для всех
+
+`smtp.yandex.ru` с личного ящика часто:
+- нормально доставляет на **другие ящики Яндекса**;
+- **не отправляет** или не доходит до Gmail, Mail.ru, Outlook (лимиты, антиспам, политика SMTP).
+
+### Рекомендуется: Resend + домен cortaapp.ru
+
+1. Зарегистрируйтесь на [resend.com](https://resend.com).
+2. **Domains** → добавьте `cortaapp.ru` → пропишите DNS-записи (SPF, DKIM) у регистратора домена.
+3. Supabase → **Project Settings** → **Authentication** → **SMTP Settings** → включить Custom SMTP:
+
+| Поле | Значение |
+|------|----------|
+| Host | `smtp.resend.com` |
+| Port | `465` (SSL) или `587` (TLS) |
+| Username | `resend` |
+| Password | API-ключ из Resend (`re_...`) |
+| Sender email | `noreply@cortaapp.ru` (или другой на вашем домене) |
+| Sender name | `Corta` |
+
+4. Сохраните, запросите код на Gmail — проверьте **Входящие** и **Спам**.
+5. Шаблон **Magic Link** по-прежнему с `{{ .Token }}`.
+
+### Если пока остаётесь на Яндекс SMTP
+
+- **Project Settings → Authentication → SMTP**: `smtp.yandex.ru`, порт `465`, логин — полный email, пароль — **пароль приложения** (тип «Почта»), IMAP включён в настройках Яндекс.Почты.
+- Для Gmail/Mail.ru надёжной доставки **не будет** — нужен Resend или аналог (SendGrid, Mailgun, Amazon SES) с доменом.
+
+### Длина кода 6 vs 8 цифр
+
+**Authentication** → **Providers** → **Email** → **OTP length** → `6` → **Save** → запросите **новый** код (старые письма не меняются). Если в письме всё ещё 8 — введите все 8 цифр; приложение принимает 6–10.
 
 ## 2. SQL-миграция
 

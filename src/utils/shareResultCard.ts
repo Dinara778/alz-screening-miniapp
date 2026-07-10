@@ -155,7 +155,7 @@ export async function renderShareResultCard({ indexValue, accent }: ShareCardOpt
 
   ctx.fillStyle = 'rgba(255,255,255,0.35)';
   ctx.font = '500 28px system-ui, -apple-system, sans-serif';
-  ctx.fillText('Corta', CARD_W / 2, CARD_H - 56);
+  ctx.fillText('Corta daily', CARD_W / 2, CARD_H - 56);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(

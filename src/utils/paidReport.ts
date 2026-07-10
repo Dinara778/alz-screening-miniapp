@@ -333,7 +333,7 @@ export function getPaidReportData(
       : padRecommendations(band.recommendations);
 
   return {
-    title: 'Персональный когнитивный отчёт — Corta',
+    title: 'Персональный когнитивный отчёт — Corta daily',
     dateLabel: new Date().toLocaleDateString('ru-RU', {
       day: 'numeric',
       month: 'long',

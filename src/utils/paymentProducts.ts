@@ -39,7 +39,7 @@ export const PAYMENT_PRODUCTS: Record<TelegramInvoiceProduct, PaymentProductMeta
     alreadyPaidCheckLabel: 'Проверить оплату и открыть отчёт',
   },
   subscription_1m: {
-    title: 'Подписка Corta — ежедневный контроль когнитивного состояния',
+    title: 'Подписка Corta daily — ежедневный контроль когнитивного состояния',
     priceRub: 399,
     subtitle: 'Полный разбор, компенсация и история результатов',
     bullets: [
@@ -53,13 +53,13 @@ export const PAYMENT_PRODUCTS: Record<TelegramInvoiceProduct, PaymentProductMeta
     redirectOpenedMessage:
       'Страница оплаты открыта. После оплаты откроется расширенный отчёт, подписка активируется автоматически.',
     alreadyPaidHelpMain:
-      'Если вы оплатили 399 ₽ за подписку Corta на 1 месяц, а доступ не открылся, пожалуйста, напишите нам в',
+      'Если вы оплатили 399 ₽ за подписку Corta daily на 1 месяц, а доступ не открылся, пожалуйста, напишите нам в',
     alreadyPaidHelpNote:
       'Подписка на 1 месяц стоит 399 ₽. После активации расширенные отчёты открываются при каждой оценке в период подписки.',
     alreadyPaidCheckLabel: 'Проверить оплату и активировать подписку',
   },
   subscription_3m: {
-    title: 'Подписка Corta на 3 месяца — выгоднее помесячной оплаты',
+    title: 'Подписка Corta daily на 3 месяца — выгоднее помесячной оплаты',
     priceRub: 990,
     subtitle: 'Все возможности месячной подписки',
     bullets: [
@@ -73,7 +73,7 @@ export const PAYMENT_PRODUCTS: Record<TelegramInvoiceProduct, PaymentProductMeta
     redirectOpenedMessage:
       'Страница оплаты открыта. После оплаты откроется расширенный отчёт, подписка активируется автоматически.',
     alreadyPaidHelpMain:
-      'Если вы оплатили 990 ₽ за подписку «Corta» на 3 месяца, а доступ не открылся, пожалуйста, напишите нам в',
+      'Если вы оплатили 990 ₽ за подписку «Corta daily» на 3 месяца, а доступ не открылся, пожалуйста, напишите нам в',
     alreadyPaidHelpNote:
       'Подписка на 3 месяца стоит 990 ₽. После активации расширенные отчёты открываются при каждой оценке в период подписки.',
     alreadyPaidCheckLabel: 'Проверить оплату и активировать подписку',

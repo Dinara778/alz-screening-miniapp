@@ -136,13 +136,13 @@ export function formatCabinetAuthError(error: unknown): string {
     return 'Проверка заняла слишком много времени. Попробуйте снова.';
   }
   if (/load failed|failed to fetch|networkerror|network error|fetch/i.test(message)) {
-    return 'Нет связи с сервером Corta. Проверьте интернет и попробуйте снова.';
+    return 'Нет связи с сервером Corta daily. Проверьте интернет и попробуйте снова.';
   }
   if (/not configured|cabinet_not_configured|anon public|service_role/i.test(`${errorCode} ${message}`)) {
     return 'Кабинет временно недоступен. Попробуйте позже.';
   }
-  if (/smtp|sending confirmation email|error sending/i.test(message)) {
-    return 'Письмо не отправилось. Проверьте SMTP в Supabase (Яндекс: smtp.yandex.ru, пароль приложения для «Почта»).';
+  if (/smtp|sending confirmation email|error sending|unexpected_failure/i.test(`${code} ${errorCode} ${message}`)) {
+    return 'Письмо не отправилось. Яндекс SMTP в Supabase часто доставляет только на @yandex.ru. Для Gmail, Mail.ru и других почт подключите Resend (или другой SMTP) в Supabase → Authentication → SMTP Settings.';
   }
   if (/redirect|url configuration|invalid.*url/i.test(message)) {
     return 'Неверный адрес возврата. В Supabase добавьте https://cortaapp.ru/cabinet в Redirect URLs.';
@@ -161,7 +161,7 @@ export function formatCabinetAuthError(error: unknown): string {
 
 function cabinetApiBase(): string {
   const api = getPaymentsApiUrl();
-  if (!api) throw new Error('Сервер Corta не настроен');
+  if (!api) throw new Error('Сервер Corta daily не настроен');
   return api.replace(/\/$/, '');
 }
 

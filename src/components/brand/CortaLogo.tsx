@@ -2,16 +2,33 @@ type Props = {
   className?: string;
 };
 
-/** Логотип Corta — надпись без подложки, цвет бренда #14b5a4. */
+/** Логотип Corta daily — зонтик CORTA + DAILY строкой ниже. */
 export const CortaLogo = ({ className = '' }: Props) => (
   <span
-    className={`select-none text-[2rem] font-black lowercase leading-none text-[#14b5a4] sm:text-[2.25rem] ${className}`}
+    className={`select-none inline-flex flex-col leading-none ${className}`}
     style={{
-      fontFamily: 'Nunito, Plus Jakarta Sans, system-ui, sans-serif',
+      fontFamily: "'Bradley Hand', 'Marker Felt', 'Segoe Print', 'Comic Sans MS', cursive",
+      color: '#14b5a4',
       letterSpacing: '-0.04em',
+      textTransform: 'uppercase',
     }}
-    aria-label="Corta"
+    aria-label="Corta daily"
   >
-    corta
+    <span
+      className="text-[2rem] font-black sm:text-[2.25rem]"
+      style={{
+        transform: 'rotate(-1deg)',
+      }}
+    >
+      CORTA
+    </span>
+    <span
+      className="mt-[-0.28em] text-[1.35rem] font-black sm:text-[1.45rem]"
+      style={{
+        transform: 'translateX(0.25em) rotate(-0.65deg)',
+      }}
+    >
+      DAILY
+    </span>
   </span>
 );

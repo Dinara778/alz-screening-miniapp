@@ -37,10 +37,10 @@ function fmtRub(amount: number): string {
 
 function paymentLabel(p: CabinetPayment): string {
   if (p.product === 'full_report') return 'Разовый разбор';
-  if (p.product === 'subscription_1m') return 'Подписка Corta — 1 месяц';
-  if (p.product === 'subscription_3m') return 'Подписка «Corta» — 3 месяца';
+  if (p.product === 'subscription_1m') return 'Подписка Corta daily — 1 месяц';
+  if (p.product === 'subscription_3m') return 'Подписка «Corta daily» — 3 месяца';
   if (p.product === 'consultation') return 'Сессия с экспертом';
-  if (p.type === 'subscription') return 'Подписка Corta';
+  if (p.type === 'subscription') return 'Подписка Corta daily';
   return 'Оплата';
 }
 
