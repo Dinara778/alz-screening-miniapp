@@ -3,6 +3,7 @@ import { BackArrowButton } from '../components/BackArrowButton';
 import { CalmCardShell } from '../components/CalmCardShell';
 import { Button } from '../components/Button';
 import { CabinetAccessLink } from '../components/CabinetAccessLink';
+import { CabinetLoginForm } from '../components/CabinetLoginForm';
 import { SameEmailHint } from '../components/SameEmailHint';
 import { ScreenBottomCta } from '../components/ScreenBottomCta';
 import { IconArrowRight } from '../components/landing/LandingIcons';
@@ -10,7 +11,7 @@ import { ProgressBar } from '../components/ProgressBar';
 import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { ParticipantProfile } from '../types';
 import { TEST_DURATION_LABEL } from '../constants/testDuration';
-import { fetchCabinetParticipantProfile } from '../utils/cabinetApi';
+import { fetchCabinetParticipantProfile, useCabinetSession } from '../utils/cabinetApi';
 import {
   formatProfileResumeLabel,
   loadLocalParticipantProfile,
@@ -49,8 +50,14 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
   const [age, setAge] = useState('');
   const [email, setEmail] = useState('');
   const [resumeProfile, setResumeProfile] = useState<ParticipantProfile | null>(null);
+  const [resumeLogin, setResumeLogin] = useState(false);
   const formSessionIdRef = useRef(`welcome-${Date.now()}`);
   const hasSentFormStartRef = useRef(false);
+  const cabinetSession = useCabinetSession();
+
+  const goToCabinet = () => {
+    window.location.href = '/cabinet';
+  };
 
   const applyProfileToForm = (profile: ParticipantProfile) => {
     setName(profile.name);
@@ -248,12 +255,33 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
   let stepFooter: React.ReactNode = nextButton(step);
   const introStep = step === 0;
 
-  if (step === 0 && resumeProfile) {
+  if (step === 0 && resumeProfile && resumeLogin) {
+    stepBody = (
+      <CabinetLoginForm
+        calm
+        fixedEmail
+        initialEmail={resumeProfile.email}
+        title="Вход в кабинет"
+        subtitle={`Код придёт на ${resumeProfile.email}`}
+        onLoggedIn={goToCabinet}
+        onCancel={() => setResumeLogin(false)}
+      />
+    );
+    stepFooter = null;
+  } else if (step === 0 && resumeProfile) {
+    const alreadyIn =
+      Boolean(cabinetSession.accessToken) &&
+      cabinetSession.email?.toLowerCase() === resumeProfile.email.trim().toLowerCase();
+
     stepBody = (
       <div className="space-y-5 text-center sm:text-left">
         <div className="text-center text-4xl">✨</div>
         <h2 className="app-heading text-center">С возвращением!</h2>
-        <p className="calm-caption sm:text-base">Продолжить с сохранёнными данными?</p>
+        <p className="calm-caption sm:text-base">
+          {alreadyIn
+            ? 'Вы уже вошли — откройте кабинет или обновите данные.'
+            : 'Войдите в кабинет с сохранённым email или измените данные.'}
+        </p>
         <div className="calm-inset space-y-2 rounded-2xl px-4 py-3 text-left text-sm text-white/90">
           <p className="font-semibold text-white">{formatProfileResumeLabel(resumeProfile)}</p>
           <p className="text-white/65">{resumeProfile.email}</p>
@@ -262,10 +290,27 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
     );
     stepFooter = (
       <div className="space-y-3">
-        <Button type="button" className={CTA_BUTTON_CLASS} onClick={() => setStep(5)}>
-          <span className="flex items-center justify-center gap-2">
-            Продолжить
-            <IconArrowRight className="h-5 w-5 shrink-0" />
+        <Button
+          type="button"
+          className={CTA_BUTTON_CLASS}
+          onClick={() => {
+            if (alreadyIn) {
+              goToCabinet();
+              return;
+            }
+            setResumeLogin(true);
+          }}
+        >
+          <span className="flex min-w-0 flex-col items-center gap-0.5 leading-snug">
+            <span className="inline-flex items-center gap-2">
+              {alreadyIn ? 'Открыть кабинет' : 'Войти как'}
+              <IconArrowRight className="h-5 w-5 shrink-0" />
+            </span>
+            {!alreadyIn ? (
+              <span className="max-w-full truncate text-sm font-semibold opacity-95">
+                {resumeProfile.email}
+              </span>
+            ) : null}
           </span>
         </Button>
         <Button
@@ -273,13 +318,13 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
           variant="secondary"
           className={`${CTA_BUTTON_CLASS} font-semibold`}
           onClick={() => {
+            setResumeLogin(false);
             setResumeProfile(null);
             setStep(1);
           }}
         >
           Изменить данные
         </Button>
-        <CabinetAccessLink variant="button" />
       </div>
     );
   } else if (step === 0) {
@@ -423,11 +468,15 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
                   </span>
                 )}
                 <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-0.5 text-[0.6875rem] font-medium text-white/65">
-                  {step === 0
-                    ? 'впереди 5 шагов'
-                    : step >= FIELD_STEP_MAX - 1
-                      ? 'финиш ✨'
-                      : `осталось: ${FIELD_STEP_MAX - step}`}
+                  {step === 0 && resumeLogin
+                    ? 'вход в кабинет'
+                    : step === 0
+                      ? resumeProfile
+                        ? 'сохранённый профиль'
+                        : 'впереди 5 шагов'
+                      : step >= FIELD_STEP_MAX - 1
+                        ? 'финиш ✨'
+                        : `осталось: ${FIELD_STEP_MAX - step}`}
                 </span>
               </div>
               <ProgressBar value={progressValue} max={FIELD_STEP_MAX} />

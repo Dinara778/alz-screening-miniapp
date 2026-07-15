@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 type Props = {
   children: ReactNode;
   /** Основная кнопка (или группа) — всегда внизу экрана */
-  footer: ReactNode;
+  footer?: ReactNode;
   /** Доп. действие под CTA (например «История») */
   footerExtra?: ReactNode;
   /** start — для полей ввода (меньше скачков при клавиатуре) */
@@ -29,6 +29,7 @@ export const ScreenBottomCta = ({
   className = '',
 }: Props) => {
   const stretch = fill && !stackFooter;
+  const hasFooter = footer != null || footerExtra != null;
 
   return (
     <div className={`flex min-h-0 flex-col ${stretch ? 'flex-1' : ''} ${className}`}>
@@ -39,14 +40,16 @@ export const ScreenBottomCta = ({
       >
         {children}
       </div>
-      <div
-        className={`shrink-0 space-y-3 pb-[max(0.25rem,env(safe-area-inset-bottom))] ${
-          stackFooter ? 'mt-4 pt-0' : 'mt-auto pt-4'
-        }`}
-      >
-        {footer}
-        {footerExtra}
-      </div>
+      {hasFooter ? (
+        <div
+          className={`shrink-0 space-y-3 pb-[max(0.25rem,env(safe-area-inset-bottom))] ${
+            stackFooter ? 'mt-4 pt-0' : 'mt-auto pt-4'
+          }`}
+        >
+          {footer}
+          {footerExtra}
+        </div>
+      ) : null}
     </div>
   );
 };

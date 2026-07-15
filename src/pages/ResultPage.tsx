@@ -6,7 +6,6 @@ import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { OrganicMetricHalo } from '../components/results/OrganicMetricHalo';
 import { SketchHighlightTitle } from '../components/results/SketchHighlightTitle';
 import { DomainOverviewTiles } from '../components/results/DomainOverviewTiles';
-import { CabinetAccessLink } from '../components/CabinetAccessLink';
 import { AssessmentCompleteScreen } from '../components/AssessmentCompleteScreen';
 import { scoreAccentFromValue } from '../components/results/scoreAccent';
 import { useApp } from '../context/AppContext';
@@ -489,7 +488,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
                   Открыть расшифровку
                 </Button>
               ) : null}
-              <CabinetAccessLink variant="button" />
             </div>
           }
         >
