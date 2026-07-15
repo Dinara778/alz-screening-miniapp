@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CabinetChangeSection } from '../components/CabinetChangeSection';
 import { CabinetLoginForm } from '../components/CabinetLoginForm';
 import {
   cabinetReportUrl,
@@ -272,6 +273,8 @@ export const CabinetPage = () => {
             )}
           </section>
         </div>
+
+        <CabinetChangeSection historySortedDesc={historyAll} />
 
         <section className="cabinet-card" style={{ marginTop: 16 }}>
           <h2>Ваше упражнение</h2>

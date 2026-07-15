@@ -545,6 +545,90 @@ input:focus-visible {
 .cabinet-metrics li span {
   color: rgba(238, 246, 243, 0.55);
 }
+.cabinet-delta-list {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+}
+.cabinet-delta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.cabinet-delta-row:first-child {
+  border-top: none;
+  padding-top: 4px;
+}
+.cabinet-delta-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.cabinet-delta-icon {
+  display: inline-flex;
+  height: 1.6rem;
+  width: 1.6rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.cabinet-delta-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+}
+.cabinet-delta-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.cabinet-delta-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+}
+.cabinet-delta-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.cabinet-delta-row--up .cabinet-delta-icon {
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
+}
+.cabinet-delta-row--up .cabinet-delta-badge {
+  background: rgba(16, 185, 129, 0.16);
+  color: #6ee7b7;
+}
+.cabinet-delta-row--down .cabinet-delta-icon {
+  background: rgba(248, 113, 113, 0.16);
+  color: #fca5a5;
+}
+.cabinet-delta-row--down .cabinet-delta-badge {
+  background: rgba(248, 113, 113, 0.14);
+  color: #fca5a5;
+}
+.cabinet-delta-row--same .cabinet-delta-icon {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.55);
+}
+.cabinet-delta-row--same .cabinet-delta-badge {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.55);
+}
 .cabinet-tip {
   margin: 0;
   line-height: 1.5;
