@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+type ContentAlign = 'center' | 'readable' | 'index';
+
 type Props = {
   children: ReactNode;
   footer?: ReactNode;
@@ -9,8 +11,8 @@ type Props = {
   kickerProminent?: boolean;
   /** Заголовок профиля: «Ваш когнитивный профиль» */
   kickerProfile?: boolean;
-  /** center — метрика; readable — расшифровка по центру со скроллом */
-  contentAlign?: 'center' | 'readable';
+  /** center — метрика; readable — расшифровка; index — компактный экран цифры */
+  contentAlign?: ContentAlign;
 };
 
 /** Полноэкранная оболочка calm tech: фон как у приложения, CTA внизу. */
@@ -40,13 +42,19 @@ export const CalmScreen = ({
       className={
         contentAlign === 'readable'
           ? 'flex min-h-0 flex-1 flex-col items-stretch justify-start overflow-y-auto px-5 py-6 text-left sm:px-6'
-          : 'flex min-h-0 flex-1 flex-col items-center justify-center px-3 py-8 text-center'
+          : contentAlign === 'index'
+            ? 'flex min-h-0 flex-1 flex-col items-stretch justify-start overflow-y-auto px-3 pb-2 pt-2 text-left'
+            : 'flex min-h-0 flex-1 flex-col items-center justify-center px-3 py-8 text-center'
       }
     >
       {children}
     </div>
     {footer ? (
-      <div className="mt-auto shrink-0 space-y-3 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-4">
+      <div
+        className={`mt-auto shrink-0 space-y-3 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] ${
+          contentAlign === 'index' ? 'pt-2' : 'pt-4'
+        }`}
+      >
         {footer}
       </div>
     ) : null}

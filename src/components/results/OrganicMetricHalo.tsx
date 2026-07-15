@@ -10,19 +10,29 @@ type Props = {
   children: ReactNode;
   accent?: string;
   emphasis?: boolean;
+  /** Уже ореол на коротких экранах (главный индекс) */
+  compact?: boolean;
 };
 
 /** Один неровный волнистый контур + облако частиц; метрика строго по центру внутри */
-const CloudHalo = ({ children, accent }: { children: ReactNode; accent: string }) => {
+const CloudHalo = ({
+  children,
+  accent,
+  compact = false,
+}: {
+  children: ReactNode;
+  accent: string;
+  compact?: boolean;
+}) => {
   const uid = useId().replace(/:/g, '');
   const softGlow = shouldReduceSvgFilters();
   const shellStyle = { '--halo-accent': accent } as CSSProperties;
 
   return (
     <div
-      className={`relative mx-auto flex aspect-square w-[min(88vw,340px)] items-center justify-center ${
-        softGlow ? 'metric-halo-android-safe' : ''
-      }`}
+      className={`relative mx-auto flex aspect-square items-center justify-center ${
+        compact ? 'w-[min(68vw,260px)]' : 'w-[min(88vw,340px)]'
+      } ${softGlow ? 'metric-halo-android-safe' : ''}`}
       style={shellStyle}
     >
       <svg className="absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 200 200" aria-hidden>
@@ -109,9 +119,18 @@ const CloudHalo = ({ children, accent }: { children: ReactNode; accent: string }
 };
 
 /** Органический контур вокруг метрики домена */
-export const OrganicMetricHalo = ({ children, accent = '#2dd4bf', emphasis = false }: Props) => {
+export const OrganicMetricHalo = ({
+  children,
+  accent = '#2dd4bf',
+  emphasis = false,
+  compact = false,
+}: Props) => {
   if (emphasis) {
-    return <CloudHalo accent={accent}>{children}</CloudHalo>;
+    return (
+      <CloudHalo accent={accent} compact={compact}>
+        {children}
+      </CloudHalo>
+    );
   }
 
   const id = 'metric-halo';
