@@ -4,7 +4,7 @@ import { Button } from '../components/Button';
 import { CalmScreen } from '../components/results/CalmScreen';
 import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { OrganicMetricHalo } from '../components/results/OrganicMetricHalo';
-import { SketchHighlightTitle } from '../components/results/SketchHighlightTitle';
+import { DomainOverviewTiles } from '../components/results/DomainOverviewTiles';
 import { CabinetAccessLink } from '../components/CabinetAccessLink';
 import { AssessmentCompleteScreen } from '../components/AssessmentCompleteScreen';
 import { scoreAccentFromValue } from '../components/results/scoreAccent';
@@ -244,34 +244,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   );
   const accent = indexDisplayReady ? indexCategory.color : scoreAccentFromValue(a.index.value);
 
-  /** Все 5 доменов индекса + итог (раньше скрывали 2 домена — индекс «не сходился» с экраном). */
-  const measuredRows = [
-    {
-      label: 'Внимание',
-      score: domains.find((d) => d.key === 'attentionStability')?.score ?? 50,
-    },
-    {
-      label: 'Скорость реакции',
-      score: domains.find((d) => d.key === 'reactionSpeed')?.score ?? 50,
-    },
-    {
-      label: 'Стабильность реакции',
-      score: domains.find((d) => d.key === 'reactionStability')?.score ?? 50,
-    },
-    {
-      label: 'Когнитивная гибкость',
-      score: domains.find((d) => d.key === 'cognitiveFlexibility')?.score ?? 50,
-    },
-    {
-      label: 'Удержание информации',
-      score: domains.find((d) => d.key === 'informationRetention')?.score ?? 50,
-    },
-    {
-      label: 'Общий индекс',
-      score: a.index.value,
-    },
-  ];
-
   const reportUnlocked = useMemo(
     () => isReportPaidUnlocked(latestResult.id, serverPaymentsReady),
     [latestResult.id, serverPaymentsReady, subscriptionSynced],
@@ -448,7 +420,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   if (step === 'measured') {
     return (
       <CalmScreen
-        contentAlign="readable"
+        contentAlign="center"
         footer={
           <Button
             type="button"
@@ -460,39 +432,17 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           </Button>
         }
       >
-        <div className="mx-auto w-full max-w-md space-y-5">
-          <SketchHighlightTitle accent={accent}>Что мы измерили</SketchHighlightTitle>
+        <div className="w-full">
           {!indexDisplayReady ? (
-            <p className="text-sm leading-relaxed text-amber-200/90">
-              Ограниченная достоверность замера. Рекомендуем пройти задания заново, чтобы увидеть
-              цифры по каждому показателю.
+            <p className="mb-3 px-1 text-center text-xs leading-relaxed text-amber-200/90">
+              Ограниченная достоверность замера. Рекомендуем пройти задания заново.
             </p>
           ) : null}
-          <div className="calm-inset space-y-3">
-            {measuredRows.map((row) => {
-              const rowAccent = scoreAccentFromValue(row.score);
-              return (
-                <div
-                  key={row.label}
-                  className="flex items-center justify-between gap-3 text-base leading-relaxed sm:text-lg"
-                >
-                  <span className="text-white/88">{row.label}</span>
-                  {indexDisplayReady ? (
-                    <span
-                      className="shrink-0 text-2xl font-bold tabular-nums sm:text-3xl"
-                      style={{ color: rowAccent }}
-                    >
-                      {row.score}
-                    </span>
-                  ) : (
-                    <span className="shrink-0 text-2xl font-semibold tabular-nums text-white/35 sm:text-3xl">
-                      —
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <DomainOverviewTiles
+            domains={domains}
+            indexValue={a.index.value}
+            ready={indexDisplayReady}
+          />
         </div>
       </CalmScreen>
     );
