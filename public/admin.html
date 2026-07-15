@@ -171,6 +171,14 @@
           <span class="metric-label">Подписки</span>
           <span class="metric-value" id="revSub">—</span>
         </div>
+        <div class="metric">
+          <span class="metric-label">Оплат за период</span>
+          <span class="metric-value" id="payInPeriod">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Оплат в базе всего</span>
+          <span class="metric-value" id="payTotalDb">—</span>
+        </div>
       </section>
     </div>
 
@@ -191,7 +199,7 @@
         <div class="conv-big" id="convSub">—</div>
         <div class="conv-detail" id="convSubDetail"></div>
       </div>
-      <p class="note">«Посетил» = оставил email в анкете. Конверсии считаются за выбранный период.</p>
+      <p class="note">Все цифры — из Supabase за выбранный период (МСК). «Всего в базе» и «Оплат в базе всего» без фильтра по дате.</p>
     </section>
 
     <div class="grid grid-2" style="margin-bottom:16px">
@@ -267,6 +275,14 @@
       $('usersTotal').textContent = data?.users?.total ?? '—';
       $('revOneTime').textContent = fmtRub(data?.revenue?.oneTimeRub);
       $('revSub').textContent = fmtRub(data?.revenue?.subscriptionRub);
+      const payIn = data?.payments?.inPeriod;
+      const payOne = data?.payments?.oneTime;
+      const paySub = data?.payments?.subscription;
+      $('payInPeriod').textContent =
+        payIn == null
+          ? '—'
+          : String(payIn) + (payOne != null || paySub != null ? ` (разовых ${payOne ?? 0}, подписок ${paySub ?? 0})` : '');
+      $('payTotalDb').textContent = data?.payments?.totalInDb ?? '—';
       $('convVisit').textContent = fmtPct(data?.conversions?.visitedToTest);
       $('convVisitDetail').textContent = fmtConvDetail(data?.conversions?.visitedToTest);
       $('convTest').textContent = fmtPct(data?.conversions?.testToPurchase);

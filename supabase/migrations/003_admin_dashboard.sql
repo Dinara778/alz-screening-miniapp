@@ -1,5 +1,5 @@
--- Метрики для админ-дашборда (вызывается с сервера через service role)
--- Запуск в SQL Editor после 002_funnel_sessions.sql
+-- Метрики для админ-дашборда (опционально; сервер считает напрямую с фильтром периода)
+-- Оставлено для совместимости. «Сегодня» на сервере больше не зависит только от этой RPC.
 
 create or replace function public.admin_dashboard_stats()
 returns json
@@ -18,16 +18,24 @@ declare
 begin
   v_day := date_trunc('day', now() at time zone 'Europe/Moscow') at time zone 'Europe/Moscow';
 
-  select count(distinct user_id) into v_funnel_users from funnel_sessions;
-  select count(distinct user_id) into v_test_users from assessments;
+  select count(distinct user_id) into v_funnel_users
+    from funnel_sessions where created_at >= v_day;
+  select count(distinct user_id) into v_test_users
+    from assessments where created_at >= v_day;
   select count(distinct user_id) into v_paid_users
-    from payments where status = 'paid' and type = 'one_time';
+    from payments
+    where status = 'paid'
+      and type in ('one_time', 'subscription')
+      and created_at >= v_day;
   select count(distinct user_id) into v_sub_users
-    from subscriptions where status = 'active';
+    from payments
+    where status = 'paid' and type = 'subscription' and created_at >= v_day;
   select count(distinct p.user_id) into v_paid_with_test
     from payments p
-    inner join assessments a on a.user_id = p.user_id
-    where p.status = 'paid' and p.type = 'one_time';
+    inner join assessments a on a.user_id = p.user_id and a.created_at >= v_day
+    where p.status = 'paid'
+      and p.type in ('one_time', 'subscription')
+      and p.created_at >= v_day;
 
   return json_build_object(
     'generatedAt', now(),
@@ -45,7 +53,17 @@ begin
         'subscriptionRub', coalesce(sum(amount) filter (where type = 'subscription'), 0)
       )
       from payments
-      where status = 'paid'
+      where status = 'paid' and created_at >= v_day
+    ),
+    'payments', (
+      select json_build_object(
+        'inPeriod', count(*),
+        'oneTime', count(*) filter (where type = 'one_time'),
+        'subscription', count(*) filter (where type = 'subscription'),
+        'totalInDb', (select count(*) from payments where status = 'paid')
+      )
+      from payments
+      where status = 'paid' and created_at >= v_day
     ),
     'conversions', json_build_object(
       'visitedToTest', json_build_object(
@@ -77,7 +95,11 @@ begin
       'testsToday', (select count(*) from assessments where created_at >= v_day),
       'returnedUsers', (
         select count(*) from (
-          select user_id from assessments group by user_id having count(*) >= 2
+          select user_id
+          from assessments
+          where created_at >= v_day
+          group by user_id
+          having count(*) >= 2
         ) q
       )
     )

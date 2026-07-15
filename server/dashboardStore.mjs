@@ -1,5 +1,6 @@
 /**
  * Метрики админ-дашборда из Supabase.
+ * Все периоды (сегодня / 7д / 30д / всё) считаются одним путём — прямыми запросами с фильтром даты.
  */
 import { getClient, isSupabaseConfigured } from './supabaseStore.mjs';
 
@@ -100,6 +101,10 @@ function pct(numerator, denominator) {
   return Math.round((1000 * numerator) / denominator) / 10;
 }
 
+function isPaidPurchase(row) {
+  return row?.status === 'paid' && (row.type === 'one_time' || row.type === 'subscription');
+}
+
 function buildDashboardPayload({
   period,
   usersNewInPeriod,
@@ -112,6 +117,8 @@ function buildDashboardPayload({
   subUserIds,
   testsInPeriod,
   returnedUsers,
+  paymentsTotalInDb,
+  assessmentsTotalInDb,
 }) {
   const funnelCount = funnelUserIds.size;
   const testCount = assessmentUserIds.size;
@@ -121,11 +128,18 @@ function buildDashboardPayload({
 
   let oneTimeRub = 0;
   let subscriptionRub = 0;
+  let oneTimeCount = 0;
+  let subscriptionCount = 0;
   for (const p of payments ?? []) {
     const amount = Number(p.amount);
-    if (!Number.isFinite(amount)) continue;
-    if (p.type === 'one_time') oneTimeRub += amount;
-    if (p.type === 'subscription') subscriptionRub += amount;
+    if (p.type === 'one_time') {
+      oneTimeCount += 1;
+      if (Number.isFinite(amount)) oneTimeRub += amount;
+    }
+    if (p.type === 'subscription') {
+      subscriptionCount += 1;
+      if (Number.isFinite(amount)) subscriptionRub += amount;
+    }
   }
 
   return {
@@ -140,6 +154,16 @@ function buildDashboardPayload({
     revenue: {
       oneTimeRub,
       subscriptionRub,
+    },
+    payments: {
+      inPeriod: oneTimeCount + subscriptionCount,
+      oneTime: oneTimeCount,
+      subscription: subscriptionCount,
+      totalInDb: paymentsTotalInDb,
+    },
+    assessments: {
+      inPeriod: testsInPeriod,
+      totalInDb: assessmentsTotalInDb,
     },
     conversions: {
       visitedToTest: {
@@ -177,35 +201,30 @@ async function fetchTableRows(supabase, table, select) {
 async function fetchDashboardStatsDirect(supabase, period = 'today') {
   const periodStart = getPeriodStartIso(period);
 
-  const [usersRes, paymentsRes, assessmentsRes, subsRes, funnelRows] = await Promise.all([
+  const [usersRes, paymentsRes, assessmentsRes, funnelRows] = await Promise.all([
     supabase.from('users').select('id, created_at'),
     supabase.from('payments').select('user_id, type, amount, created_at, status').eq('status', 'paid'),
     supabase.from('assessments').select('user_id, created_at'),
-    supabase.from('subscriptions').select('user_id, created_at, status').eq('status', 'active'),
     fetchTableRows(supabase, 'funnel_sessions', 'user_id, created_at'),
   ]);
 
-  const firstError =
-    usersRes.error || paymentsRes.error || assessmentsRes.error || subsRes.error;
+  const firstError = usersRes.error || paymentsRes.error || assessmentsRes.error;
 
   if (firstError) {
     console.error('[supabase] dashboard direct', firstError.message);
     return null;
   }
 
+  const allPayments = (paymentsRes.data ?? []).filter(isPaidPurchase);
   const usersInPeriod = filterByPeriod(usersRes.data, periodStart);
-  const paymentsInPeriod = filterByPeriod(paymentsRes.data, periodStart);
+  const paymentsInPeriod = filterByPeriod(allPayments, periodStart);
   const assessmentsInPeriod = filterByPeriod(assessmentsRes.data, periodStart);
   const funnelInPeriod = filterByPeriod(funnelRows, periodStart);
-  const subsInPeriod = filterByPeriod(subsRes.data, periodStart);
 
   const assessmentUserIds = uniqueUserIds(assessmentsInPeriod);
-  const paidUserIds = uniqueUserIds(
-    paymentsInPeriod.filter((p) => p.type === 'one_time'),
-  );
-  const paidWithTestUserIds = new Set(
-    [...paidUserIds].filter((id) => assessmentUserIds.has(id)),
-  );
+  const paidUserIds = uniqueUserIds(paymentsInPeriod);
+  const subUserIds = uniqueUserIds(paymentsInPeriod.filter((p) => p.type === 'subscription'));
+  const paidWithTestUserIds = new Set([...paidUserIds].filter((id) => assessmentUserIds.has(id)));
 
   return buildDashboardPayload({
     period,
@@ -216,41 +235,18 @@ async function fetchDashboardStatsDirect(supabase, period = 'today') {
     assessmentUserIds,
     paidWithTestUserIds,
     paidUserIds,
-    subUserIds: uniqueUserIds(subsInPeriod),
+    subUserIds,
     testsInPeriod: assessmentsInPeriod.length,
     returnedUsers: countReturnedUsers(assessmentsInPeriod),
+    paymentsTotalInDb: allPayments.length,
+    assessmentsTotalInDb: assessmentsRes.data?.length ?? 0,
   });
 }
 
 export async function getDashboardStats(period = 'today', env = process.env) {
   const supabase = getClient(env);
   if (!supabase) return null;
-
-  if (period !== 'today') {
-    return fetchDashboardStatsDirect(supabase, period);
-  }
-
-  const { data, error } = await supabase.rpc('admin_dashboard_stats');
-  if (!error && data) {
-    return {
-      ...data,
-      period: 'today',
-      periodLabel: getPeriodLabel('today'),
-      users: {
-        newInPeriod: data?.users?.newToday ?? data?.users?.newInPeriod ?? 0,
-        total: data?.users?.total ?? 0,
-      },
-      activity: {
-        testsInPeriod: data?.activity?.testsToday ?? data?.activity?.testsInPeriod ?? 0,
-        returnedUsers: data?.activity?.returnedUsers ?? 0,
-      },
-    };
-  }
-
-  if (error) {
-    console.warn('[supabase] admin_dashboard_stats rpc unavailable, using direct queries:', error.message);
-  }
-
+  // Один путь для всех периодов — иначе «сегодня» (RPC) расходился с Supabase и с 7д/30д.
   return fetchDashboardStatsDirect(supabase, period);
 }
 
