@@ -14,6 +14,11 @@ import {
   robustReactionCvPercent,
   sanitizeReactionRts,
 } from './reactionMetrics';
+import {
+  ageAdjustCvPercent,
+  applyAgeNormsToDomainMetrics,
+  resolveAgeSex,
+} from './ageNorms';
 
 export type { IndexBandKey, IndexInterpretation, OverloadVisualTier } from './indexInterpretationBands';
 
@@ -371,19 +376,29 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
     },
   ];
 
+  /**
+   * Домены/индекс — с возрастной коррекцией (без образования).
+   * Паттерны и сырые metrics выше — по фактическим значениям.
+   */
+  const ageSex = resolveAgeSex(session.participant);
+  const domainM = applyAgeNormsToDomainMetrics(m, ageSex);
+
   const flankIncValidRt = flankIncTrials.filter((t) => t.correct && t.rt !== null).length;
   const attentionScore = attentionStabilityDomainScore(
-    m,
+    domainM,
     flankIncTrials.length,
     flankIncValidRt,
   );
 
   const reactionSpeedScore = reactionTrusted
-    ? reactionSpeedDomainScoreFromMedian(m.reactionMedianRt)
+    ? reactionSpeedDomainScoreFromMedian(domainM.reactionMedianRt)
     : NEUTRAL_DOMAIN_SCORE;
+  const reactionStabilityCv = robustReactionCvPercent(reactionRtsClean);
   const reactionStabilityScore = reactionTrusted
     ? reactionStabilityDomainScore(
-        robustReactionCvPercent(reactionRtsClean),
+        ageSex
+          ? ageAdjustCvPercent(reactionStabilityCv, ageSex.age, 0.2)
+          : reactionStabilityCv,
         m.reactionAnticipations,
       )
     : NEUTRAL_DOMAIN_SCORE;
@@ -395,9 +410,9 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
   const stroopTrusted =
     stroopIncTrials.length >= 5 && stroopIncTrials.some((t) => t.correct && t.rt !== null);
   const flexibilityScore = stroopTrusted
-    ? cognitiveFlexibilityDomainScore(m)
+    ? cognitiveFlexibilityDomainScore(domainM)
     : NEUTRAL_DOMAIN_SCORE;
-  const retentionScore = informationRetentionDomainScore(m);
+  const retentionScore = informationRetentionDomainScore(domainM);
 
   const mkDomain = (key: CognitiveDomainKey, title: string, score: number): DomainScore => {
     const interpretation = getDomainInterpretationForKey(key, score);

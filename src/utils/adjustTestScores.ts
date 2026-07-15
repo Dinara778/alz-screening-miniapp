@@ -91,8 +91,11 @@ const zLowerBetter = (corrected: number, mean: number, sd: number): number =>
   (mean - corrected) / sd;
 
 /**
- * Коррекция результатов когнитивных тестов с учетом демографии.
+ * Коррекция результатов когнитивных тестов с учетом демографии (возраст/пол/образование).
  * Возвращает Z-оценки, флаги нарушения (Z < threshold) и итоговый риск.
+ *
+ * Рабочий путь Corta daily: `ageNorms.ts` + `buildCognitiveAnalytics` —
+ * там возраст и пол учтены, образование намеренно не используется.
  */
 export function adjustTestScores(
   results: TestResults,
