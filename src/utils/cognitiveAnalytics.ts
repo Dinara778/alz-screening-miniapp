@@ -69,13 +69,13 @@ export const cognitiveFlexibilityDomainScore = (metrics: {
   return clampScore(score);
 };
 
-/** Удержание информации: нормировка слов, лиц и штраф за wordDelta. */
+/** Удержание информации: слова 70 + лица 30 (идеал = 100), минус штраф за wordDelta. */
 export const informationRetentionDomainScore = (metrics: {
   wordDelayedScore: number;
   faceNameScore: number;
   wordDelta: number;
 }): number => {
-  const wordScore = (safeMetric(metrics.wordDelayedScore) / 5) * 60;
+  const wordScore = (safeMetric(metrics.wordDelayedScore) / 5) * 70;
   const faceScore = (safeMetric(metrics.faceNameScore) / 3) * 30;
   const deltaPenalty = Math.min(20, safeMetric(metrics.wordDelta) * 4);
   return clampScore(Math.max(0, Math.min(100, wordScore + faceScore - deltaPenalty)));
@@ -388,7 +388,15 @@ export const buildCognitiveAnalytics = (session: SessionResult): CognitiveAnalyt
       )
     : NEUTRAL_DOMAIN_SCORE;
 
-  const flexibilityScore = cognitiveFlexibilityDomainScore(m);
+  /**
+   * Без неконгруэнтных проб / корректных RT Струпа интерференция = 0 и выглядит «отлично».
+   * Неполный замер → нейтраль 50, как у неполного фланкера.
+   */
+  const stroopTrusted =
+    stroopIncTrials.length >= 5 && stroopIncTrials.some((t) => t.correct && t.rt !== null);
+  const flexibilityScore = stroopTrusted
+    ? cognitiveFlexibilityDomainScore(m)
+    : NEUTRAL_DOMAIN_SCORE;
   const retentionScore = informationRetentionDomainScore(m);
 
   const mkDomain = (key: CognitiveDomainKey, title: string, score: number): DomainScore => {

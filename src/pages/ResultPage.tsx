@@ -244,6 +244,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   );
   const accent = indexDisplayReady ? indexCategory.color : scoreAccentFromValue(a.index.value);
 
+  /** Все 5 доменов индекса + итог (раньше скрывали 2 домена — индекс «не сходился» с экраном). */
   const measuredRows = [
     {
       label: 'Внимание',
@@ -254,11 +255,19 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       score: domains.find((d) => d.key === 'reactionSpeed')?.score ?? 50,
     },
     {
+      label: 'Стабильность реакции',
+      score: domains.find((d) => d.key === 'reactionStability')?.score ?? 50,
+    },
+    {
+      label: 'Когнитивная гибкость',
+      score: domains.find((d) => d.key === 'cognitiveFlexibility')?.score ?? 50,
+    },
+    {
       label: 'Удержание информации',
       score: domains.find((d) => d.key === 'informationRetention')?.score ?? 50,
     },
     {
-      label: 'Когнитивная устойчивость',
+      label: 'Общий индекс',
       score: a.index.value,
     },
   ];
