@@ -852,7 +852,7 @@ input:focus-visible {
 .index-hero-top {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.65rem;
 }
 .index-hero-title {
@@ -864,19 +864,6 @@ input:focus-visible {
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: -0.01em;
-}
-.index-profile-chip {
-  flex-shrink: 0;
-  max-width: 7.5rem;
-  border-radius: 9999px;
-  padding: 0.35rem 0.55rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.07);
-  font-size: 0.625rem;
-  font-weight: 500;
-  line-height: 1.25;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.55);
 }
 .index-repeat-hint {
   display: flex;
@@ -922,10 +909,6 @@ input:focus-visible {
   .index-hero-title {
     font-size: 1.2rem;
     line-height: 1.22;
-  }
-  .index-profile-chip {
-    max-width: 8.5rem;
-    font-size: 0.6875rem;
   }
   .index-repeat-hint {
     font-size: 0.8125rem;

@@ -363,7 +363,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
                 {indexKickerCategory}
               </span>
             </p>
-            <span className="index-profile-chip">* профиль меняется в течение дня</span>
           </div>
 
           {indexDisplayReady ? (
