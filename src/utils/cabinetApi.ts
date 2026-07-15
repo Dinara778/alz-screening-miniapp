@@ -4,9 +4,9 @@ import { parseParticipantProfile } from './participantProfileStore';
 import { getCabinetRedirectUrl, getSupabaseBrowser, resetSupabaseBrowserClient, warmCabinetAuthClient } from './supabaseBrowser';
 import {
   clearCabinetSession,
-  readCabinetSession,
   saveCabinetSession,
 } from './cabinetSessionStorage';
+import { ensureFreshCabinetSession } from './cabinetSessionRefresh';
 
 export type CabinetAssessment = {
   sessionId: string;
@@ -53,12 +53,15 @@ export type CabinetData = {
   payments: CabinetPayment[];
 };
 
-export async function cancelCabinetSubscription(accessToken: string): Promise<{ endDate: string }> {
+export async function cancelCabinetSubscription(accessToken?: string | null): Promise<{ endDate: string }> {
   const api = getPaymentsApiUrl();
   if (!api) throw new Error('API не настроен');
+  const session = await ensureFreshCabinetSession();
+  const token = session?.access_token || accessToken;
+  if (!token) throw new Error('Нужно войти в кабинет');
   const res = await fetch(`${api.replace(/\/$/, '')}/api/cabinet/cancel-subscription`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${token}` },
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json.ok) {
@@ -71,11 +74,14 @@ export function cabinetReportUrl(sessionId: string): string {
   return `/cabinet/report?session=${encodeURIComponent(sessionId)}`;
 }
 
-export async function fetchCabinetData(accessToken: string): Promise<CabinetData> {
+export async function fetchCabinetData(accessToken?: string | null): Promise<CabinetData> {
   const api = getPaymentsApiUrl();
   if (!api) throw new Error('API не настроен');
+  const session = await ensureFreshCabinetSession();
+  const token = session?.access_token || accessToken;
+  if (!token) throw new Error('Нужно войти в кабинет');
   const res = await fetch(`${api.replace(/\/$/, '')}/api/cabinet/me`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${token}` },
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json.ok) {
@@ -85,14 +91,17 @@ export async function fetchCabinetData(accessToken: string): Promise<CabinetData
 }
 
 export async function fetchCabinetReport(
-  accessToken: string,
+  accessToken: string | null | undefined,
   sessionId: string,
 ): Promise<SessionResult> {
   const api = getPaymentsApiUrl();
   if (!api) throw new Error('API не настроен');
+  const session = await ensureFreshCabinetSession();
+  const token = session?.access_token || accessToken;
+  if (!token) throw new Error('Нужно войти в кабинет');
   const res = await fetch(
     `${api.replace(/\/$/, '')}/api/cabinet/report/${encodeURIComponent(sessionId)}`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
+    { headers: { Authorization: `Bearer ${token}` } },
   );
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json.ok) {
@@ -102,12 +111,15 @@ export async function fetchCabinetReport(
 }
 
 export async function fetchCabinetParticipantProfile(
-  accessToken: string,
+  accessToken?: string | null,
 ): Promise<ParticipantProfile | null> {
   const api = getPaymentsApiUrl();
   if (!api) return null;
+  const session = await ensureFreshCabinetSession();
+  const token = session?.access_token || accessToken;
+  if (!token) return null;
   const res = await fetch(`${api.replace(/\/$/, '')}/api/cabinet/participant-profile`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${token}` },
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json.ok) return null;
@@ -257,3 +269,4 @@ export async function signOutCabinet(): Promise<void> {
 }
 
 export { useCabinetSession } from './useCabinetSession';
+export { ensureFreshCabinetSession } from './cabinetSessionRefresh';

@@ -127,9 +127,46 @@ export async function verifyCabinetOtp(email, token, env = process.env) {
       }
     }
     if (e?.code === 'supabase_timeout') {
-      return { ok: false, error: 'supabase_timeout', message: 'Проверка кода заняла слишком много времени' };
+      return { ok: false, error: 'supabase_timeout', message: 'Проверка кода заняла слишком долго' };
     }
     console.error('[cabinetOtp] verify', e?.message || e);
+    return { ok: false, error: 'supabase_unreachable', message: 'Сервер Corta не смог связаться с Supabase' };
+  }
+}
+
+/** Продлить сессию кабинета по refresh_token (без повторного OTP). */
+export async function refreshCabinetSession(refreshToken, env = process.env) {
+  const token = String(refreshToken ?? '').trim();
+  if (!token) {
+    return { ok: false, error: 'invalid_refresh', message: 'Нет refresh_token' };
+  }
+
+  const cfg = authConfig(env);
+  if (!cfg) {
+    return { ok: false, error: 'cabinet_not_configured', message: 'Кабинет не настроен на сервере' };
+  }
+
+  try {
+    const res = await fetchAuth(`${cfg.baseUrl}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: cfg.headers,
+      body: JSON.stringify({ refresh_token: token }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json?.access_token || !json?.refresh_token) {
+      const mapped = mapAuthError(json, 'refresh_failed');
+      return { ok: false, ...mapped };
+    }
+    return {
+      ok: true,
+      access_token: json.access_token,
+      refresh_token: json.refresh_token,
+    };
+  } catch (e) {
+    if (e?.code === 'supabase_timeout') {
+      return { ok: false, error: 'supabase_timeout', message: 'Обновление сессии заняло слишком много времени' };
+    }
+    console.error('[cabinetOtp] refresh', e?.message || e);
     return { ok: false, error: 'supabase_unreachable', message: 'Сервер Corta не смог связаться с Supabase' };
   }
 }

@@ -5,14 +5,12 @@ import { CalmCardShell } from './CalmCardShell';
 import { TELEGRAM_SUPPORT_URL } from './SupportFooter';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
 import { isReportUnlockProduct } from '../utils/paymentProductTypes';
-import { isStandaloneWeb } from '../utils/runtime';
 import { openWebPayment } from '../utils/webPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import { REPORT_TARIFF_PAYMENT_BUTTON_CLASS } from '../constants/ctaButton';
 import type { ReportUnlockProduct } from '../utils/paymentProductTypes';
 import {
   isReportPaidUnlocked,
-  openTelegramInvoiceForProduct,
   verifyReportPaymentOnServer,
 } from '../utils/telegramPayments';
 
@@ -124,101 +122,44 @@ export const PaymentCheckoutSheet = ({
       onClose();
       return;
     }
-    const tg = window.Telegram?.WebApp;
-    if (!tg?.initData) {
-      if (isStandaloneWeb()) {
-        payInFlightRef.current = true;
-        setPayBusy(true);
-        showNotice(null);
-        trackPaymentEvent('payment_click', { source: 'report_checkout', channel: 'web' });
-        try {
-          const r = await openWebPayment(product, sessionId, payerEmail);
-          if (r.status === 'already_paid') {
-            trackPaymentEvent('payment_paid', { channel: 'web' });
-            onPaid(sessionId);
-            onClose();
-            return;
-          }
-          if (r.status === 'redirected') {
-            trackPaymentEvent('payment_opened', { provider: 'robokassa', channel: 'web' });
-            setAwaitingReturn(true);
-            showNotice('Переход на страницу оплаты…');
-            return;
-          }
-          if (r.status === 'pending_setup') {
-            trackPaymentEvent('payment_error', { reason: 'robokassa_pending', channel: 'web' });
-            showNotice(r.message);
-            return;
-          }
-          trackPaymentEvent('payment_error', { reason: 'error', detail: r.message, channel: 'web' });
-          showNotice(r.message);
-        } finally {
-          setPayBusy(false);
-          payInFlightRef.current = false;
-        }
-        return;
-      }
-      showNotice('Откройте Corta daily из Telegram (кнопка у бота), не во внешнем браузере');
+    if (!payerEmail?.includes('@')) {
+      showNotice('Для оплаты нужен email из анкеты. Вернитесь и укажите почту.');
       return;
     }
+
     payInFlightRef.current = true;
     setPayBusy(true);
     setAwaitingReturn(false);
     showNotice(null);
-    trackPaymentEvent('payment_click', { source: 'report_checkout' });
+    trackPaymentEvent('payment_click', { source: 'report_checkout', channel: 'robokassa' });
+
     try {
-      tg.expand?.();
+      window.Telegram?.WebApp?.expand?.();
     } catch {
       /* ignore */
     }
+
     try {
-      const r = await openTelegramInvoiceForProduct(product, sessionId);
-      if (r.status === 'paid') {
-        trackPaymentEvent('payment_paid');
+      const r = await openWebPayment(product, sessionId, payerEmail);
+      if (r.status === 'already_paid') {
+        trackPaymentEvent('payment_paid', { channel: 'robokassa' });
         onPaid(sessionId);
         onClose();
         return;
       }
       if (r.status === 'redirected') {
-        trackPaymentEvent('payment_opened', { provider: 'link' });
+        trackPaymentEvent('payment_opened', { provider: 'robokassa', channel: 'robokassa' });
         setAwaitingReturn(true);
-        showNotice(meta.redirectOpenedMessage);
+        showNotice('Переход на страницу оплаты…');
         return;
       }
-      if (r.status === 'skipped') {
-        trackPaymentEvent('payment_error', { reason: r.reason });
-        const byReason: Record<(typeof r)['reason'], string> = {
-          not_telegram: 'Оплата доступна только в Telegram',
-          no_api_url: 'Сервер оплаты не настроен',
-          no_init_data: 'Откройте приложение из бота Corta daily',
-          no_open_invoice: 'Обновите Telegram до последней версии',
-          no_open_link: 'Обновите Telegram до последней версии',
-          payments_disabled:
-            'Оплата не настроена на сервере. В Amvera: PAYMENT_PROVIDER=telegram, TELEGRAM_PAYMENT_PROVIDER_TOKEN, пересборка с VITE_PAYMENTS_ENABLED=true',
-        };
-        showNotice(byReason[r.reason] ?? 'Оплата временно недоступна');
-        return;
-      }
-      if (r.status === 'cancelled') {
-        trackPaymentEvent('payment_cancelled');
-        showNotice('Оплата отменена. Нажмите «Оплатить» ещё раз, когда будете готовы.');
-        return;
-      }
-      if (r.status === 'failed') {
-        trackPaymentEvent('payment_error', { reason: 'failed', detail: r.detail });
-        showNotice(
-          r.detail === 'invoice_timeout'
-            ? 'Окно оплаты закрылось. Нажмите «Оплатить» ещё раз.'
-            : product === 'full_report'
-              ? 'Оплата не завершена. Попробуйте ещё раз или напишите в техподдержку.'
-              : 'Оплата не завершена. Попробуйте ещё раз.',
-        );
-        return;
-      }
-      if (r.status === 'error') {
-        trackPaymentEvent('payment_error', { reason: 'error', detail: r.message });
+      if (r.status === 'pending_setup') {
+        trackPaymentEvent('payment_error', { reason: 'robokassa_pending', channel: 'robokassa' });
         showNotice(r.message);
+        return;
       }
+      trackPaymentEvent('payment_error', { reason: 'error', detail: r.message, channel: 'robokassa' });
+      showNotice(r.message);
     } finally {
       setPayBusy(false);
       payInFlightRef.current = false;

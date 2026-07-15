@@ -29,11 +29,22 @@ function accessTokenExpiresAt(accessToken: string): number | null {
   return typeof exp === 'number' && Number.isFinite(exp) ? exp * 1000 : null;
 }
 
-export function isCabinetSessionValid(session: CabinetSession | null): boolean {
-  if (!session?.access_token || !session.refresh_token) return false;
+/** Есть сохранённые токены (ещё не вышли из ЛК). Access JWT может быть уже просрочен. */
+export function hasCabinetSessionTokens(session: CabinetSession | null): boolean {
+  return Boolean(session?.access_token && session?.refresh_token);
+}
+
+/** Access JWT ещё жив (с запасом 30 сек). */
+export function isAccessTokenFresh(session: CabinetSession | null): boolean {
+  if (!session?.access_token) return false;
   const expiresAt = accessTokenExpiresAt(session.access_token);
   if (!expiresAt) return true;
   return expiresAt > Date.now() + 30_000;
+}
+
+/** @deprecated используйте hasCabinetSessionTokens + isAccessTokenFresh / ensureFreshCabinetSession */
+export function isCabinetSessionValid(session: CabinetSession | null): boolean {
+  return hasCabinetSessionTokens(session) && isAccessTokenFresh(session);
 }
 
 export function saveCabinetSession(

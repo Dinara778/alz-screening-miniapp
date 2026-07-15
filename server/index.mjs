@@ -72,7 +72,7 @@ import {
   verifySupabaseAccessToken,
   cancelCabinetSubscription,
 } from './cabinetStore.mjs';
-import { requestCabinetOtp, verifyCabinetOtp } from './cabinetOtp.mjs';
+import { requestCabinetOtp, verifyCabinetOtp, refreshCabinetSession } from './cabinetOtp.mjs';
 import {
   getSupabaseHealthInfo,
   getPublicSupabaseConfig,
@@ -106,21 +106,15 @@ const BOT_TOKEN = normalizeBotToken(process.env.TELEGRAM_BOT_TOKEN);
 const PROVIDER_TOKEN = process.env.TELEGRAM_PAYMENT_PROVIDER_TOKEN;
 const PORT = Number(process.env.PORT) || 8787;
 function resolvePaymentProvider() {
-  const raw = (process.env.PAYMENT_PROVIDER || 'none').toLowerCase();
-  if (raw === 'auto') {
-    if (isRobokassaConfigured(process.env)) return 'robokassa';
-    if (process.env.TELEGRAM_PAYMENT_PROVIDER_TOKEN?.trim()) return 'telegram';
-    if (
-      process.env.PRODAMUS_FORM_URL?.trim() &&
-      process.env.PRODAMUS_SECRET_KEY?.trim() &&
-      process.env.PAYMENTS_PUBLIC_BASE_URL?.trim()
-    ) {
-      return 'prodamus';
-    }
-    return 'none';
-  }
-  if (raw === 'off' || raw === 'disabled') return 'none';
-  return raw;
+  const raw = (process.env.PAYMENT_PROVIDER || 'auto').toLowerCase();
+  if (raw === 'off' || raw === 'disabled' || raw === 'none') return 'none';
+
+  // Единственный поддерживаемый способ оплаты — Робокасса (сайт + Mini App через redirect).
+  // Telegram Payments / ЮKassa / Prodamus отключены намеренно.
+  if (isRobokassaConfigured(process.env)) return 'robokassa';
+
+  if (raw === 'robokassa') return 'robokassa'; // конфиг ещё неполный — отдаст 503 в /invoice*
+  return 'none';
 }
 
 const PAYMENT_PROVIDER = resolvePaymentProvider();
@@ -978,7 +972,15 @@ app.post('/invoice', async (req, res) => {
       if (!sessionKey) {
         return failInvoice(400, 'sessionId обязателен');
       }
-      const prior = isWebPaidForSession(sessionKey, product);
+      const payerEmail = normalizeRecoverEmail(req.body?.email);
+      if (!payerEmail) {
+        return failInvoice(400, 'email обязателен для оплаты');
+      }
+      const prior = await resolveWebPaymentRecovery({
+        sessionId: sessionKey,
+        product,
+        email: payerEmail,
+      });
       if (prior.paid) {
         return res.json({
           provider: 'robokassa',
@@ -991,6 +993,7 @@ app.post('/invoice', async (req, res) => {
         sessionId: sessionKey,
         product,
         amountRub: spec.priceRub,
+        email: payerEmail,
       });
       const paymentUrl = buildRobokassaPaymentUrl({
         invId: order.invId,
@@ -999,43 +1002,16 @@ app.post('/invoice', async (req, res) => {
         receiptItemName: spec.title,
         sessionId: sessionKey,
         product,
+        email: payerEmail,
       });
       payAnalytics.trackInvoiceCreated({ ...payCtx(), tgUserId: userFromInit?.id ?? null });
       return res.json({ provider: 'robokassa', paymentUrl, invId: order.invId });
     }
 
-    if (!PROVIDER_TOKEN) {
-      return failInvoice(500, 'TELEGRAM_PAYMENT_PROVIDER_TOKEN не задан');
-    }
-
-    const user = parseTgUser(initData);
-    const priorPaid = isTelegramPaidForUser(user?.id, String(sessionId), product);
-    if (priorPaid.paid) {
-      return res.json({
-        provider: 'telegram',
-        alreadyPaid: true,
-        sessionId: priorPaid.sessionId,
-        product: priorPaid.product,
-      });
-    }
-
-    const payload = `${product}:${String(sessionId).slice(0, 40)}:${Date.now()}`.slice(0, 128);
-    const receiptParams = buildTelegramYookassaInvoiceParams(spec);
-    const result = await tgApi('createInvoiceLink', {
-      title: spec.title.slice(0, 32),
-      description: spec.description.slice(0, 255),
-      payload,
-      provider_token: PROVIDER_TOKEN,
-      currency: 'RUB',
-      prices: [{ label: 'Услуга', amount: spec.amount }],
-      ...receiptParams,
+    return failInvoice(503, 'Оплата доступна только через Робокассу', {
+      error: 'Оплата доступна только через Робокассу. Напишите hello@bookvolon.ru',
+      paymentsDisabled: true,
     });
-
-    if (!result.ok) {
-      return failInvoice(502, result.description || 'createInvoiceLink failed');
-    }
-    payAnalytics.trackInvoiceCreated({ ...payCtx(), tgUserId: user?.id ?? null });
-    return res.json({ provider: 'telegram', invoiceUrl: result.result });
   } catch (e) {
     console.error(e);
     return failInvoice(500, e instanceof Error ? e.message : String(e));
@@ -1052,6 +1028,9 @@ app.post('/invoice-web', async (req, res) => {
   try {
     if (!sessionKey) {
       return res.status(400).json({ error: 'sessionId обязателен' });
+    }
+    if (!payerEmail) {
+      return res.status(400).json({ error: 'email обязателен для оплаты' });
     }
     const spec = PRODUCTS[product];
     if (!spec) {
@@ -1559,6 +1538,29 @@ app.post('/api/cabinet/verify-otp', async (req, res) => {
     });
   } catch (e) {
     console.error('[cabinet verify-otp]', e);
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
+app.post('/api/cabinet/refresh', async (req, res) => {
+  try {
+    const result = await refreshCabinetSession(req.body?.refresh_token);
+    if (!result.ok) {
+      const status =
+        result.error === 'invalid_refresh' || result.error === 'refresh_failed'
+          ? 401
+          : result.error === 'supabase_unreachable'
+            ? 502
+            : 400;
+      return res.status(status).json(result);
+    }
+    return res.json({
+      ok: true,
+      access_token: result.access_token,
+      refresh_token: result.refresh_token,
+    });
+  } catch (e) {
+    console.error('[cabinet refresh]', e);
     return res.status(500).json({ ok: false, error: 'server_error' });
   }
 });

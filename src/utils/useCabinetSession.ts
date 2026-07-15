@@ -2,9 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { getPaymentsApiUrl } from './telegramPayments';
 import {
   clearCabinetSession,
-  isCabinetSessionValid,
+  hasCabinetSessionTokens,
   readCabinetSession,
 } from './cabinetSessionStorage';
+import { ensureFreshCabinetSession } from './cabinetSessionRefresh';
 import { ensureSupabaseBrowserConfig, completeCabinetAuthFromUrl, getSupabaseBrowser } from './supabaseBrowser';
 
 function hasAuthParamsInUrl(): boolean {
@@ -20,38 +21,35 @@ export function useCabinetSession() {
   const [ready, setReady] = useState(false);
   const [configured, setConfigured] = useState<boolean | null>(null);
 
-  const applyStoredSession = useCallback(() => {
-    const stored = readCabinetSession();
-    if (!isCabinetSessionValid(stored)) {
-      if (stored) clearCabinetSession();
-      return false;
-    }
-    setAccessToken(stored!.access_token);
-    setEmail(stored!.email);
-    return true;
+  const applySession = useCallback((session: { access_token: string; email: string | null }) => {
+    setAccessToken(session.access_token);
+    setEmail(session.email);
   }, []);
 
   const refresh = useCallback(async () => {
-    if (applyStoredSession()) {
-      setConfigured(Boolean(getPaymentsApiUrl() || (await ensureSupabaseBrowserConfig())));
-      setReady(true);
-      return;
-    }
+    setConfigured(Boolean(getPaymentsApiUrl() || (await ensureSupabaseBrowserConfig())));
 
-    const cfg = await ensureSupabaseBrowserConfig();
-    setConfigured(Boolean(cfg || getPaymentsApiUrl()));
-    if (!cfg && !getPaymentsApiUrl()) {
-      setReady(true);
-      return;
+    const stored = readCabinetSession();
+    if (hasCabinetSessionTokens(stored)) {
+      const fresh = await ensureFreshCabinetSession();
+      if (fresh) {
+        applySession(fresh);
+        setReady(true);
+        return;
+      }
+      // refresh неудачен — только тогда считаем вылогиненным
+      clearCabinetSession();
     }
 
     if (hasAuthParamsInUrl()) {
       try {
         await completeCabinetAuthFromUrl();
       } catch {
-        // Magic-link в браузере может быть недоступен — OTP-сессия хранится локально.
+        /* magic-link optional */
       }
-      if (applyStoredSession()) {
+      const afterUrl = await ensureFreshCabinetSession();
+      if (afterUrl) {
+        applySession(afterUrl);
         setReady(true);
         return;
       }
@@ -72,7 +70,7 @@ export function useCabinetSession() {
       setEmail(null);
     }
     setReady(true);
-  }, [applyStoredSession]);
+  }, [applySession]);
 
   useEffect(() => {
     let unsub: (() => void) | undefined;
