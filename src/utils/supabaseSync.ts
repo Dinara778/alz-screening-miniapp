@@ -19,7 +19,7 @@ function domainScore(
   domains: ReturnType<typeof buildCognitiveAnalytics>['domains'],
   key: string,
 ): number {
-  return domains.find((d) => d.key === key)?.score ?? 0;
+  return domains.find((d) => d.key === key)?.score ?? 50;
 }
 
 export function buildSyncAssessmentPayload(session: SessionResult): SyncAssessmentPayload | null {

@@ -247,15 +247,15 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const measuredRows = [
     {
       label: 'Внимание',
-      score: domains.find((d) => d.key === 'attentionStability')?.score ?? 0,
+      score: domains.find((d) => d.key === 'attentionStability')?.score ?? 50,
     },
     {
       label: 'Скорость реакции',
-      score: domains.find((d) => d.key === 'reactionSpeed')?.score ?? 0,
+      score: domains.find((d) => d.key === 'reactionSpeed')?.score ?? 50,
     },
     {
       label: 'Удержание информации',
-      score: domains.find((d) => d.key === 'informationRetention')?.score ?? 0,
+      score: domains.find((d) => d.key === 'informationRetention')?.score ?? 50,
     },
     {
       label: 'Когнитивная устойчивость',

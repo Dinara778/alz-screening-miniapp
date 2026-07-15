@@ -27,6 +27,9 @@ const safeMetric = (v: unknown, fallback = 0): number =>
 const safeDomainScore = (score: number): number =>
   Number.isFinite(score) && !Number.isNaN(score) ? clampScore(score) : NEUTRAL_DOMAIN_SCORE;
 
+/** Минимальный балл внимания (как у доменов реакции) — «0» при индексе ~60+ смущает. */
+const ATTENTION_SCORE_FLOOR = 12;
+
 /** Устойчивость внимания: фланкер (точность + CV неконгруэнтных проб). */
 export const attentionStabilityDomainScore = (
   metrics: {
@@ -40,12 +43,17 @@ export const attentionStabilityDomainScore = (
   if (incongruentTrialCount < 5) return NEUTRAL_DOMAIN_SCORE;
 
   const accuracy = safeMetric(metrics.flankerIncongruentAccuracy);
-  const cv = safeMetric(metrics.flankerIncongruentCv);
-  let score = clampScore(accuracy * 0.65 + (40 - Math.min(cv, 40)) * 0.9);
+  /**
+   * Без правильных RT CV в метриках = 0 — это не «идеально ровно», а отсутствие данных.
+   * Иначе полный провал (~21) выглядел лучше, чем нестабильные частичные ответы (→0).
+   */
+  const cv =
+    incongruentValidRtCount === 0 ? 20 : safeMetric(metrics.flankerIncongruentCv);
+  let score = accuracy * 0.65 + (40 - Math.min(cv, 40)) * 0.9;
   /** CV по 1–2 ответам нестабилен — не штрафуем за «скачки». */
   if (incongruentValidRtCount >= 3 && cv > 40) score -= 20;
   if (accuracy < 70) score -= 15;
-  return clampScore(score);
+  return clampScore(Math.max(ATTENTION_SCORE_FLOOR, score));
 };
 
 /** Когнитивная гибкость: база 100, штрафы за интерференцию, ошибки и CV. */

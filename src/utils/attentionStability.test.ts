@@ -42,4 +42,27 @@ describe('attentionStabilityDomainScore', () => {
     const withoutCvPenalty = attentionStabilityDomainScore(metrics, 10, 2);
     expect(withoutCvPenalty).toBeGreaterThan(withCvPenalty);
   });
+
+  it('messy low accuracy + high CV never hits absolute 0 (soft floor)', () => {
+    const score = attentionStabilityDomainScore(
+      { flankerIncongruentAccuracy: 40, flankerIncongruentCv: 55 },
+      10,
+      4,
+    );
+    expect(score).toBeGreaterThanOrEqual(12);
+  });
+
+  it('total miss is not scored as better than messy partial hits', () => {
+    const totalMiss = attentionStabilityDomainScore(
+      { flankerIncongruentAccuracy: 0, flankerIncongruentCv: 0 },
+      10,
+      0,
+    );
+    const messyPartial = attentionStabilityDomainScore(
+      { flankerIncongruentAccuracy: 40, flankerIncongruentCv: 55 },
+      10,
+      4,
+    );
+    expect(messyPartial).toBeGreaterThanOrEqual(totalMiss);
+  });
 });
