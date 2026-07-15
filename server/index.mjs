@@ -136,9 +136,9 @@ const PRODUCTS = {
   },
   subscription_1m: {
     title: 'Подписка Corta 1 мес',
-    description: 'Подписка Corta: ежедневная оценка, полный разбор и история',
-    amount: 39900,
-    priceRub: 399,
+    description: 'Подписка Corta: сравнение изменений, полные отчёты и практика',
+    amount: 49900,
+    priceRub: 499,
   },
   subscription_3m: {
     title: 'Подписка Corta 3 мес',

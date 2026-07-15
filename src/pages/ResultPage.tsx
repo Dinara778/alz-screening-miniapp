@@ -4,6 +4,7 @@ import { Button } from '../components/Button';
 import { CalmScreen } from '../components/results/CalmScreen';
 import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { OrganicMetricHalo } from '../components/results/OrganicMetricHalo';
+import { SketchHighlightTitle } from '../components/results/SketchHighlightTitle';
 import { DomainOverviewTiles } from '../components/results/DomainOverviewTiles';
 import { CabinetAccessLink } from '../components/CabinetAccessLink';
 import { AssessmentCompleteScreen } from '../components/AssessmentCompleteScreen';
@@ -242,6 +243,9 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const displayName = formatParticipantFirstName(
     latestResult.participant?.name ?? participant?.name,
   );
+  const indexKickerCategory = displayName
+    ? indexCategory.category.replace(/^./, (char) => char.toLowerCase())
+    : indexCategory.category;
   const accent = indexDisplayReady ? indexCategory.color : scoreAccentFromValue(a.index.value);
 
   const reportUnlocked = useMemo(
@@ -339,10 +343,8 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
                 <span className="font-bold">{displayName}</span>,{' '}
               </>
             ) : null}
-            {displayName ? 'ваш' : 'Ваш'} когнитивный профиль{' '}
-            <strong className="font-bold">прямо сейчас</strong>:{' '}
             <span className="font-bold" style={{ color: indexCategory.color }}>
-              {indexCategory.category}
+              {indexKickerCategory}
             </span>
           </>
         }
@@ -382,6 +384,14 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
                 </span>
               </span>
             </OrganicMetricHalo>
+            <p className="index-repeat-hint" role="note">
+              <span className="index-repeat-hint-icon" aria-hidden>
+                ☀️
+              </span>
+              <span>
+                Завтра утром повторите оценку — увидите, насколько мозг восстановился после сна.
+              </span>
+            </p>
             {indexCategory.humanPhrase ? (
               <p className="mt-8 max-w-[min(22rem,92vw)] px-2 text-center text-base font-medium leading-relaxed text-white sm:mt-10 sm:text-lg">
                 {indexCategory.humanPhrase}
@@ -452,7 +462,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     return (
       <>
         <CalmScreen
-          contentAlign="readable"
+          contentAlign="center"
           footer={
             <div className="space-y-3">
               {payNotice ? (
