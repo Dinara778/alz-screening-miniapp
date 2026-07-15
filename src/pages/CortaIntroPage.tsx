@@ -30,8 +30,8 @@ export const CortaIntroPage = ({ onContinue }: Props) => {
 
   return (
     <IntroShell aria-label="Главный экран Corta daily" footer={footer} centerContent>
-      <div className="mx-auto w-full max-w-md space-y-5 pb-2 text-left">
-        <header className="flex justify-end">
+      <div className="mx-auto w-full max-w-md space-y-4 pb-1 text-left">
+        <header className="flex justify-end overflow-visible pr-1">
           <CortaLogo />
         </header>
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { InstallAppBanner } from './components/InstallAppBanner';
+import { useAppViewport } from './hooks/useAppViewport';
 import { useScrollToTopOnStage } from './hooks/useScrollToTopOnStage';
 import { useApp } from './context/AppContext';
 import { applyTelegramTheme, attachTelegramThemeListener } from './utils/telegramTheme';
@@ -30,6 +31,7 @@ function App() {
   const app = useApp();
   const [legalDocReturn, setLegalDocReturn] = useState<AppStage>('corta-intro');
   const scrollRef = useScrollToTopOnStage(app.stage);
+  useAppViewport();
 
   const openUserAgreement = (returnTo: AppStage) => {
     setLegalDocReturn(returnTo);
@@ -80,7 +82,7 @@ function App() {
   }, []);
 
   return (
-    <main className="app-calm-shell mx-auto flex h-[100dvh] max-h-[100dvh] min-h-0 w-full max-w-2xl flex-col overflow-hidden px-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] text-white shadow-none">
+    <main className="app-calm-shell mx-auto flex h-[var(--app-vh,100dvh)] max-h-[var(--app-vh,100dvh)] min-h-0 w-full max-w-2xl flex-col overflow-hidden px-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] text-white shadow-none">
       <div
         ref={scrollRef}
         className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] [overflow-anchor:none]"

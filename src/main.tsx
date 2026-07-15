@@ -7,6 +7,14 @@ import { registerServiceWorker } from './utils/pwaInstall';
 import { CabinetPage } from './pages/CabinetPage';
 import { CabinetReportPage } from './pages/CabinetReportPage';
 
+/** До первого кадра — высота видимой области (Instagram / iOS chrome). */
+(() => {
+  const inner = window.innerHeight;
+  const vvH = window.visualViewport?.height ?? inner;
+  const height = vvH >= inner * 0.85 ? Math.min(inner, vvH) : inner;
+  document.documentElement.style.setProperty('--app-vh', `${Math.round(height)}px`);
+})();
+
 const path = typeof window !== 'undefined' ? window.location.pathname : '';
 const isCabinetReportRoute = path === '/cabinet/report' || path.startsWith('/cabinet/report/');
 const isCabinetRoute =

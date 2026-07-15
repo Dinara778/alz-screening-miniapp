@@ -5,7 +5,7 @@ type Props = {
 /** Логотип Corta daily — corta (Nunito) + daily (Caveat) справа внизу. */
 export const CortaLogo = ({ className = '' }: Props) => (
   <span
-    className={`select-none inline-flex flex-col leading-none text-[#14b5a4] ${className}`}
+    className={`select-none inline-flex flex-col items-end leading-none text-[#14b5a4] ${className}`}
     aria-label="Corta daily"
   >
     <span
@@ -17,10 +17,7 @@ export const CortaLogo = ({ className = '' }: Props) => (
     >
       corta
     </span>
-    <span
-      className="font-signature -mt-1 self-end text-[1.45rem] font-semibold lowercase leading-none sm:text-[1.55rem]"
-      style={{ transform: 'translateX(0.35em)' }}
-    >
+    <span className="font-signature -mt-1 pr-0.5 text-[1.45rem] font-semibold lowercase leading-none sm:text-[1.55rem]">
       daily
     </span>
   </span>

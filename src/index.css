@@ -30,7 +30,8 @@ body {
 }
 
 #root {
-  min-height: 100dvh;
+  min-height: var(--app-vh, 100dvh);
+  height: var(--app-vh, 100dvh);
 }
 
 button:focus-visible,
@@ -159,7 +160,8 @@ input:focus-visible {
   }
 
   .calm-card {
-    @apply relative overflow-hidden rounded-3xl border border-white/10 bg-[#0a0e0d]/95 p-6 shadow-[0_24px_60px_-28px_rgba(0,0,0,0.55)];
+    /* overflow задаётся в CalmCardShell — иначе обрезается логотип/обводки */
+    @apply relative rounded-3xl border border-white/10 bg-[#0a0e0d]/95 p-6 shadow-[0_24px_60px_-28px_rgba(0,0,0,0.55)];
   }
 
   .calm-inset {
