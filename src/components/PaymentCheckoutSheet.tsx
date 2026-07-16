@@ -36,7 +36,6 @@ export const PaymentCheckoutSheet = ({
   const meta = PAYMENT_PRODUCTS[product];
   const [payBusy, setPayBusy] = useState(false);
   const [awaitingReturn, setAwaitingReturn] = useState(false);
-  const [paymentOpenedInSameTab, setPaymentOpenedInSameTab] = useState(false);
   const [alreadyPaidHelpOpen, setAlreadyPaidHelpOpen] = useState(false);
   const [alreadyPaidHelpAcknowledged, setAlreadyPaidHelpAcknowledged] = useState(false);
   const [alreadyPaid, setAlreadyPaid] = useState(() =>
@@ -80,7 +79,6 @@ export const PaymentCheckoutSheet = ({
     setAlreadyPaidHelpAcknowledged(false);
     setPayBusy(false);
     setAwaitingReturn(false);
-    setPaymentOpenedInSameTab(false);
     setSheetNotice(null);
     payInFlightRef.current = false;
     if (!isReportUnlockProduct(product)) return;
@@ -184,12 +182,7 @@ export const PaymentCheckoutSheet = ({
       if (r.status === 'redirected') {
         trackPaymentEvent('payment_opened', { provider: 'robokassa', channel: 'robokassa' });
         setAwaitingReturn(true);
-        setPaymentOpenedInSameTab(r.sameTab);
-        showNotice(
-          r.sameTab
-            ? 'После оплаты нажмите «Вернуться в магазин» на странице Робокассы.'
-            : 'Оплата открыта в новой вкладке. Отчёт откроется здесь автоматически после оплаты.',
-        );
+        showNotice('Переход на оплату… После оплаты вы вернётесь в Corta автоматически.');
         return;
       }
       if (r.status === 'pending_setup') {
@@ -333,9 +326,7 @@ export const PaymentCheckoutSheet = ({
 
               {awaitingReturn ? (
                 <p className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2.5 text-xs leading-relaxed text-emerald-100/95">
-                  {paymentOpenedInSameTab
-                    ? 'После успешной оплаты нажмите «Вернуться в магазин» — отчёт откроется автоматически.'
-                    : meta.awaitingReturnHint}
+                  {meta.awaitingReturnHint}
                 </p>
               ) : null}
 

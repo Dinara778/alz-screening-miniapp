@@ -1,6 +1,5 @@
 import type { TelegramInvoiceProduct } from './paymentProductTypes';
 import { isReportUnlockProduct } from './paymentProductTypes';
-import { isInAppBrowser } from './pwaInstall';
 import {
   getPaymentsApiUrl,
   reportPaidStorageKey,
@@ -122,21 +121,13 @@ export async function openWebPayment(
       rememberRobokassaPendingSessionId(sessionId);
       rememberRobokassaPendingProduct(product);
       if (data.invId != null) rememberRobokassaPendingInvId(data.invId);
-      let openedInNewTab = false;
-      if (isInAppBrowser()) {
-        window.location.assign(data.paymentUrl);
-      } else {
-        const payWindow = window.open(data.paymentUrl, '_blank', 'noopener,noreferrer');
-        if (payWindow) {
-          openedInNewTab = true;
-        } else {
-          window.location.assign(data.paymentUrl);
-        }
-      }
+      // Только та же вкладка: иначе после 3DS Робокасса показывает «закройте окно»
+      // и пользователь не возвращается на SuccessUrl2 / в Corta.
+      window.location.assign(data.paymentUrl);
       return {
         status: 'redirected',
         paymentUrl: data.paymentUrl,
-        sameTab: !openedInNewTab,
+        sameTab: true,
       };
     }
     return { status: 'error', message: 'Сервер не вернул ссылку на оплату.' };
