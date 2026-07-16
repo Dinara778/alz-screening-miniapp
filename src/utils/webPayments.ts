@@ -1,6 +1,5 @@
 import type { TelegramInvoiceProduct } from './paymentProductTypes';
 import { isReportUnlockProduct } from './paymentProductTypes';
-import { isInAppBrowser } from './pwaInstall';
 import {
   getPaymentsApiUrl,
   reportPaidStorageKey,
@@ -24,8 +23,7 @@ import {
 
 export type WebPaymentResult =
   | { status: 'already_paid' }
-  | { status: 'redirected'; paymentUrl: string; external?: boolean }
-  | { status: 'manual_open'; paymentUrl: string; message: string }
+  | { status: 'redirected'; paymentUrl: string }
   | { status: 'pending_setup'; message: string }
   | { status: 'error'; message: string };
 
@@ -34,61 +32,7 @@ export type RobokassaPaymentRecovery = {
   product: TelegramInvoiceProduct;
 };
 
-const PENDING_PAYMENT_URL_KEY = 'corta_pending_payment_url';
-const INVOICE_FETCH_TIMEOUT_MS = 20_000;
-
 const trimApi = (url: string) => url.replace(/\/$/, '');
-
-export function rememberPendingPaymentUrl(url: string): void {
-  try {
-    sessionStorage.setItem(PENDING_PAYMENT_URL_KEY, url);
-  } catch {
-    /* ignore */
-  }
-}
-
-export function peekPendingPaymentUrl(): string | null {
-  try {
-    return sessionStorage.getItem(PENDING_PAYMENT_URL_KEY);
-  } catch {
-    return null;
-  }
-}
-
-/** Открыть Робокассу: во внешнем браузере в in-app WebView, иначе переход в этой вкладке. */
-export function openPaymentUrl(url: string): 'external' | 'same_tab' | 'blocked' {
-  const tg = window.Telegram?.WebApp;
-  if (typeof tg?.openLink === 'function') {
-    try {
-      tg.openLink(url);
-      return 'external';
-    } catch {
-      /* fall through */
-    }
-  }
-
-  if (isInAppBrowser()) {
-    try {
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.target = '_blank';
-      anchor.rel = 'noopener noreferrer';
-      anchor.style.display = 'none';
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      return 'external';
-    } catch {
-      /* fall through */
-    }
-    const popup = window.open(url, '_blank', 'noopener,noreferrer');
-    if (popup) return 'external';
-    return 'blocked';
-  }
-
-  window.location.assign(url);
-  return 'same_tab';
-}
 
 /** Проверить подписку на сервере по email и обновить локальный кэш. */
 export async function syncSubscriptionAccessFromServer(
@@ -141,8 +85,6 @@ export async function openWebPayment(
   }
 
   try {
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), INVOICE_FETCH_TIMEOUT_MS);
     const res = await fetch(`${trimApi(api)}/invoice-web`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -151,8 +93,7 @@ export async function openWebPayment(
         product,
         email: payerEmail?.trim().toLowerCase() || undefined,
       }),
-      signal: controller.signal,
-    }).finally(() => window.clearTimeout(timeout));
+    });
     const data = (await res.json().catch(() => ({}))) as {
       error?: string;
       code?: string;
@@ -180,30 +121,11 @@ export async function openWebPayment(
       rememberRobokassaPendingSessionId(sessionId);
       rememberRobokassaPendingProduct(product);
       if (data.invId != null) rememberRobokassaPendingInvId(data.invId);
-      rememberPendingPaymentUrl(data.paymentUrl);
-      const opened = openPaymentUrl(data.paymentUrl);
-      if (opened === 'blocked') {
-        return {
-          status: 'manual_open',
-          paymentUrl: data.paymentUrl,
-          message:
-            'Браузер Instagram не открыл оплату автоматически. Нажмите кнопку ниже — откроется Робокасса.',
-        };
-      }
-      return {
-        status: 'redirected',
-        paymentUrl: data.paymentUrl,
-        external: opened === 'external',
-      };
+      window.location.assign(data.paymentUrl);
+      return { status: 'redirected', paymentUrl: data.paymentUrl };
     }
     return { status: 'error', message: 'Сервер не вернул ссылку на оплату.' };
   } catch (e) {
-    if (e instanceof Error && e.name === 'AbortError') {
-      return {
-        status: 'error',
-        message: 'Сервер оплаты не ответил вовремя. Проверьте интернет и нажмите «Оплатить» ещё раз.',
-      };
-    }
     return { status: 'error', message: e instanceof Error ? e.message : 'Нет связи с сервером.' };
   }
 }

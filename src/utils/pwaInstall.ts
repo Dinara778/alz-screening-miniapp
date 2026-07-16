@@ -75,9 +75,28 @@ export function resolveInstallUiMode(hasNativePrompt: boolean): InstallUiMode {
 
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return null;
+  // In-app браузеры (особенно Instagram) часто некорректно работают с SW-кэшем.
+  if (isInAppBrowser()) return null;
   try {
     return await navigator.serviceWorker.register('/sw.js', { scope: '/' });
   } catch {
     return null;
+  }
+}
+
+/**
+ * Аварийное восстановление для in-app браузеров:
+ * снимаем старые SW-регистрации и кэш, чтобы исключить чёрный экран из-за stale index/assets.
+ */
+export async function cleanupServiceWorkersForInApp(): Promise<void> {
+  if (!('serviceWorker' in navigator) || !('caches' in window)) return;
+  if (!isInAppBrowser()) return;
+  try {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(regs.map((r) => r.unregister()));
+    const keys = await caches.keys();
+    await Promise.all(keys.map((k) => caches.delete(k)));
+  } catch {
+    /* ignore */
   }
 }

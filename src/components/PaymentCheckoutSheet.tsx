@@ -5,7 +5,7 @@ import { CalmCardShell } from './CalmCardShell';
 import { TELEGRAM_SUPPORT_URL } from './SupportFooter';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
 import { isReportUnlockProduct } from '../utils/paymentProductTypes';
-import { openWebPayment, openPaymentUrl, peekPendingPaymentUrl } from '../utils/webPayments';
+import { openWebPayment } from '../utils/webPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import { REPORT_TARIFF_PAYMENT_BUTTON_CLASS } from '../constants/ctaButton';
 import type { ReportUnlockProduct } from '../utils/paymentProductTypes';
@@ -36,7 +36,6 @@ export const PaymentCheckoutSheet = ({
   const meta = PAYMENT_PRODUCTS[product];
   const [payBusy, setPayBusy] = useState(false);
   const [awaitingReturn, setAwaitingReturn] = useState(false);
-  const [manualPaymentUrl, setManualPaymentUrl] = useState<string | null>(null);
   const [alreadyPaidHelpOpen, setAlreadyPaidHelpOpen] = useState(false);
   const [alreadyPaidHelpAcknowledged, setAlreadyPaidHelpAcknowledged] = useState(false);
   const [alreadyPaid, setAlreadyPaid] = useState(() =>
@@ -80,7 +79,6 @@ export const PaymentCheckoutSheet = ({
     setAlreadyPaidHelpAcknowledged(false);
     setPayBusy(false);
     setAwaitingReturn(false);
-    setManualPaymentUrl(null);
     setSheetNotice(null);
     payInFlightRef.current = false;
     if (!isReportUnlockProduct(product)) return;
@@ -152,19 +150,7 @@ export const PaymentCheckoutSheet = ({
       if (r.status === 'redirected') {
         trackPaymentEvent('payment_opened', { provider: 'robokassa', channel: 'robokassa' });
         setAwaitingReturn(true);
-        setManualPaymentUrl(r.paymentUrl);
-        showNotice(
-          r.external
-            ? 'Страница оплаты открыта в браузере. После оплаты вернитесь сюда.'
-            : 'Переход на страницу оплаты…',
-        );
-        return;
-      }
-      if (r.status === 'manual_open') {
-        trackPaymentEvent('payment_opened', { provider: 'robokassa', channel: 'robokassa' });
-        setAwaitingReturn(true);
-        setManualPaymentUrl(r.paymentUrl);
-        showNotice(r.message);
+        showNotice('Переход на страницу оплаты…');
         return;
       }
       if (r.status === 'pending_setup') {
@@ -307,28 +293,9 @@ export const PaymentCheckoutSheet = ({
               </ul>
 
               {awaitingReturn ? (
-                <div className="space-y-2">
-                  <p className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2.5 text-xs leading-relaxed text-emerald-100/95">
-                    {meta.awaitingReturnHint}
-                  </p>
-                  {manualPaymentUrl || peekPendingPaymentUrl() ? (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="report-tariff-cta w-full py-3 text-sm font-semibold"
-                      onClick={() => {
-                        const url = manualPaymentUrl ?? peekPendingPaymentUrl();
-                        if (!url) return;
-                        const opened = openPaymentUrl(url);
-                        if (opened === 'blocked') {
-                          showNotice('Не удалось открыть оплату. Скопируйте ссылку из браузера или напишите hello@bookvolon.ru');
-                        }
-                      }}
-                    >
-                      Открыть страницу оплаты
-                    </Button>
-                  ) : null}
-                </div>
+                <p className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2.5 text-xs leading-relaxed text-emerald-100/95">
+                  {meta.awaitingReturnHint}
+                </p>
               ) : null}
 
               {sheetNotice ? (

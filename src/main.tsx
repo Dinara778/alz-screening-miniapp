@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 import { AppProvider } from './context/AppContext';
-import { registerServiceWorker } from './utils/pwaInstall';
+import { cleanupServiceWorkersForInApp, registerServiceWorker } from './utils/pwaInstall';
 import { CabinetPage } from './pages/CabinetPage';
 import { CabinetReportPage } from './pages/CabinetReportPage';
 
@@ -28,6 +28,8 @@ if (import.meta.env.DEV) {
 }
 
 if (!isCabinetRoute) {
+  // В Instagram/Facebook WebView отключаем SW и чистим старый кэш.
+  void cleanupServiceWorkersForInApp();
   void registerServiceWorker();
 }
 
