@@ -76,7 +76,7 @@ function HistoryList({ rows, emptyText }: { rows: CabinetAssessment[]; emptyText
                 Открыть отчёт
               </a>
             ) : row.hasReportData ? (
-              <span className="cabinet-muted cabinet-history-hint">Нужна оплата отчёта</span>
+              <span className="cabinet-muted cabinet-history-hint">Отчёт недоступен</span>
             ) : (
               <span className="cabinet-muted cabinet-history-hint">Отчёт не сохранён</span>
             )}
