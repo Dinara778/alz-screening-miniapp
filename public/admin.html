@@ -199,9 +199,14 @@
         <div class="conv-detail" id="convTestDetail"></div>
       </div>
       <div class="conv-row">
-        <div class="conv-title">Покупка → подписка</div>
-        <div class="conv-big" id="convSub">—</div>
-        <div class="conv-detail" id="convSubDetail"></div>
+        <div class="conv-title">Прошёл оценку → разовый отчёт</div>
+        <div class="conv-big" id="convOneTime">—</div>
+        <div class="conv-detail" id="convOneTimeDetail"></div>
+      </div>
+      <div class="conv-row">
+        <div class="conv-title">Прошёл оценку → подписка на 1 мес</div>
+        <div class="conv-big" id="convSub1m">—</div>
+        <div class="conv-detail" id="convSub1mDetail"></div>
       </div>
       <p class="note">Все цифры — из Supabase за выбранный период (МСК). «Всего в базе» и «Оплат в базе всего» без фильтра по дате.</p>
     </section>
@@ -295,8 +300,10 @@
       $('convVisitDetail').textContent = fmtConvDetail(data?.conversions?.visitedToTest);
       $('convTest').textContent = fmtPct(data?.conversions?.testToPurchase);
       $('convTestDetail').textContent = fmtConvDetail(data?.conversions?.testToPurchase);
-      $('convSub').textContent = fmtPct(data?.conversions?.purchaseToSubscription);
-      $('convSubDetail').textContent = fmtConvDetail(data?.conversions?.purchaseToSubscription);
+      $('convOneTime').textContent = fmtPct(data?.conversions?.testToOneTimeReport);
+      $('convOneTimeDetail').textContent = fmtConvDetail(data?.conversions?.testToOneTimeReport);
+      $('convSub1m').textContent = fmtPct(data?.conversions?.testToSubscription1m);
+      $('convSub1mDetail').textContent = fmtConvDetail(data?.conversions?.testToSubscription1m);
       $('testsInPeriod').textContent = data?.activity?.testsInPeriod ?? data?.activity?.testsToday ?? '—';
       $('returned').textContent = data?.activity?.returnedUsers ?? '—';
       const at = data?.generatedAt ? new Date(data.generatedAt) : null;

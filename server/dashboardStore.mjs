@@ -124,8 +124,8 @@ function buildDashboardPayload({
   funnelUserIds,
   assessmentUserIds,
   paidWithTestUserIds,
-  paidUserIds,
-  subUserIds,
+  oneTimeWithTestUserIds,
+  sub1mWithTestUserIds,
   testsInPeriod,
   returnedUsers,
   paymentsTotalInDb,
@@ -134,9 +134,9 @@ function buildDashboardPayload({
 }) {
   const funnelCount = funnelUserIds.size;
   const testCount = assessmentUserIds.size;
-  const paidCount = paidUserIds.size;
-  const subCount = subUserIds.size;
   const paidWithTestCount = paidWithTestUserIds.size;
+  const oneTimeWithTestCount = oneTimeWithTestUserIds.size;
+  const sub1mWithTestCount = sub1mWithTestUserIds.size;
 
   let oneTimeRub = 0;
   let subscriptionRub = 0;
@@ -190,10 +190,15 @@ function buildDashboardPayload({
         denominator: testCount,
         percent: pct(paidWithTestCount, testCount),
       },
-      purchaseToSubscription: {
-        numerator: subCount,
-        denominator: paidCount,
-        percent: pct(subCount, paidCount),
+      testToOneTimeReport: {
+        numerator: oneTimeWithTestCount,
+        denominator: testCount,
+        percent: pct(oneTimeWithTestCount, testCount),
+      },
+      testToSubscription1m: {
+        numerator: sub1mWithTestCount,
+        denominator: testCount,
+        percent: pct(sub1mWithTestCount, testCount),
       },
     },
     activity: {
@@ -217,7 +222,7 @@ async function fetchDashboardStatsDirect(supabase, period = 'today') {
 
   const [usersRes, paymentsRes, assessmentsRes, funnelRows] = await Promise.all([
     supabase.from('users').select('id, created_at'),
-    supabase.from('payments').select('user_id, type, amount, created_at, status').eq('status', 'paid'),
+    supabase.from('payments').select('user_id, type, product, amount, created_at, status').eq('status', 'paid'),
     supabase.from('assessments').select('user_id, created_at'),
     fetchTableRows(supabase, 'funnel_sessions', 'user_id, created_at'),
   ]);
@@ -237,8 +242,23 @@ async function fetchDashboardStatsDirect(supabase, period = 'today') {
 
   const assessmentUserIds = uniqueUserIds(assessmentsInPeriod);
   const paidUserIds = uniqueUserIds(paymentsInPeriod);
-  const subUserIds = uniqueUserIds(paymentsInPeriod.filter((p) => p.type === 'subscription'));
+  const oneTimeReportUserIds = uniqueUserIds(
+    paymentsInPeriod.filter(
+      (p) => p.type === 'one_time' && (p.product === 'full_report' || !p.product),
+    ),
+  );
+  const sub1mUserIds = uniqueUserIds(
+    paymentsInPeriod.filter(
+      (p) =>
+        p.product === 'subscription_1m' ||
+        (p.type === 'subscription' && p.product !== 'subscription_3m'),
+    ),
+  );
   const paidWithTestUserIds = new Set([...paidUserIds].filter((id) => assessmentUserIds.has(id)));
+  const oneTimeWithTestUserIds = new Set(
+    [...oneTimeReportUserIds].filter((id) => assessmentUserIds.has(id)),
+  );
+  const sub1mWithTestUserIds = new Set([...sub1mUserIds].filter((id) => assessmentUserIds.has(id)));
 
   return buildDashboardPayload({
     period,
@@ -248,8 +268,8 @@ async function fetchDashboardStatsDirect(supabase, period = 'today') {
     funnelUserIds: uniqueUserIds(funnelInPeriod),
     assessmentUserIds,
     paidWithTestUserIds,
-    paidUserIds,
-    subUserIds,
+    oneTimeWithTestUserIds,
+    sub1mWithTestUserIds,
     testsInPeriod: assessmentsInPeriod.length,
     returnedUsers: countReturnedUsers(assessmentsInPeriod),
     paymentsTotalInDb: allPayments.length,
