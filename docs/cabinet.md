@@ -35,6 +35,8 @@ URL: **https://cortaapp.ru/cabinet**
 
 ### Рекомендуется: Resend + домен cortaapp.ru
 
+Пошагово: **[docs/resend.md](./resend.md)**. Кратко:
+
 1. Зарегистрируйтесь на [resend.com](https://resend.com).
 2. **Domains** → добавьте `cortaapp.ru` → пропишите DNS-записи (SPF, DKIM) у регистратора домена.
 3. Supabase → **Project Settings** → **Authentication** → **SMTP Settings** → включить Custom SMTP:
