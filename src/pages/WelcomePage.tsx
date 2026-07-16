@@ -11,7 +11,7 @@ import { ProgressBar } from '../components/ProgressBar';
 import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { ParticipantProfile } from '../types';
 import { TEST_DURATION_LABEL } from '../constants/testDuration';
-import { fetchCabinetParticipantProfile, useCabinetSession } from '../utils/cabinetApi';
+import { fetchCabinetParticipantProfile, signOutCabinet, useCabinetSession } from '../utils/cabinetApi';
 import {
   formatProfileResumeLabel,
   loadLocalParticipantProfile,
@@ -20,6 +20,7 @@ import {
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import { ensureSupabaseBrowserConfig, getSupabaseBrowser } from '../utils/supabaseBrowser';
 import { syncFunnelToSupabase } from '../utils/supabaseFunnelSync';
+import { syncCabinetSessionWithEmail } from '../utils/cabinetEmailSync';
 import { syncSubscriptionAccessFromServer } from '../utils/webPayments';
 
 type Props = {
@@ -51,6 +52,7 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
   const [email, setEmail] = useState('');
   const [resumeProfile, setResumeProfile] = useState<ParticipantProfile | null>(null);
   const [resumeLogin, setResumeLogin] = useState(false);
+  const editingFreshRef = useRef(false);
   const formSessionIdRef = useRef(`welcome-${Date.now()}`);
   const hasSentFormStartRef = useRef(false);
   const cabinetSession = useCabinetSession();
@@ -66,11 +68,23 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
     setEmail(profile.email);
   };
 
+  const startFreshProfileEdit = () => {
+    editingFreshRef.current = true;
+    setResumeLogin(false);
+    setResumeProfile(null);
+    setName('');
+    setSex('Женский');
+    setAge('');
+    setEmail('');
+    setStep(1);
+    void signOutCabinet().then(() => cabinetSession.refresh());
+  };
+
   useEffect(() => {
     let cancelled = false;
 
     const adoptProfile = (profile: ParticipantProfile) => {
-      if (cancelled) return;
+      if (cancelled || editingFreshRef.current) return;
       applyProfileToForm(profile);
       setResumeProfile(profile);
       void syncSubscriptionAccessFromServer(profile.email);
@@ -178,6 +192,9 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
 
     onProfileReady?.(profile);
     saveSavedParticipantProfile(profile);
+    void syncCabinetSessionWithEmail(profile.email).then((signedOut) => {
+      if (signedOut) void cabinetSession.refresh();
+    });
 
     goNext();
   };
@@ -186,6 +203,9 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
     const profile = buildProfile();
     if (!profile) return;
     saveSavedParticipantProfile(profile);
+    void syncCabinetSessionWithEmail(profile.email).then((signedOut) => {
+      if (signedOut) void cabinetSession.refresh();
+    });
     void syncFunnelToSupabase({
       email: profile.email,
       visitId,
@@ -317,11 +337,7 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
           type="button"
           variant="secondary"
           className={`${CTA_BUTTON_CLASS} font-semibold`}
-          onClick={() => {
-            setResumeLogin(false);
-            setResumeProfile(null);
-            setStep(1);
-          }}
+          onClick={startFreshProfileEdit}
         >
           Изменить данные
         </Button>

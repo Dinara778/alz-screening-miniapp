@@ -122,6 +122,7 @@ export const FullReportContent = ({
   }, [analyticsDetail, onAnalyticsDetail]);
 
   const accent = scoreAccentFromValue(analytics.index.value);
+  const accountEmail = session.participant?.email ?? null;
 
   const goToNextReportPage = () => {
     if (reportPageIndex < reportPages.length - 1) {
@@ -217,6 +218,7 @@ export const FullReportContent = ({
     return (
       <ReportFlowShell
         centerContent
+        accountEmail={accountEmail}
         footer={
           <div className="flex flex-col gap-3">
             <Button
@@ -257,6 +259,7 @@ export const FullReportContent = ({
 
     return (
       <ReportFlowShell
+        accountEmail={accountEmail}
         footer={
           <div className="flex flex-col gap-2">
             <p className="text-center text-xs font-medium tracking-wide text-white/55">{progressLabel}</p>
@@ -295,7 +298,11 @@ export const FullReportContent = ({
               >
                 {showDetox ? 'Цифровой детокс' : doneButtonLabel}
               </Button>
-              <SupportFooter showDeveloperCredit={false} showCabinetAccess={!finishMode} />
+              <SupportFooter
+                showDeveloperCredit={false}
+                showCabinetAccess={!finishMode}
+                accountEmail={accountEmail}
+              />
             </div>
           )
         }
@@ -331,6 +338,7 @@ export const FullReportContent = ({
 
     return (
       <ReportFlowShell
+        accountEmail={accountEmail}
         footer={
           isLast && finishMode ? (
             <ReportFinishFooter mode={finishMode} />
@@ -367,6 +375,7 @@ export const FullReportContent = ({
 
   return (
     <ReportFlowShell
+      accountEmail={accountEmail}
       footer={
         <Button variant="secondary" type="button" onClick={onDone}>
           {doneButtonLabel}

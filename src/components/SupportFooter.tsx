@@ -6,12 +6,15 @@ type Props = {
   showSupport?: boolean;
   showDeveloperCredit?: boolean;
   showCabinetAccess?: boolean;
+  /** Email анкеты / прохождения — не показывать чужой email из старой сессии кабинета */
+  accountEmail?: string | null;
 };
 
 export const SupportFooter = ({
   showSupport = true,
   showDeveloperCredit = true,
   showCabinetAccess = true,
+  accountEmail = null,
 }: Props) => {
   if (!showSupport && !showDeveloperCredit && !showCabinetAccess) return null;
 
@@ -19,7 +22,7 @@ export const SupportFooter = ({
     <footer className="calm-footer">
       {showCabinetAccess ? (
         <div className={showSupport || showDeveloperCredit ? 'mb-3' : ''}>
-          <CabinetAccessLink variant="button" />
+          <CabinetAccessLink variant="button" expectedEmail={accountEmail} />
         </div>
       ) : null}
       {showSupport ? (

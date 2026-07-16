@@ -25,6 +25,7 @@ import {
   peekRobokassaReturnSessionId,
   shouldBootToResultAfterPaymentFail,
 } from '../utils/paymentReturn';
+import { syncCabinetSessionWithEmail } from '../utils/cabinetEmailSync';
 import { MID_TEST_STAGES } from '../utils/storage';
 import { pickStudyWordList } from '../utils/generateStimuli';
 import {
@@ -556,6 +557,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     setLatestResult(null);
     setStudyWordList([]);
     setStage('word-study');
+    void syncCabinetSessionWithEmail(profile.email);
   }, []);
 
   const retakeTest = useCallback(() => {

@@ -9,10 +9,18 @@ type Props = {
   centerContent?: boolean;
   /** Зелёная стрелка «прокрутите вниз» на длинном экране отчёта */
   showScrollHint?: boolean;
+  /** Email анкеты — чтобы не показывать чужой email из кабинета */
+  accountEmail?: string | null;
 };
 
 /** Оболочка экранов отчёта / upsell: скролл, CTA, техподдержка */
-export const ReportFlowShell = ({ children, footer, centerContent, showScrollHint }: Props) => {
+export const ReportFlowShell = ({
+  children,
+  footer,
+  centerContent,
+  showScrollHint,
+  accountEmail = null,
+}: Props) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   return (
@@ -39,7 +47,7 @@ export const ReportFlowShell = ({ children, footer, centerContent, showScrollHin
         {footer}
       </div>
     ) : null}
-    <SupportFooter showDeveloperCredit={false} />
+    <SupportFooter showDeveloperCredit={false} accountEmail={accountEmail} />
   </div>
   );
 };
