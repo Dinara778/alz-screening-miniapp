@@ -49,7 +49,7 @@ function chunkItems<T>(items: T[], size: number): T[][] {
 
 function nextReportButtonLabel(pageIndex: number, totalPages: number): string {
   if (pageIndex < totalPages - 1) return 'Следующая часть';
-  return 'К итогам';
+  return 'Что дальше?';
 }
 
 export type FullReportContentProps = {
