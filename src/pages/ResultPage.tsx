@@ -443,22 +443,27 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
 
           {indexDisplayReady ? (
             <>
-              <OrganicMetricHalo accent={accent} emphasis compact>
-                <span className="inline-flex items-baseline justify-center gap-0.5 tabular-nums leading-none">
-                  <span
-                    className="text-[clamp(2.75rem,13vw,4rem)] font-bold tracking-tight"
-                    style={{ color: indexCategory.color }}
-                  >
-                    {a.index.value}
+              <div className="index-hero-halo">
+                <OrganicMetricHalo accent={accent} emphasis>
+                  <span className="inline-flex items-baseline justify-center gap-0.5 tabular-nums leading-none">
+                    <span
+                      className="text-[clamp(3.25rem,16vw,4.75rem)] font-bold tracking-tight"
+                      style={{ color: indexCategory.color }}
+                    >
+                      {a.index.value}
+                    </span>
+                    <span
+                      className="text-[clamp(0.75rem,3.2vw,1rem)] font-medium opacity-70"
+                      style={{ color: indexCategory.color }}
+                    >
+                      /100
+                    </span>
                   </span>
-                  <span
-                    className="text-[clamp(0.7rem,2.8vw,0.9rem)] font-medium opacity-70"
-                    style={{ color: indexCategory.color }}
-                  >
-                    /100
-                  </span>
-                </span>
-              </OrganicMetricHalo>
+                </OrganicMetricHalo>
+              </div>
+              {indexCategory.humanPhrase ? (
+                <p className="index-human-phrase">{indexCategory.humanPhrase}</p>
+              ) : null}
               <p className="index-repeat-hint" role="note">
                 <span className="index-repeat-hint-icon" aria-hidden>
                   ☀️
@@ -467,9 +472,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
                   Завтра утром повторите оценку — увидите, насколько мозг восстановился после сна.
                 </span>
               </p>
-              {indexCategory.humanPhrase ? (
-                <p className="index-human-phrase">{indexCategory.humanPhrase}</p>
-              ) : null}
             </>
           ) : (
             <p className="mx-auto max-w-[min(22rem,92vw)] px-2 text-center text-sm font-semibold leading-snug text-white">
