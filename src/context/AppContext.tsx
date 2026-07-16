@@ -21,6 +21,8 @@ import {
   captureRobokassaSuccessFromUrl,
   hasPendingRobokassaReturn,
   isReportOfferProduct,
+  peekRobokassaReturnProduct,
+  peekRobokassaReturnSessionId,
   shouldBootToResultAfterPaymentFail,
 } from '../utils/paymentReturn';
 import { MID_TEST_STAGES } from '../utils/storage';
@@ -30,8 +32,10 @@ import {
   getPaymentsApiUrl,
   recoverFullReportAccess,
   recoverProdamusPaymentFromUrl,
+  reportPaidStorageKey,
 } from '../utils/telegramPayments';
 import { recoverRobokassaPaymentFromUrl, syncSubscriptionAccessFromServer } from '../utils/webPayments';
+import { isSubscriptionProduct } from '../utils/paymentProductTypes';
 import { consumeReopenPaidReportSessionId, markReopenPaidReportAfterReload } from '../utils/reportReload';
 import { useAppExitAnalytics } from '../hooks/useAppExitAnalytics';
 import {
@@ -55,7 +59,7 @@ const FUNNEL_MILESTONE_STAGES = new Set([
 ]);
 
 /** С какого шага открыть ResultPage после расширенного отчёта. */
-export type ResultEntryStep = 'complete';
+export type ResultEntryStep = 'complete' | 'subscription-offer';
 
 type FaceAnswer = { faceId: number; selected: string; correct: string };
 
@@ -333,6 +337,17 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     if (!hasPaymentReturnInUrl() && !hasPendingRobokassaReturn()) return;
     if (!arePaymentsActive(serverPaymentsReady)) return;
     const run = async () => {
+      const pendingSid = peekRobokassaReturnSessionId();
+      let hadOneTimePaid = false;
+      if (pendingSid) {
+        try {
+          hadOneTimePaid =
+            localStorage.getItem(reportPaidStorageKey(pendingSid)) === '1';
+        } catch {
+          hadOneTimePaid = false;
+        }
+      }
+      const pendingProduct = peekRobokassaReturnProduct();
       const recovery =
         (await recoverRobokassaPaymentFromUrl()) ?? (await recoverProdamusPaymentFromUrl());
       if (!recovery) return;
@@ -345,6 +360,17 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         saveLastSessionId(session.id);
       }
       if (isReportOfferProduct(recovery.product)) {
+        if (isSubscriptionProduct(recovery.product) && hadOneTimePaid) {
+          setStage('result');
+          openResultAtStep('complete');
+          return;
+        }
+        // Fallback: product from pending cookie if recovery.product empty edge
+        if (isSubscriptionProduct(pendingProduct) && hadOneTimePaid) {
+          setStage('result');
+          openResultAtStep('complete');
+          return;
+        }
         setStage('full-report');
       }
     };

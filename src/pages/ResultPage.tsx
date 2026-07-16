@@ -21,6 +21,7 @@ import {
 } from '../copy/interpretationLabels';
 import { PaymentCheckoutSheet } from '../components/PaymentCheckoutSheet';
 import { ReportTariffOffer } from '../components/ReportTariffOffer';
+import { SubscriptionUpsellScreen } from '../components/SubscriptionUpsellScreen';
 import { hasPaymentReturnInUrl, loadSessionFromHistory } from '../utils/storage';
 import {
   recoverRobokassaPaymentFromUrl,
@@ -32,9 +33,12 @@ import {
   isReportOfferProduct,
   PAYMENT_FAIL_NOTICE_TEXT,
   peekRobokassaReturnProduct,
+  peekRobokassaReturnSessionId,
 } from '../utils/paymentReturn';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import type { ReportUnlockProduct } from '../utils/paymentProductTypes';
+import { isSubscriptionProduct } from '../utils/paymentProductTypes';
+import { isSubscriptionActiveLocal } from '../utils/subscriptionAccess';
 import {
   isReportPaidUnlocked,
   reportPaidStorageKey,
@@ -47,6 +51,7 @@ type ResultStep =
   | 'index-detail'
   | 'measured'
   | 'report-offer'
+  | 'subscription-offer'
   | 'complete';
 
 const calmBtnClass = CTA_BUTTON_CLASS;
@@ -123,6 +128,22 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     [latestResult, setLatestResult, setStage],
   );
 
+  /** После разового отчёта: оплата подписки → тот же финал, что и после подписки. */
+  const finishAfterSubscriptionUpsell = useCallback(
+    (paidSessionId?: string) => {
+      const sid = paidSessionId ?? latestResult?.id;
+      if (sid) {
+        const session =
+          latestResult?.id === sid ? latestResult : loadSessionFromHistory(sid) ?? latestResult;
+        if (session) setLatestResult(session);
+        localStorage.setItem(reportPaidStorageKey(sid), '1');
+      }
+      setCheckoutOpen(false);
+      setStep('complete');
+    },
+    [latestResult, setLatestResult],
+  );
+
   useEffect(() => {
     setAnalyticsScreenDetail(step);
   }, [step, setAnalyticsScreenDetail]);
@@ -163,12 +184,14 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     if (!consumePaymentFailNotice()) return;
     const failedProduct = peekRobokassaReturnProduct();
     setPayNotice(PAYMENT_FAIL_NOTICE_TEXT);
-    setStep('report-offer');
+    setStep(isSubscriptionProduct(failedProduct ?? '') ? 'subscription-offer' : 'report-offer');
     void sendAnalyticsEventToSheets({
       eventType: 'payment_cancelled',
       sessionId: latestResult?.id ?? 'unknown',
       stage: 'result',
-      screen: 'result/report-offer',
+      screen: isSubscriptionProduct(failedProduct ?? '')
+        ? 'result/subscription-offer'
+        : 'result/report-offer',
       participant: participant ?? undefined,
       product: failedProduct,
       channel: 'web',
@@ -182,6 +205,11 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     if (resultEntryStep === 'complete') {
       setStep('complete');
       clearResultEntryStep();
+      return;
+    }
+    if (resultEntryStep === 'subscription-offer') {
+      setStep(isSubscriptionActiveLocal() ? 'complete' : 'subscription-offer');
+      clearResultEntryStep();
     }
   }, [resultEntryStep, clearResultEntryStep]);
 
@@ -194,6 +222,15 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       return;
     }
     const run = async () => {
+      const pendingSid =
+        peekRobokassaReturnSessionId() ?? latestResult.id;
+      let hadOneTimePaid = false;
+      try {
+        hadOneTimePaid =
+          localStorage.getItem(reportPaidStorageKey(pendingSid)) === '1';
+      } catch {
+        hadOneTimePaid = false;
+      }
       const recovery =
         (await recoverRobokassaPaymentFromUrl()) ?? (await recoverProdamusPaymentFromUrl());
       if (!recovery?.sessionId) {
@@ -201,7 +238,10 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           setPayNotice(
             'Оплата ещё не подтвердилась на сервере. Подождите минуту и нажмите «Проверить оплату» — или напишите hello@bookvolon.ru',
           );
-          setStep('report-offer');
+          const failedProduct = peekRobokassaReturnProduct();
+          setStep(
+            isSubscriptionProduct(failedProduct ?? '') ? 'subscription-offer' : 'report-offer',
+          );
         }
         return;
       }
@@ -209,11 +249,16 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       if (session) setLatestResult(session);
       if (isReportOfferProduct(recovery.product)) {
         localStorage.setItem(reportPaidStorageKey(recovery.sessionId), '1');
+        // Подписка после уже оплаченного разового отчёта → финальный экран, не отчёт заново
+        if (isSubscriptionProduct(recovery.product) && hadOneTimePaid) {
+          setStep('complete');
+          return;
+        }
         setStage('full-report');
       }
     };
     void run();
-  }, [latestResult?.id, skipNativePayment, setStage]);
+  }, [latestResult?.id, skipNativePayment, setStage, serverPaymentsReady]);
 
   if (!latestResult) {
     return (
@@ -278,6 +323,13 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     setRecoverBusy(true);
     setPayNotice('Проверяем оплату на сервере…');
     try {
+      let hadOneTimePaid = false;
+      try {
+        hadOneTimePaid =
+          localStorage.getItem(reportPaidStorageKey(latestResult.id)) === '1';
+      } catch {
+        hadOneTimePaid = false;
+      }
       const fromUrl =
         (await recoverRobokassaPaymentFromUrl()) ?? (await recoverProdamusPaymentFromUrl());
       if (fromUrl?.sessionId) {
@@ -285,6 +337,10 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         if (session) setLatestResult(session);
         if (isReportOfferProduct(fromUrl.product)) {
           localStorage.setItem(reportPaidStorageKey(fromUrl.sessionId), '1');
+          if (isSubscriptionProduct(fromUrl.product) && hadOneTimePaid) {
+            setStep('complete');
+            return;
+          }
           setStage('full-report');
           return;
         }
@@ -298,6 +354,10 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         const session = loadSessionFromHistory(recovered.sessionId);
         if (session) setLatestResult(session);
         localStorage.setItem(reportPaidStorageKey(recovered.sessionId), '1');
+        if (isSubscriptionActiveLocal() && hadOneTimePaid) {
+          setStep('complete');
+          return;
+        }
         setStage('full-report');
         return;
       }
@@ -312,7 +372,15 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   };
 
   const openCheckout = (product: ReportUnlockProduct = 'full_report') => {
-    if (skipNativePayment || reportUnlocked) {
+    if (skipNativePayment) {
+      if (isSubscriptionProduct(product) && step === 'subscription-offer') {
+        finishAfterSubscriptionUpsell(latestResult.id);
+        return;
+      }
+      unlockFullReport(latestResult.id);
+      return;
+    }
+    if (reportUnlocked && !isSubscriptionProduct(product)) {
       unlockFullReport(latestResult.id);
       return;
     }
@@ -321,13 +389,21 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     setCheckoutOpen(true);
   };
 
+  const handleCheckoutPaid = (paidSessionId?: string) => {
+    if (isSubscriptionProduct(checkoutProduct) && step === 'subscription-offer') {
+      finishAfterSubscriptionUpsell(paidSessionId);
+      return;
+    }
+    unlockFullReport(paidSessionId);
+  };
+
   const reportCheckoutSheet = (
     <PaymentCheckoutSheet
       open={checkoutOpen}
       product={checkoutProduct}
       sessionId={latestResult.id}
       onClose={() => setCheckoutOpen(false)}
-      onPaid={unlockFullReport}
+      onPaid={handleCheckoutPaid}
       onNotice={setPayNotice}
     />
   );
@@ -495,6 +571,18 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
             onSelect={(product) => openCheckout(product)}
           />
         </CalmScreen>
+        {reportCheckoutSheet}
+      </>
+    );
+  }
+
+  if (step === 'subscription-offer') {
+    return (
+      <>
+        <SubscriptionUpsellScreen
+          onSubscribe={() => openCheckout('subscription_1m')}
+          onSkip={() => setStep('complete')}
+        />
         {reportCheckoutSheet}
       </>
     );

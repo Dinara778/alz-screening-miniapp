@@ -6,6 +6,7 @@ import { useHydrateLatestResult } from '../hooks/useHydrateLatestResult';
 import { useSyncPaidReportSession } from '../hooks/useSyncPaidReportSession';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import { isReportPaidUnlocked, isPaymentsBackendConfigured } from '../utils/telegramPayments';
+import { isSubscriptionActiveLocal } from '../utils/subscriptionAccess';
 
 export const FullReportPage = () => {
   const {
@@ -56,7 +57,9 @@ export const FullReportPage = () => {
   return (
     <FullReportContent
       session={latestResult}
-      onDone={() => openResultAtStep('complete')}
+      onDone={() =>
+        openResultAtStep(isSubscriptionActiveLocal() ? 'complete' : 'subscription-offer')
+      }
       doneButtonLabel="Далее"
       onAnalyticsDetail={setAnalyticsScreenDetail}
     />
