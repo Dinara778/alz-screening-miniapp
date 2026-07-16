@@ -179,6 +179,10 @@
           <span class="metric-label">Оплат в базе всего</span>
           <span class="metric-value" id="payTotalDb">—</span>
         </div>
+        <div class="metric">
+          <span class="metric-label">Последняя оплата в базе</span>
+          <span class="metric-value" id="payLatest" style="font-size:1rem">—</span>
+        </div>
       </section>
     </div>
 
@@ -283,6 +287,10 @@
           ? '—'
           : String(payIn) + (payOne != null || paySub != null ? ` (разовых ${payOne ?? 0}, подписок ${paySub ?? 0})` : '');
       $('payTotalDb').textContent = data?.payments?.totalInDb ?? '—';
+      const latest = data?.payments?.latestInDb;
+      $('payLatest').textContent = latest
+        ? new Date(latest).toLocaleString('ru-RU', { timeZone: data.timezone || 'Europe/Moscow' })
+        : 'нет оплат';
       $('convVisit').textContent = fmtPct(data?.conversions?.visitedToTest);
       $('convVisitDetail').textContent = fmtConvDetail(data?.conversions?.visitedToTest);
       $('convTest').textContent = fmtPct(data?.conversions?.testToPurchase);
@@ -293,8 +301,11 @@
       $('returned').textContent = data?.activity?.returnedUsers ?? '—';
       const at = data?.generatedAt ? new Date(data.generatedAt) : null;
       const pl = data?.periodLabel || periodLabel(currentPeriod);
+      const startHint = data?.periodStart
+        ? ' · с ' + new Date(data.periodStart).toLocaleString('ru-RU', { timeZone: data.timezone || 'Europe/Moscow' })
+        : '';
       $('updatedAt').textContent = at
-        ? 'Период: ' + pl + ' · обновлено ' + at.toLocaleString('ru-RU', { timeZone: data.timezone || 'Europe/Moscow' }) + ' (МСК)'
+        ? 'Период: ' + pl + startHint + ' · обновлено ' + at.toLocaleString('ru-RU', { timeZone: data.timezone || 'Europe/Moscow' }) + ' (МСК)'
         : 'Период: ' + pl;
     }
 

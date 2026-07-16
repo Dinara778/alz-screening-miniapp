@@ -65,6 +65,7 @@ export function getPeriodStartIso(period) {
   if (period === 'today') return getMoscowDayStartIso();
 
   const days = period === '7d' ? 7 : 30;
+  // Якорь — полночь МСК сегодня; минус (days-1) календарных суток МСК.
   const anchor = new Date(getMoscowDayStartIso());
   anchor.setUTCDate(anchor.getUTCDate() - (days - 1));
   return anchor.toISOString();
@@ -81,6 +82,16 @@ function filterByPeriod(rows, periodStart, field = 'created_at') {
     const ts = new Date(row[field] ?? 0).getTime();
     return Number.isFinite(ts) && ts >= start;
   });
+}
+
+function maxCreatedAt(rows) {
+  let max = null;
+  for (const row of rows ?? []) {
+    const ts = new Date(row?.created_at ?? 0).getTime();
+    if (!Number.isFinite(ts)) continue;
+    if (max == null || ts > max) max = ts;
+  }
+  return max == null ? null : new Date(max).toISOString();
 }
 
 function countReturnedUsers(assessmentRows) {
@@ -119,6 +130,7 @@ function buildDashboardPayload({
   returnedUsers,
   paymentsTotalInDb,
   assessmentsTotalInDb,
+  debug = null,
 }) {
   const funnelCount = funnelUserIds.size;
   const testCount = assessmentUserIds.size;
@@ -147,6 +159,7 @@ function buildDashboardPayload({
     timezone: 'Europe/Moscow',
     period,
     periodLabel: getPeriodLabel(period),
+    periodStart: debug?.periodStart ?? null,
     users: {
       newInPeriod: usersNewInPeriod,
       total: usersTotal,
@@ -160,6 +173,7 @@ function buildDashboardPayload({
       oneTime: oneTimeCount,
       subscription: subscriptionCount,
       totalInDb: paymentsTotalInDb,
+      latestInDb: debug?.latestPaymentAt ?? null,
     },
     assessments: {
       inPeriod: testsInPeriod,
@@ -240,6 +254,10 @@ async function fetchDashboardStatsDirect(supabase, period = 'today') {
     returnedUsers: countReturnedUsers(assessmentsInPeriod),
     paymentsTotalInDb: allPayments.length,
     assessmentsTotalInDb: assessmentsRes.data?.length ?? 0,
+    debug: {
+      periodStart,
+      latestPaymentAt: maxCreatedAt(allPayments),
+    },
   });
 }
 

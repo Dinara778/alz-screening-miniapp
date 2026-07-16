@@ -199,9 +199,34 @@ export async function findUserIdBySessionId(sessionId, env = process.env) {
 
   if (error) {
     console.error('[supabase] find assessment', error.message);
+  } else if (data?.user_id) {
+    return data.user_id;
+  }
+
+  // Оценка могла не синхронизироваться — ищем пользователя по воронке.
+  const { data: byAssessment, error: funnelErr } = await supabase
+    .from('funnel_sessions')
+    .select('user_id')
+    .eq('assessment_session_id', sid)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (funnelErr) {
+    console.error('[supabase] find funnel by assessment_session_id', funnelErr.message);
+  } else if (byAssessment?.user_id) {
+    return byAssessment.user_id;
+  }
+
+  const { data: byVisit, error: visitErr } = await supabase
+    .from('funnel_sessions')
+    .select('user_id')
+    .eq('visit_id', sid)
+    .maybeSingle();
+  if (visitErr) {
+    console.error('[supabase] find funnel by visit_id', visitErr.message);
     return null;
   }
-  return data?.user_id ?? null;
+  return byVisit?.user_id ?? null;
 }
 
 export async function userHasSubscriptionRecord({ userId, email }, env = process.env) {
@@ -368,7 +393,10 @@ export async function recordPayment(
     userId = await findUserIdBySessionId(sessionId, env);
   }
   if (!userId) {
-    console.warn('[supabase] recordPayment: user not found for', sessionId, email ?? '');
+    console.warn(
+      '[supabase] recordPayment: user not found — платёж НЕ записан',
+      { sessionId, email: email ?? null, product, externalId: extId },
+    );
     return null;
   }
 

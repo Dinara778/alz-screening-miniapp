@@ -175,7 +175,7 @@ async function fulfillPaidOrder({ sessionId, product, amountRub, invId, email })
       days: subscriptionDaysForProduct(prod),
     });
     subscriptionUntil = activated?.endDate ?? null;
-    await recordPayment({
+    const saved = await recordPayment({
       sessionId: sid,
       product: prod,
       amountRub,
@@ -184,8 +184,16 @@ async function fulfillPaidOrder({ sessionId, product, amountRub, invId, email })
       externalId: invId != null ? String(invId) : undefined,
       email: normalizedEmail,
     });
+    if (!saved) {
+      console.error('[supabase] fulfillPaidOrder: subscription payment not saved', {
+        sid,
+        prod,
+        invId,
+        email: normalizedEmail,
+      });
+    }
   } else if (prod === 'full_report') {
-    await recordPayment({
+    const saved = await recordPayment({
       sessionId: sid,
       product: prod,
       amountRub,
@@ -194,8 +202,16 @@ async function fulfillPaidOrder({ sessionId, product, amountRub, invId, email })
       externalId: invId != null ? String(invId) : undefined,
       email: normalizedEmail,
     });
+    if (!saved) {
+      console.error('[supabase] fulfillPaidOrder: one_time payment not saved', {
+        sid,
+        prod,
+        invId,
+        email: normalizedEmail,
+      });
+    }
   } else if (prod === 'consultation') {
-    await recordPayment({
+    const saved = await recordPayment({
       sessionId: sid,
       product: prod,
       amountRub,
@@ -204,6 +220,14 @@ async function fulfillPaidOrder({ sessionId, product, amountRub, invId, email })
       externalId: invId != null ? String(invId) : undefined,
       email: normalizedEmail,
     });
+    if (!saved) {
+      console.error('[supabase] fulfillPaidOrder: consultation payment not saved', {
+        sid,
+        prod,
+        invId,
+        email: normalizedEmail,
+      });
+    }
   }
 
   return { subscriptionUntil };
@@ -1198,7 +1222,7 @@ app.all('/robokassa/result', async (req, res) => {
       amountRub: order.amountRub,
       invId: order.invId,
       email: order.email || shpFromBody.Shp_email,
-    });
+    }).catch((e) => console.error('[robokassa/result] supabase fulfill', e));
     payAnalytics.trackPaidOnServer({
       sessionId: order.sessionId,
       product: order.product,
