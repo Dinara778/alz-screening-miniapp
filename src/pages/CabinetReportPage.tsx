@@ -84,16 +84,13 @@ export const CabinetReportPage = () => {
 
   return (
     <div className="app-calm-shell mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col px-4 py-4 text-white">
-      <p className="cabinet-foot mb-3">
-        <a href="/cabinet">← В кабинет</a>
-      </p>
       <div className="flex min-h-0 flex-1 flex-col">
         <FullReportContent
           session={session}
           onDone={() => {
             window.location.href = '/cabinet';
           }}
-          doneButtonLabel="В кабинет"
+          finishMode={{ cabinetHref: '/cabinet', homeHref: '/' }}
         />
       </div>
     </div>

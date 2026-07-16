@@ -1,5 +1,6 @@
 import type { TelegramInvoiceProduct } from './paymentProductTypes';
 import { isReportUnlockProduct } from './paymentProductTypes';
+import { isInAppBrowser } from './pwaInstall';
 import {
   getPaymentsApiUrl,
   reportPaidStorageKey,
@@ -23,7 +24,7 @@ import {
 
 export type WebPaymentResult =
   | { status: 'already_paid' }
-  | { status: 'redirected'; paymentUrl: string }
+  | { status: 'redirected'; paymentUrl: string; sameTab: boolean }
   | { status: 'pending_setup'; message: string }
   | { status: 'error'; message: string };
 
@@ -121,8 +122,22 @@ export async function openWebPayment(
       rememberRobokassaPendingSessionId(sessionId);
       rememberRobokassaPendingProduct(product);
       if (data.invId != null) rememberRobokassaPendingInvId(data.invId);
-      window.location.assign(data.paymentUrl);
-      return { status: 'redirected', paymentUrl: data.paymentUrl };
+      let openedInNewTab = false;
+      if (isInAppBrowser()) {
+        window.location.assign(data.paymentUrl);
+      } else {
+        const payWindow = window.open(data.paymentUrl, '_blank', 'noopener,noreferrer');
+        if (payWindow) {
+          openedInNewTab = true;
+        } else {
+          window.location.assign(data.paymentUrl);
+        }
+      }
+      return {
+        status: 'redirected',
+        paymentUrl: data.paymentUrl,
+        sameTab: !openedInNewTab,
+      };
     }
     return { status: 'error', message: 'Сервер не вернул ссылку на оплату.' };
   } catch (e) {
@@ -256,5 +271,21 @@ export async function recoverRobokassaPaymentFromUrl(): Promise<RobokassaPayment
     }
   }
 
+  return null;
+}
+
+/** Опрос сервера после открытия оплаты (вкладка Corta остаётся открытой). */
+export async function pollRobokassaPaymentStatus(
+  sessionId: string,
+  product: TelegramInvoiceProduct,
+  payerEmail?: string,
+): Promise<{ ok: true; sessionId: string; product: TelegramInvoiceProduct } | null> {
+  const invId = peekRobokassaReturnInvId();
+  if (invId) {
+    const byInv = await verifyWebPaymentByInvId(invId);
+    if (byInv.ok) return byInv;
+  }
+  const verified = await verifyWebProductPayment(sessionId, product, payerEmail);
+  if (verified.ok) return { ok: true, sessionId: verified.sessionId, product };
   return null;
 }

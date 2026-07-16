@@ -5,7 +5,7 @@ import { CalmCardShell } from './CalmCardShell';
 import { TELEGRAM_SUPPORT_URL } from './SupportFooter';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
 import { isReportUnlockProduct } from '../utils/paymentProductTypes';
-import { openWebPayment } from '../utils/webPayments';
+import { openWebPayment, pollRobokassaPaymentStatus } from '../utils/webPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import { REPORT_TARIFF_PAYMENT_BUTTON_CLASS } from '../constants/ctaButton';
 import type { ReportUnlockProduct } from '../utils/paymentProductTypes';
@@ -36,6 +36,7 @@ export const PaymentCheckoutSheet = ({
   const meta = PAYMENT_PRODUCTS[product];
   const [payBusy, setPayBusy] = useState(false);
   const [awaitingReturn, setAwaitingReturn] = useState(false);
+  const [paymentOpenedInSameTab, setPaymentOpenedInSameTab] = useState(false);
   const [alreadyPaidHelpOpen, setAlreadyPaidHelpOpen] = useState(false);
   const [alreadyPaidHelpAcknowledged, setAlreadyPaidHelpAcknowledged] = useState(false);
   const [alreadyPaid, setAlreadyPaid] = useState(() =>
@@ -79,6 +80,7 @@ export const PaymentCheckoutSheet = ({
     setAlreadyPaidHelpAcknowledged(false);
     setPayBusy(false);
     setAwaitingReturn(false);
+    setPaymentOpenedInSameTab(false);
     setSheetNotice(null);
     payInFlightRef.current = false;
     if (!isReportUnlockProduct(product)) return;
@@ -86,6 +88,38 @@ export const PaymentCheckoutSheet = ({
   }, [open, product, sessionId, serverPaymentsReady]);
 
   const payerEmail = participant?.email?.trim();
+
+  useEffect(() => {
+    if (!open || !awaitingReturn || !isReportUnlockProduct(product)) return;
+    let cancelled = false;
+    const check = async () => {
+      if (cancelled) return;
+      if (isReportPaidUnlocked(sessionId, serverPaymentsReady)) {
+        onPaid(sessionId);
+        onClose();
+        return;
+      }
+      const polled = await pollRobokassaPaymentStatus(sessionId, product, payerEmail);
+      if (cancelled || !polled) return;
+      onPaid(polled.sessionId);
+      onClose();
+    };
+    void check();
+    const timer = window.setInterval(() => void check(), 2500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [
+    open,
+    awaitingReturn,
+    product,
+    sessionId,
+    serverPaymentsReady,
+    payerEmail,
+    onPaid,
+    onClose,
+  ]);
 
   useEffect(() => {
     if (!open || !isReportUnlockProduct(product)) return;
@@ -150,7 +184,12 @@ export const PaymentCheckoutSheet = ({
       if (r.status === 'redirected') {
         trackPaymentEvent('payment_opened', { provider: 'robokassa', channel: 'robokassa' });
         setAwaitingReturn(true);
-        showNotice('Переход на страницу оплаты…');
+        setPaymentOpenedInSameTab(r.sameTab);
+        showNotice(
+          r.sameTab
+            ? 'После оплаты нажмите «Вернуться в магазин» на странице Робокассы.'
+            : 'Оплата открыта в новой вкладке. Отчёт откроется здесь автоматически после оплаты.',
+        );
         return;
       }
       if (r.status === 'pending_setup') {
@@ -294,7 +333,9 @@ export const PaymentCheckoutSheet = ({
 
               {awaitingReturn ? (
                 <p className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2.5 text-xs leading-relaxed text-emerald-100/95">
-                  {meta.awaitingReturnHint}
+                  {paymentOpenedInSameTab
+                    ? 'После успешной оплаты нажмите «Вернуться в магазин» — отчёт откроется автоматически.'
+                    : meta.awaitingReturnHint}
                 </p>
               ) : null}
 

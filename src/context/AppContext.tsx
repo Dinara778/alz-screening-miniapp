@@ -205,6 +205,13 @@ type AppState = {
 
 const Ctx = createContext<AppState | null>(null);
 
+function bootLatestResultForPaymentReturn(): SessionResult | null {
+  if (!hasPaymentReturnInUrl() && !hasPendingRobokassaReturn()) return null;
+  const sid = peekRobokassaReturnSessionId() ?? loadLastSessionId();
+  if (!sid) return null;
+  return loadSessionFromHistory(sid);
+}
+
 export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const initialStage = getInitialAppStage();
   const b = buildBootState(initialStage);
@@ -219,7 +226,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [stroopTrials, setStroopTrials] = useState<TrialResult[]>(b.stroopTrials);
   const [faceAnswers, setFaceAnswers] = useState<FaceAnswer[]>([]);
   const [history, setHistory] = useState<SessionResult[]>(() => loadHistory());
-  const [latestResult, setLatestResult] = useState<SessionResult | null>(null);
+  const [latestResult, setLatestResult] = useState<SessionResult | null>(bootLatestResultForPaymentReturn);
   const [sessionSeed, setSessionSeed] = useState(b.sessionSeed);
   const [participant, setParticipant] = useState<ParticipantProfile | null>(b.participant);
   const [resultEntryStep, setResultEntryStep] = useState<ResultEntryStep | null>(null);

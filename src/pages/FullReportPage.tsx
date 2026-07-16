@@ -14,9 +14,11 @@ export const FullReportPage = () => {
     participant,
     setStage,
     openResultAtStep,
+    restartApp,
     serverPaymentsReady,
     setAnalyticsScreenDetail,
   } = useApp();
+  const subscriptionActive = isSubscriptionActiveLocal();
   useHydrateLatestResult();
   useSyncPaidReportSession();
 
@@ -57,11 +59,14 @@ export const FullReportPage = () => {
   return (
     <FullReportContent
       session={latestResult}
-      onDone={() =>
-        openResultAtStep(isSubscriptionActiveLocal() ? 'complete' : 'subscription-offer')
-      }
+      onDone={() => openResultAtStep(subscriptionActive ? 'complete' : 'subscription-offer')}
       doneButtonLabel="Далее"
       onAnalyticsDetail={setAnalyticsScreenDetail}
+      finishMode={
+        subscriptionActive
+          ? { cabinetHref: '/cabinet', onHome: restartApp }
+          : undefined
+      }
     />
   );
 };

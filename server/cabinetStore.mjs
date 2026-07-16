@@ -51,6 +51,22 @@ function filterCabinetPayments(payments, hasSubscriptionRecord) {
   });
 }
 
+/** Убрать дубли (Result URL + Success URL / гонка insert). */
+function dedupeCabinetPayments(payments) {
+  const seen = new Set();
+  const out = [];
+  for (const p of payments ?? []) {
+    const ext = String(p.external_id ?? '').trim();
+    const key = ext
+      ? `ext:${ext}`
+      : `fuzzy:${p.product ?? ''}|${Number(p.amount)}|${String(p.created_at ?? '').slice(0, 16)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(p);
+  }
+  return out;
+}
+
 function subscriptionPlanLabel(payments) {
   const subPayment = (payments ?? []).find((p) => isSubscriptionPayment(p) && p.status === 'paid');
   if (subPayment?.product === 'subscription_3m') return 'Подписка «Corta» — 3 месяца';
@@ -251,7 +267,9 @@ export async function getCabinetData(email, env = process.env) {
   }
 
   const hasSubscriptionRecord = await userHasSubscriptionRecord({ userId: user.id }, env);
-  const payments = filterCabinetPayments(paymentsRes.data ?? [], hasSubscriptionRecord);
+  const payments = dedupeCabinetPayments(
+    filterCabinetPayments(paymentsRes.data ?? [], hasSubscriptionRecord),
+  );
   const subscription = await loadCurrentSubscription(supabase, user.id);
   const history7d = enrichAssessments(history7dRes.data, subscription, payments);
   const historyAll = enrichAssessments(historyAllRes.data, subscription, payments);
@@ -323,7 +341,9 @@ export async function getCabinetReportSession(email, sessionId, env = process.en
   }
 
   const hasSubscriptionRecord = await userHasSubscriptionRecord({ userId: user.id }, env);
-  const payments = filterCabinetPayments(paymentsRes.data ?? [], hasSubscriptionRecord);
+  const payments = dedupeCabinetPayments(
+    filterCabinetPayments(paymentsRes.data ?? [], hasSubscriptionRecord),
+  );
   const subscription = await loadCurrentSubscription(supabase, user.id);
   const canOpen = canOpenReportForSession(sid, subscription, payments);
   if (!canOpen) {

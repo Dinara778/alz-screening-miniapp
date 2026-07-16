@@ -154,83 +154,100 @@ function isReportUnlockProduct(product) {
   );
 }
 
+/** Один invId — один fulfill (Result URL и Success URL часто приходят одновременно). */
+const fulfillPaidOrderInFlight = new Map();
+
 async function fulfillPaidOrder({ sessionId, product, amountRub, invId, email }) {
-  const sid = String(sessionId ?? '').trim();
-  const prod = String(product ?? '');
-  const normalizedEmail = normalizeRecoverEmail(email);
+  const lockKey =
+    invId != null && String(invId).trim()
+      ? `inv:${String(invId).trim()}`
+      : `sid:${String(sessionId ?? '').trim()}:${String(product ?? '')}`;
+  const existing = fulfillPaidOrderInFlight.get(lockKey);
+  if (existing) return existing;
 
-  if (isReportUnlockProduct(prod)) {
-    markWebPaid({ sessionId: sid, product: 'full_report', invId: String(invId ?? '') });
-  } else if (prod) {
-    markWebPaid({ sessionId: sid, product: prod, invId: String(invId ?? '') });
-  }
+  const run = (async () => {
+    const sid = String(sessionId ?? '').trim();
+    const prod = String(product ?? '');
+    const normalizedEmail = normalizeRecoverEmail(email);
 
-  if (!isSupabaseConfigured()) return { subscriptionUntil: null };
+    if (isReportUnlockProduct(prod)) {
+      markWebPaid({ sessionId: sid, product: 'full_report', invId: String(invId ?? '') });
+    } else if (prod) {
+      markWebPaid({ sessionId: sid, product: prod, invId: String(invId ?? '') });
+    }
 
-  let subscriptionUntil = null;
-  if (isSubscriptionProduct(prod)) {
-    const activated = await activateSubscription({
-      email: normalizedEmail,
-      product: prod,
-      days: subscriptionDaysForProduct(prod),
-    });
-    subscriptionUntil = activated?.endDate ?? null;
-    const saved = await recordPayment({
-      sessionId: sid,
-      product: prod,
-      amountRub,
-      type: 'subscription',
-      status: 'paid',
-      externalId: invId != null ? String(invId) : undefined,
-      email: normalizedEmail,
-    });
-    if (!saved) {
-      console.error('[supabase] fulfillPaidOrder: subscription payment not saved', {
-        sid,
-        prod,
-        invId,
+    if (!isSupabaseConfigured()) return { subscriptionUntil: null };
+
+    let subscriptionUntil = null;
+    if (isSubscriptionProduct(prod)) {
+      const activated = await activateSubscription({
+        email: normalizedEmail,
+        product: prod,
+        days: subscriptionDaysForProduct(prod),
+      });
+      subscriptionUntil = activated?.endDate ?? null;
+      const saved = await recordPayment({
+        sessionId: sid,
+        product: prod,
+        amountRub,
+        type: 'subscription',
+        status: 'paid',
+        externalId: invId != null ? String(invId) : undefined,
         email: normalizedEmail,
       });
-    }
-  } else if (prod === 'full_report') {
-    const saved = await recordPayment({
-      sessionId: sid,
-      product: prod,
-      amountRub,
-      type: 'one_time',
-      status: 'paid',
-      externalId: invId != null ? String(invId) : undefined,
-      email: normalizedEmail,
-    });
-    if (!saved) {
-      console.error('[supabase] fulfillPaidOrder: one_time payment not saved', {
-        sid,
-        prod,
-        invId,
+      if (!saved) {
+        console.error('[supabase] fulfillPaidOrder: subscription payment not saved', {
+          sid,
+          prod,
+          invId,
+          email: normalizedEmail,
+        });
+      }
+    } else if (prod === 'full_report') {
+      const saved = await recordPayment({
+        sessionId: sid,
+        product: prod,
+        amountRub,
+        type: 'one_time',
+        status: 'paid',
+        externalId: invId != null ? String(invId) : undefined,
         email: normalizedEmail,
       });
-    }
-  } else if (prod === 'consultation') {
-    const saved = await recordPayment({
-      sessionId: sid,
-      product: prod,
-      amountRub,
-      type: 'one_time',
-      status: 'paid',
-      externalId: invId != null ? String(invId) : undefined,
-      email: normalizedEmail,
-    });
-    if (!saved) {
-      console.error('[supabase] fulfillPaidOrder: consultation payment not saved', {
-        sid,
-        prod,
-        invId,
+      if (!saved) {
+        console.error('[supabase] fulfillPaidOrder: one_time payment not saved', {
+          sid,
+          prod,
+          invId,
+          email: normalizedEmail,
+        });
+      }
+    } else if (prod === 'consultation') {
+      const saved = await recordPayment({
+        sessionId: sid,
+        product: prod,
+        amountRub,
+        type: 'one_time',
+        status: 'paid',
+        externalId: invId != null ? String(invId) : undefined,
         email: normalizedEmail,
       });
+      if (!saved) {
+        console.error('[supabase] fulfillPaidOrder: consultation payment not saved', {
+          sid,
+          prod,
+          invId,
+          email: normalizedEmail,
+        });
+      }
     }
-  }
 
-  return { subscriptionUntil };
+    return { subscriptionUntil };
+  })().finally(() => {
+    fulfillPaidOrderInFlight.delete(lockKey);
+  });
+
+  fulfillPaidOrderInFlight.set(lockKey, run);
+  return run;
 }
 
 function syncPaidToSupabase({ sessionId, product, amountRub, invId, email }) {

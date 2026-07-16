@@ -5,6 +5,7 @@ import {
   PaidReportTemporalOverload,
   PaidReportTemporalRecommendations,
 } from './PaidReportTemporalBlocks';
+import { ReportFinishFooter, ReportTomorrowBanner, type ReportFinishMode } from './ReportFinishBlock';
 import { SupportFooter } from './SupportFooter';
 import { CalmScreen } from './results/CalmScreen';
 import { ReportFlowShell } from './results/ReportFlowShell';
@@ -56,6 +57,8 @@ export type FullReportContentProps = {
   onDone: () => void;
   doneButtonLabel?: string;
   onAnalyticsDetail?: (detail: string) => void;
+  /** Финал отчёта для подписчиков: плашка «завтра утром», одна кнопка в кабинет + на главную */
+  finishMode?: ReportFinishMode;
 };
 
 export const FullReportContent = ({
@@ -63,6 +66,7 @@ export const FullReportContent = ({
   onDone,
   doneButtonLabel = 'К результатам',
   onAnalyticsDetail,
+  finishMode,
 }: FullReportContentProps) => {
   const [phase, setPhase] = useState<ReportPhase>('ready');
   const [reportPageIndex, setReportPageIndex] = useState(0);
@@ -268,41 +272,52 @@ export const FullReportContent = ({
   }
 
   if (phase === 'learned') {
+    const finishAfterLearned = finishMode && !showDetox;
     return (
       <CalmScreen
         contentAlign="readable"
         footer={
-          <div className="space-y-3">
-            <Button
-              type="button"
-              className={CTA_BUTTON_CLASS}
-              onClick={() => {
-                if (showDetox) {
-                  setDetoxPageIndex(0);
-                  setPhase('detox');
-                  return;
-                }
-                onDone();
-              }}
-            >
-              {showDetox ? 'Цифровой детокс' : doneButtonLabel}
-            </Button>
-            <SupportFooter showDeveloperCredit={false} />
-          </div>
+          finishAfterLearned ? (
+            <ReportFinishFooter mode={finishMode} />
+          ) : (
+            <div className="space-y-3">
+              <Button
+                type="button"
+                className={CTA_BUTTON_CLASS}
+                onClick={() => {
+                  if (showDetox) {
+                    setDetoxPageIndex(0);
+                    setPhase('detox');
+                    return;
+                  }
+                  onDone();
+                }}
+              >
+                {showDetox ? 'Цифровой детокс' : doneButtonLabel}
+              </Button>
+              <SupportFooter showDeveloperCredit={false} showCabinetAccess={!finishMode} />
+            </div>
+          )
         }
       >
         <div className="mx-auto w-full max-w-md space-y-5 pb-4">
-          <SketchHighlightTitle accent={accent}>Что вы узнали:</SketchHighlightTitle>
-          <ul className="calm-inset list-none space-y-2.5 results-body">
-            {learnedItems.map((item) => (
-              <li key={item} className="flex gap-2">
-                <span className="shrink-0 text-emerald-400" aria-hidden>
-                  •
-                </span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
+          {finishAfterLearned ? (
+            <ReportTomorrowBanner />
+          ) : (
+            <>
+              <SketchHighlightTitle accent={accent}>Что вы узнали:</SketchHighlightTitle>
+              <ul className="calm-inset list-none space-y-2.5 results-body">
+                {learnedItems.map((item) => (
+                  <li key={item} className="flex gap-2">
+                    <span className="shrink-0 text-emerald-400" aria-hidden>
+                      •
+                    </span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
       </CalmScreen>
     );
@@ -317,27 +332,32 @@ export const FullReportContent = ({
     return (
       <ReportFlowShell
         footer={
-          <div className="flex flex-col gap-2">
-            <p className="text-center text-xs font-medium tracking-wide text-white/55">
-              Часть {detoxPageIndex + 1} из {DIGITAL_DETOX_SCREENS.length}
-            </p>
-            <Button
-              type="button"
-              className={CTA_BUTTON_CLASS}
-              onClick={() => {
-                if (isLast) {
-                  onDone();
-                  return;
-                }
-                setDetoxPageIndex((i) => i + 1);
-              }}
-            >
-              {isLast ? doneButtonLabel : 'Следующая часть'}
-            </Button>
-          </div>
+          isLast && finishMode ? (
+            <ReportFinishFooter mode={finishMode} />
+          ) : (
+            <div className="flex flex-col gap-2">
+              <p className="text-center text-xs font-medium tracking-wide text-white/55">
+                Часть {detoxPageIndex + 1} из {DIGITAL_DETOX_SCREENS.length}
+              </p>
+              <Button
+                type="button"
+                className={CTA_BUTTON_CLASS}
+                onClick={() => {
+                  if (isLast) {
+                    onDone();
+                    return;
+                  }
+                  setDetoxPageIndex((i) => i + 1);
+                }}
+              >
+                {isLast ? doneButtonLabel : 'Следующая часть'}
+              </Button>
+            </div>
+          )
         }
       >
         <div className="mx-auto w-full max-w-md space-y-4 pb-2">
+          {isLast && finishMode ? <ReportTomorrowBanner /> : null}
           <SketchHighlightTitle accent={accent}>{screen.title}</SketchHighlightTitle>
           <div className="calm-inset whitespace-pre-line results-body">{screen.body}</div>
         </div>

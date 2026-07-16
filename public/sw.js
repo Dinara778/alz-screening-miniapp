@@ -1,8 +1,6 @@
 /* Corta PWA — минимальный service worker для установки на главный экран. */
-const CACHE_VERSION = 'corta-pwa-v1';
+const CACHE_VERSION = 'corta-pwa-v2';
 const PRECACHE_URLS = [
-  '/',
-  '/index.html',
   '/manifest.webmanifest',
   '/icon-192.png',
   '/icon-512.png',
@@ -35,7 +33,13 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (event.request.mode === 'navigate') {
-    event.respondWith(fetch(event.request).catch(() => caches.match('/index.html')));
+    // Для HTML только сеть: не отдаём устаревший index.html из кэша.
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  if (url.pathname === '/' || url.pathname === '/index.html') {
+    event.respondWith(fetch(event.request));
     return;
   }
 

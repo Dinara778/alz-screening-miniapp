@@ -413,6 +413,15 @@ export async function recordPayment(
   const { data, error } = await supabase.from('payments').insert(row).select('id').single();
 
   if (error) {
+    // Гонка: второй insert с тем же external_id после unique index / почти одновременный select.
+    if (extId && /duplicate|unique|23505/i.test(error.message)) {
+      const { data: raced } = await supabase
+        .from('payments')
+        .select('id')
+        .eq('external_id', extId)
+        .maybeSingle();
+      if (raced?.id) return raced;
+    }
     console.error('[supabase] insert payment', error.message);
     return null;
   }

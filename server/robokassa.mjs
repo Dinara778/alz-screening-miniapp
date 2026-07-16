@@ -204,10 +204,17 @@ function robokassaPublicBaseUrl(env = process.env) {
   return withScheme.replace(/\/$/, '');
 }
 
-/** Авто-возврат на сайт после оплаты (без кнопки «Вернуться в магазин»). */
-export function buildRobokassaAutoRedirect(env = process.env) {
+/** Авто-возврат на сайт после оплаты (SuccessUrl2 в ссылке на оплату). */
+export function buildRobokassaAutoRedirect(
+  env = process.env,
+  { sessionId, product } = {},
+) {
   const base = robokassaPublicBaseUrl(env);
-  const returnUrl = `${base}/`;
+  const success = new URL(`${base}/`);
+  success.searchParams.set('robokassa', 'success');
+  if (sessionId) success.searchParams.set('sessionId', String(sessionId).slice(0, 80));
+  if (product) success.searchParams.set('product', String(product));
+  const returnUrl = success.toString();
   const failReturnUrl = `${base}/?robokassa=fail`;
   return {
     /** В подписи — сырой URL (не encodeURIComponent), иначе ошибка 29 при фискализации. */
@@ -268,7 +275,7 @@ export function buildRobokassaPaymentUrl(
   const normalizedEmail = String(email ?? '').trim().toLowerCase();
   if (normalizedEmail.includes('@')) shp.Shp_email = normalizedEmail.slice(0, 80);
 
-  const redirect = buildRobokassaAutoRedirect(env);
+  const redirect = buildRobokassaAutoRedirect(env, { sessionId, product });
 
   const sigBase = buildPaymentSignatureBase({
     login,

@@ -9,17 +9,29 @@ const stroopKey = (t: StroopStimulus) => `${t.type}:${t.color}:${t.word}`;
 
 function completedSessions(): number {
   if (typeof localStorage === 'undefined') return 0;
-  return parseInt(localStorage.getItem('alz_completed_sessions') || '0', 10) || 0;
+  try {
+    return parseInt(localStorage.getItem('alz_completed_sessions') || '0', 10) || 0;
+  } catch {
+    return 0;
+  }
 }
 
 function lastWordSig(): string {
   if (typeof localStorage === 'undefined') return '';
-  return localStorage.getItem('alz_last_word_sig') || '';
+  try {
+    return localStorage.getItem('alz_last_word_sig') || '';
+  } catch {
+    return '';
+  }
 }
 
 function lastFaceNameSig(): string {
   if (typeof localStorage === 'undefined') return '';
-  return localStorage.getItem('alz_last_face_name_sig') || '';
+  try {
+    return localStorage.getItem('alz_last_face_name_sig') || '';
+  } catch {
+    return '';
+  }
 }
 
 /** 5 слов для текущего прохождения: не совпадает с последним сохранённым набором, seed + анти-привыкание. */
@@ -186,7 +198,28 @@ export const createStroopTrials = (sessionSeed: number): StroopStimulus[] => {
 
 export type FaceStimulus = { id: number; label: string; image: string; correctName: string; options: string[] };
 
-const FACE_NAME_POOL = ['Михаил', 'Иван', 'Дмитрий'] as const;
+const FACE_NAME_POOL = [
+  'Алексей',
+  'Андрей',
+  'Антон',
+  'Борис',
+  'Виктор',
+  'Владимир',
+  'Георгий',
+  'Даниил',
+  'Дмитрий',
+  'Евгений',
+  'Иван',
+  'Игорь',
+  'Кирилл',
+  'Максим',
+  'Михаил',
+  'Никита',
+  'Олег',
+  'Павел',
+  'Роман',
+  'Сергей',
+] as const;
 
 export const createFaceTrials = (sessionSeed: number): FaceStimulus[] => {
   const baseFaces = [
@@ -195,6 +228,13 @@ export const createFaceTrials = (sessionSeed: number): FaceStimulus[] => {
     { id: 3, label: 'Лицо 3', image: publicAsset('/faces/man-3.svg') },
   ];
   const previousSig = lastFaceNameSig();
+  const previousNameSetSig = previousSig
+    .split('|')
+    .map((p) => p.split(':')[1] ?? '')
+    .filter(Boolean)
+    .sort()
+    .join('|');
+  const habit = completedSessions();
 
   /** Варианты ответа — только из трёх имён этой сессии (те же, что на изучении). */
   const pickOptions = (correctName: string, sessionNames: readonly string[], rng: () => number): string[] => {
@@ -202,21 +242,23 @@ export const createFaceTrials = (sessionSeed: number): FaceStimulus[] => {
     return shuffle([correctName, ...distractors], rng);
   };
 
-  for (let bump = 0; bump < 40; bump += 1) {
-    const rng = mulberry32(stimulusSubSeed(sessionSeed, 'face-name', bump));
-    const assignedNames = shuffle([...FACE_NAME_POOL], rng);
+  for (let bump = 0; bump < 120; bump += 1) {
+    const rng = mulberry32(stimulusSubSeed(sessionSeed, 'face-name', bump) ^ (habit * 0x9e37));
+    const sessionNames = shuffle([...FACE_NAME_POOL], rng).slice(0, baseFaces.length);
+    const assignedNames = shuffle([...sessionNames], rng);
     const mapped = baseFaces.map((face, idx) => ({
       id: face.id,
       label: face.label,
       image: face.image,
       correctName: assignedNames[idx],
     }));
+    const nameSetSig = [...sessionNames].sort().join('|');
     const sig = mapped
       .slice()
       .sort((a, b) => a.id - b.id)
       .map((f) => `${f.id}:${f.correctName}`)
       .join('|');
-    if (sig === previousSig) continue;
+    if (sig === previousSig || nameSetSig === previousNameSetSig) continue;
     return shuffle(mapped, rng).map((f) => ({
       ...f,
       options: pickOptions(f.correctName, assignedNames, rng),
