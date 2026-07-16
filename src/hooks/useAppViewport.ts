@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
+import { isInAppBrowser } from '../utils/pwaInstall';
 
 let debounceId = 0;
 
 /**
  * Высота под реальную видимую область (Instagram/Telegram chrome, клавиатура).
  * Telegram иногда кратковременно отдаёт ~половину экрана — такие значения игнорируем.
+ * В Safari/Chrome при клавиатуре высоту НЕ сжимаем: иначе layout «прыгает» и прячет CTA.
  */
 function syncAppViewport() {
   const inner = window.innerHeight;
@@ -18,15 +20,17 @@ function syncAppViewport() {
     active?.tagName === 'TEXTAREA' ||
     active?.isContentEditable === true;
 
+  const inApp = isInAppBrowser();
+
   let height = inner;
   if (ratio >= 0.85) {
     // Обычный случай: vv чуть меньше из‑за тулбара / URL bar — берём видимое.
     height = Math.min(inner, vvH);
-  } else if (ratio < 0.72 || typing) {
-    // Клавиатура или явный resize.
+  } else if (inApp && (ratio < 0.72 || typing)) {
+    // Только во встроенных браузерах сжимаем под клавиатуру.
     height = vvH;
   }
-  // 0.72–0.85 без фокуса в поле: вероятный глюк TG → оставляем inner.
+  // Safari/Chrome + клавиатура: оставляем inner — скролл покажет поле и кнопку.
 
   document.documentElement.style.setProperty('--app-vh', `${Math.round(height)}px`);
   document.documentElement.style.setProperty(

@@ -39,9 +39,13 @@ const SEX_OPTIONS = ['Женский', 'Мужской'] as const satisfies read
 const inputClass = 'calm-input';
 
 const scrollFieldIntoView = (e: FocusEvent<HTMLInputElement>) => {
-  requestAnimationFrame(() => {
-    e.target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  });
+  const field = e.target;
+  // Не block:'center' — на iOS поле уезжает вверх и прячет кнопку «Далее» под клавиатуру.
+  window.setTimeout(() => {
+    field.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+    const cta = document.querySelector<HTMLElement>('[data-welcome-cta]');
+    cta?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+  }, 120);
 };
 
 export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
@@ -466,7 +470,10 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
   const stackForm = step >= 1 && step <= 4;
 
   return (
-    <div className={`flex flex-col ${stackForm ? 'shrink-0' : 'min-h-0 flex-1'}`}>
+    <div
+      className={`flex flex-col ${stackForm ? 'shrink-0' : 'min-h-0 flex-1'}`}
+      data-welcome-stack={stackForm ? '1' : undefined}
+    >
       <CalmCardShell fill={introStep}>
         <div className="relative mb-4 shrink-0 space-y-3">
           <div className="flex items-start gap-3">
@@ -505,7 +512,13 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
           fill={introStep}
           stackFooter={stackForm}
           contentAlign={introStep ? 'center' : 'start'}
-          footer={stepFooter}
+          footer={
+            stepFooter ? (
+              <div data-welcome-cta className="scroll-mt-4">
+                {stepFooter}
+              </div>
+            ) : null
+          }
         >
           {stepBody}
         </ScreenBottomCta>
