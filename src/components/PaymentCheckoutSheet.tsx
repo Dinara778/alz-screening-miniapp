@@ -12,6 +12,7 @@ import type { ReportUnlockProduct } from '../utils/paymentProductTypes';
 import {
   isReportPaidUnlocked,
   verifyReportPaymentOnServer,
+  confirmReportAccessForSession,
 } from '../utils/telegramPayments';
 
 type Props = {
@@ -33,6 +34,7 @@ export const PaymentCheckoutSheet = ({
   onNotice,
 }: Props) => {
   const { serverPaymentsReady, participant } = useApp();
+  const payerEmail = participant?.email?.trim();
   const meta = PAYMENT_PRODUCTS[product];
   const [payBusy, setPayBusy] = useState(false);
   const [awaitingReturn, setAwaitingReturn] = useState(false);
@@ -82,10 +84,14 @@ export const PaymentCheckoutSheet = ({
     setSheetNotice(null);
     payInFlightRef.current = false;
     if (!isReportUnlockProduct(product)) return;
-    setAlreadyPaid(isReportPaidUnlocked(sessionId, serverPaymentsReady));
-  }, [open, product, sessionId, serverPaymentsReady]);
-
-  const payerEmail = participant?.email?.trim();
+    let cancelled = false;
+    void confirmReportAccessForSession(sessionId, payerEmail, serverPaymentsReady).then((ok) => {
+      if (!cancelled) setAlreadyPaid(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, product, sessionId, serverPaymentsReady, payerEmail]);
 
   useEffect(() => {
     if (!open || !awaitingReturn || !isReportUnlockProduct(product)) return;
@@ -149,10 +155,17 @@ export const PaymentCheckoutSheet = ({
 
   const handlePay = async () => {
     if (payBusy || payInFlightRef.current) return;
-    if (isReportUnlockProduct(product) && isReportPaidUnlocked(sessionId, serverPaymentsReady)) {
-      onPaid(sessionId);
-      onClose();
-      return;
+    if (isReportUnlockProduct(product)) {
+      const confirmed = await confirmReportAccessForSession(
+        sessionId,
+        payerEmail,
+        serverPaymentsReady,
+      );
+      if (confirmed) {
+        onPaid(sessionId);
+        onClose();
+        return;
+      }
     }
     if (!payerEmail?.includes('@')) {
       showNotice('Для оплаты нужен email из анкеты. Вернитесь и укажите почту.');

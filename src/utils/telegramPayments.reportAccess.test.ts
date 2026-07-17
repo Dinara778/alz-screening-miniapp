@@ -43,6 +43,13 @@ describe('report access', () => {
     expect(getPaidReportSessionId('b')).toBe('b');
   });
 
+  it('active subscription cache alone does not unlock a new session', () => {
+    localStorage.setItem('corta_subscription_until', '2099-12-31');
+    localStorage.setItem('corta_subscription_server_ok', '1');
+    localStorage.setItem('corta_subscription_email', 'sub@example.com');
+    expect(isReportPaidUnlocked('new-session', true)).toBe(false);
+  });
+
   it('verifyReportPaymentOnServer ignores stale paid flag for another session', async () => {
     localStorage.setItem(reportPaidStorageKey('old-session'), '1');
     vi.stubGlobal('window', {

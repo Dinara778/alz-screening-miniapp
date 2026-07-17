@@ -17,9 +17,10 @@ import {
 import { stripPaymentQueryFromUrl } from './appReload';
 import {
   clearSubscriptionAccess,
-  isSubscriptionActiveLocal,
+  syncSubscriptionEmailBinding,
   setSubscriptionFromServer,
 } from './subscriptionAccess';
+import { arePaymentsActive, isDevPaymentBypass } from './paymentStub';
 
 export type WebPaymentResult =
   | { status: 'already_paid' }
@@ -39,10 +40,15 @@ export async function syncSubscriptionAccessFromServer(
   email: string | null | undefined,
 ): Promise<boolean> {
   const normalized = email?.trim().toLowerCase();
-  if (!normalized || !normalized.includes('@')) return isSubscriptionActiveLocal();
+  if (!normalized || !normalized.includes('@')) {
+    clearSubscriptionAccess();
+    return false;
+  }
+
+  syncSubscriptionEmailBinding(normalized);
 
   const api = getPaymentsApiUrl();
-  if (!api) return isSubscriptionActiveLocal();
+  if (!api) return false;
 
   try {
     const res = await fetch(`${trimApi(api)}/api/subscription-status`, {
@@ -53,15 +59,15 @@ export async function syncSubscriptionAccessFromServer(
     const data = (await res.json()) as { active?: boolean; endDate?: string | null };
     if (res.ok) {
       if (data.active && data.endDate) {
-        setSubscriptionFromServer(data.endDate);
+        setSubscriptionFromServer(data.endDate, normalized);
         return true;
       }
       clearSubscriptionAccess();
       return false;
     }
-    return isSubscriptionActiveLocal();
+    return false;
   } catch {
-    return isSubscriptionActiveLocal();
+    return false;
   }
 }
 
@@ -69,9 +75,30 @@ function markWebProductPaid(
   sessionId: string,
   product: TelegramInvoiceProduct,
   subscriptionUntil?: string,
+  payerEmail?: string,
 ): void {
   localStorage.setItem(reportPaidStorageKey(sessionId), '1');
-  if (subscriptionUntil) setSubscriptionFromServer(subscriptionUntil);
+  if (subscriptionUntil) setSubscriptionFromServer(subscriptionUntil, payerEmail);
+}
+
+/** Подтвердить на сервере оплату отчёта для этой сессии (не доверять localStorage). */
+export async function confirmWebReportAccess(
+  sessionId: string,
+  payerEmail?: string,
+  serverPaymentsReady = false,
+): Promise<boolean> {
+  if (isDevPaymentBypass()) return true;
+  if (!arePaymentsActive(serverPaymentsReady)) return true;
+
+  const verified = await verifyWebProductPayment(sessionId, 'full_report', payerEmail);
+  if (verified.ok) return true;
+
+  try {
+    localStorage.removeItem(reportPaidStorageKey(sessionId));
+  } catch {
+    /* ignore */
+  }
+  return false;
 }
 
 export async function openWebPayment(
@@ -114,7 +141,7 @@ export async function openWebPayment(
       return { status: 'error', message: data.error || `Ошибка сервера (${res.status})` };
     }
     if (data.alreadyPaid) {
-      markWebProductPaid(sessionId, product);
+      markWebProductPaid(sessionId, product, undefined, payerEmail);
       return { status: 'already_paid' };
     }
     if (data.paymentUrl) {
@@ -166,7 +193,7 @@ export async function verifyWebProductPayment(
       subscriptionUntil?: string;
     };
     if (res.ok && data.paid && data.sessionId) {
-      markWebProductPaid(data.sessionId, product, data.subscriptionUntil);
+      markWebProductPaid(data.sessionId, product, data.subscriptionUntil, payerEmail);
       return { ok: true, sessionId: data.sessionId };
     }
     return {

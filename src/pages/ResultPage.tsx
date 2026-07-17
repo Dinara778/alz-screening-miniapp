@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useHydrateLatestResult } from '../hooks/useHydrateLatestResult';
 import { Button } from '../components/Button';
 import { CalmScreen } from '../components/results/CalmScreen';
@@ -40,10 +40,10 @@ import type { ReportUnlockProduct } from '../utils/paymentProductTypes';
 import { isSubscriptionProduct } from '../utils/paymentProductTypes';
 import { isSubscriptionActiveLocal } from '../utils/subscriptionAccess';
 import {
-  isReportPaidUnlocked,
   reportPaidStorageKey,
   recoverProdamusPaymentFromUrl,
   recoverFullReportAccess,
+  confirmReportAccessForSession,
 } from '../utils/telegramPayments';
 
 type ResultStep =
@@ -110,6 +110,8 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const [reportGateBusy, setReportGateBusy] = useState(false);
   const [subscriptionSynced, setSubscriptionSynced] = useState(false);
 
+  const [reportAccessConfirmed, setReportAccessConfirmed] = useState(false);
+
   const skipNativePayment = shouldBypassReportPayment(serverPaymentsReady);
 
   const payerEmail =
@@ -157,16 +159,16 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
 
   useEffect(() => {
     if (step !== 'report-offer' || skipNativePayment || !latestResult?.id) return;
-    if (isReportPaidUnlocked(latestResult.id, serverPaymentsReady)) {
-      unlockFullReport(latestResult.id);
-      return;
-    }
-    if (!payerEmail) return;
     let cancelled = false;
-    void syncSubscriptionAccessFromServer(payerEmail).then((active) => {
+    void confirmReportAccessForSession(
+      latestResult.id,
+      payerEmail,
+      serverPaymentsReady,
+    ).then((confirmed) => {
       if (cancelled) return;
       setSubscriptionSynced(true);
-      if (active) unlockFullReport(latestResult.id);
+      setReportAccessConfirmed(confirmed);
+      if (confirmed) unlockFullReport(latestResult.id);
     });
     return () => {
       cancelled = true;
@@ -208,7 +210,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       return;
     }
     if (resultEntryStep === 'subscription-offer') {
-      setStep(isSubscriptionActiveLocal() ? 'complete' : 'subscription-offer');
+      setStep(isSubscriptionActiveLocal(payerEmail) ? 'complete' : 'subscription-offer');
       clearResultEntryStep();
     }
   }, [resultEntryStep, clearResultEntryStep]);
@@ -292,28 +294,33 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     : indexCategory.category;
   const accent = indexDisplayReady ? indexCategory.color : scoreAccentFromValue(a.index.value);
 
-  const reportUnlocked = useMemo(
-    () => isReportPaidUnlocked(latestResult.id, serverPaymentsReady),
-    [latestResult.id, serverPaymentsReady, subscriptionSynced],
-  );
+  const openPaidReport = () => {
+    void confirmReportAccessForSession(latestResult.id, payerEmail, serverPaymentsReady).then(
+      (confirmed) => {
+        if (confirmed) unlockFullReport(latestResult.id);
+      },
+    );
+  };
 
   const goToReportGate = async () => {
-    if (skipNativePayment || reportUnlocked) {
+    if (skipNativePayment) {
       unlockFullReport(latestResult.id);
       return;
     }
-    if (payerEmail) {
-      setReportGateBusy(true);
-      try {
-        const active = await syncSubscriptionAccessFromServer(payerEmail);
-        setSubscriptionSynced(true);
-        if (active) {
-          unlockFullReport(latestResult.id);
-          return;
-        }
-      } finally {
-        setReportGateBusy(false);
+    setReportGateBusy(true);
+    try {
+      void syncSubscriptionAccessFromServer(payerEmail).then(() => setSubscriptionSynced(true));
+      const confirmed = await confirmReportAccessForSession(
+        latestResult.id,
+        payerEmail,
+        serverPaymentsReady,
+      );
+      if (confirmed) {
+        unlockFullReport(latestResult.id);
+        return;
       }
+    } finally {
+      setReportGateBusy(false);
     }
     setStep('report-offer');
   };
@@ -354,7 +361,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         const session = loadSessionFromHistory(recovered.sessionId);
         if (session) setLatestResult(session);
         localStorage.setItem(reportPaidStorageKey(recovered.sessionId), '1');
-        if (isSubscriptionActiveLocal() && hadOneTimePaid) {
+        if (isSubscriptionActiveLocal(payerEmail) && hadOneTimePaid) {
           setStep('complete');
           return;
         }
@@ -377,10 +384,6 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         finishAfterSubscriptionUpsell(latestResult.id);
         return;
       }
-      unlockFullReport(latestResult.id);
-      return;
-    }
-    if (reportUnlocked && !isSubscriptionProduct(product)) {
       unlockFullReport(latestResult.id);
       return;
     }
@@ -548,7 +551,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
               {payNotice ? (
                 <p className="text-center text-xs leading-relaxed text-amber-200/90">{payNotice}</p>
               ) : null}
-              {!reportUnlocked && (hasPaymentReturnInUrl() || hasPendingRobokassaReturn()) ? (
+              {!reportAccessConfirmed && (hasPaymentReturnInUrl() || hasPendingRobokassaReturn()) ? (
                 <Button
                   type="button"
                   variant="secondary"
@@ -559,12 +562,12 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
                   {recoverBusy ? 'Проверяем оплату…' : 'Проверить оплату и открыть отчёт'}
                 </Button>
               ) : null}
-              {reportUnlocked ? (
+              {reportAccessConfirmed ? (
                 <Button
                   type="button"
                   variant="sell"
                   className={calmBtnClass}
-                  onClick={() => unlockFullReport(latestResult.id)}
+                  onClick={openPaidReport}
                 >
                   Открыть расшифровку
                 </Button>
@@ -573,7 +576,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
           }
         >
           <ReportTariffOffer
-            reportUnlocked={reportUnlocked}
+            reportUnlocked={reportAccessConfirmed}
             onSelect={(product) => openCheckout(product)}
           />
         </CalmScreen>

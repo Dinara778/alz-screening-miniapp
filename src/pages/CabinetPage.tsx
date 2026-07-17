@@ -101,7 +101,7 @@ export const CabinetPage = () => {
       .then((cabinet) => {
         setData(cabinet);
         if (cabinet.subscription?.endDate) {
-          setSubscriptionFromServer(cabinet.subscription.endDate);
+          setSubscriptionFromServer(cabinet.subscription.endDate, email);
         } else {
           clearSubscriptionAccess();
         }

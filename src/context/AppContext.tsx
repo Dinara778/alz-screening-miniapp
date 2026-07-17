@@ -34,8 +34,10 @@ import {
   recoverFullReportAccess,
   recoverProdamusPaymentFromUrl,
   reportPaidStorageKey,
+  confirmReportAccessForSession,
 } from '../utils/telegramPayments';
 import { recoverRobokassaPaymentFromUrl, syncSubscriptionAccessFromServer } from '../utils/webPayments';
+import { syncSubscriptionEmailBinding } from '../utils/subscriptionAccess';
 import { isSubscriptionProduct } from '../utils/paymentProductTypes';
 import { consumeReopenPaidReportSessionId, markReopenPaidReportAfterReload } from '../utils/reportReload';
 import { useAppExitAnalytics } from '../hooks/useAppExitAnalytics';
@@ -249,6 +251,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const email = participant?.email?.trim().toLowerCase();
     if (!email?.includes('@')) return;
+    syncSubscriptionEmailBinding(email);
     void syncSubscriptionAccessFromServer(email);
   }, [participant?.email]);
 
@@ -333,13 +336,18 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         if (paidSession) setLatestResult(paidSession);
         return;
       }
-      if (stage === 'full-report' && !isDevPaymentBypass() && !getPaidReportSessionId(session.id)) {
-        setStage('result');
+      if (stage === 'full-report' && !isDevPaymentBypass()) {
+        const confirmed = await confirmReportAccessForSession(
+          session.id,
+          participant?.email,
+          serverPaymentsReady,
+        );
+        if (!confirmed) setStage('result');
       }
     };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
-  }, [stage, latestResult?.id, participant?.email]);
+  }, [stage, latestResult?.id, participant?.email, serverPaymentsReady]);
 
   useEffect(() => {
     if (!hasPaymentReturnInUrl() && !hasPendingRobokassaReturn()) return;
