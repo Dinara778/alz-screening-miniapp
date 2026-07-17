@@ -8,7 +8,7 @@ import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 type Props = {
   title?: string;
   subtitle?: string;
-  /** Предзаполненный email (экран «С возвращением») */
+  /** Предзаполненный email (экран «Мы помним ваши данные») */
   initialEmail?: string;
   /** Не давать менять email — сразу вход по коду */
   fixedEmail?: boolean;

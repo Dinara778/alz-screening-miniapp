@@ -331,11 +331,11 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
     stepBody = (
       <div className="space-y-5 text-center sm:text-left">
         <div className="text-center text-4xl">✨</div>
-        <h2 className="app-heading text-center">С возвращением!</h2>
+        <h2 className="app-heading text-center">Мы помним ваши данные</h2>
         <p className="calm-caption sm:text-base">
           {alreadyIn
             ? 'Вы уже вошли — можно сразу пройти оценку с этим профилем.'
-            : 'Войдите в кабинет с сохранённым email или измените данные.'}
+            : 'Это данные с прошлой оценки на этом устройстве. Войдите в кабинет или измените их.'}
         </p>
         <div className="calm-inset space-y-2 rounded-2xl px-4 py-3 text-left text-sm text-white/90">
           <p className="font-semibold text-white">{formatProfileResumeLabel(resumeProfile)}</p>
@@ -392,7 +392,10 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
     stepFooter = (
       <div className="space-y-3">
         {nextButton(0)}
-        <CabinetAccessLink variant="button" />
+        <CabinetAccessLink
+          variant="button"
+          expectedEmail={resumeProfile?.email ?? cabinetSession.email ?? null}
+        />
       </div>
     );
   } else if (step === 1) {

@@ -8,11 +8,16 @@ import {
   type CabinetSession,
 } from './cabinetSessionStorage';
 
-let refreshInFlight: Promise<CabinetSession | null> | null = null;
+type RefreshOutcome =
+  | { kind: 'ok'; session: CabinetSession }
+  | { kind: 'auth_failed' }
+  | { kind: 'transient' };
 
-async function refreshViaServer(refreshToken: string): Promise<CabinetSession | null> {
+let refreshInFlight: Promise<RefreshOutcome> | null = null;
+
+async function refreshViaServer(refreshToken: string): Promise<RefreshOutcome> {
   const api = getPaymentsApiUrl();
-  if (!api) return null;
+  if (!api) return { kind: 'transient' };
 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 20000);
@@ -28,16 +33,20 @@ async function refreshViaServer(refreshToken: string): Promise<CabinetSession | 
       access_token?: string;
       refresh_token?: string;
     };
+    if (res.status === 401) return { kind: 'auth_failed' };
     if (!res.ok || !json.ok || !json.access_token || !json.refresh_token) {
-      return null;
+      return { kind: 'transient' };
     }
     const stored = readCabinetSession();
-    return saveCabinetSession(
-      { access_token: json.access_token, refresh_token: json.refresh_token },
-      stored?.email ?? undefined,
-    );
+    return {
+      kind: 'ok',
+      session: saveCabinetSession(
+        { access_token: json.access_token, refresh_token: json.refresh_token },
+        stored?.email ?? undefined,
+      ),
+    };
   } catch {
-    return null;
+    return { kind: 'transient' };
   } finally {
     clearTimeout(timer);
   }
@@ -60,8 +69,12 @@ export async function ensureFreshCabinetSession(): Promise<CabinetSession | null
   }
 
   const refreshed = await refreshInFlight;
-  if (refreshed) return refreshed;
+  if (refreshed.kind === 'ok') return refreshed.session;
+  if (refreshed.kind === 'auth_failed') {
+    clearCabinetSession();
+    return null;
+  }
 
-  clearCabinetSession();
-  return null;
+  // Сеть/502/таймаут — не выкидываем из аккаунта, остаёмся с сохранёнными токенами.
+  return stored;
 }
