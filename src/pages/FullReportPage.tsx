@@ -6,9 +6,9 @@ import { useHydrateLatestResult } from '../hooks/useHydrateLatestResult';
 import { useSyncPaidReportSession } from '../hooks/useSyncPaidReportSession';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import {
-  confirmReportAccessForSession,
-  isPaymentsBackendConfigured,
-} from '../utils/telegramPayments';
+  confirmReportAccess,
+} from '../utils/paymentAccess';
+import { isPaymentsBackendConfigured } from '../utils/telegramPayments';
 import { isSubscriptionActiveLocal } from '../utils/subscriptionAccess';
 import { arePaymentsActive, isDevPaymentBypass } from '../utils/paymentStub';
 
@@ -38,8 +38,11 @@ export const FullReportPage = () => {
 
     let cancelled = false;
     setAccessState('checking');
-    void confirmReportAccessForSession(latestResult.id, payerEmail, serverPaymentsReady).then(
-      (confirmed) => {
+    void confirmReportAccess({
+      sessionId: latestResult.id,
+      payerEmail,
+      serverPaymentsReady,
+    }).then((confirmed) => {
         if (cancelled) return;
         setAccessState(confirmed ? 'granted' : 'denied');
       },

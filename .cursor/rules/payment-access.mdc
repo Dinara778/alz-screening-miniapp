@@ -1,0 +1,54 @@
+---
+description: Правила оплаты, подписки и доступа к расширенному отчёту — не ломать при других правках
+globs:
+  - src/pages/ResultPage.tsx
+  - src/pages/FullReportPage.tsx
+  - src/components/PaymentCheckoutSheet.tsx
+  - src/context/AppContext.tsx
+  - src/utils/paymentAccess.ts
+  - src/utils/webPayments.ts
+  - src/utils/telegramPayments.ts
+  - src/utils/subscriptionAccess.ts
+  - server/index.mjs
+  - server/paymentRecovery.mjs
+alwaysApply: false
+---
+
+# Оплата и доступ к отчёту
+
+## Единая точка правды (клиент)
+
+UI импортирует **только** `src/utils/paymentAccess.ts` для решений:
+- можно ли открыть расширенный отчёт;
+- показывать ли «уже оплачено» в checkout;
+- записать/сбросить локальный кэш оплаты.
+
+Не дублировать `localStorage.setItem(report_paid_*)` в страницах — только `grantReportAccess` / `denyReportAccess`.
+
+## Инварианты (обязательны)
+
+1. **Разовый отчёт** (`full_report`) и **подписка** (`subscription_*`) — разные продукты.
+2. Оплата разового отчёта **не** считается активной подпиской.
+3. Отчёт открывается только после `confirmReportAccess` (сервер) для **этого** `sessionId`.
+4. `report_paid_<sessionId>` — кэш; при отказе сервера вызывать `denyReportAccess`.
+5. Подписка в localStorage привязана к email (`corta_subscription_email`).
+
+## Сервер
+
+Логика восстановления оплаты — **только** в `server/paymentRecovery.mjs`.
+Не копировать в `index.mjs`. Менять вместе с `server/paymentRecovery.test.mjs`.
+
+## Тесты перед деплоем
+
+```bash
+npm test
+node --test server/paymentRecovery.test.mjs
+```
+
+При изменении инвариантов — обновить `paymentAccess.test.ts` и `paymentRecovery.test.mjs`.
+
+## Запрещено
+
+- `isSubscriptionActiveLocal()` без email для открытия отчёта.
+- `confirmReportAccessForSession` / проверка `full_report` при checkout подписки.
+- Авто-`setStage('full-report')` без `confirmReportAccess`.

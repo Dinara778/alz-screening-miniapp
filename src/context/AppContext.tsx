@@ -33,9 +33,11 @@ import {
   getPaymentsApiUrl,
   recoverFullReportAccess,
   recoverProdamusPaymentFromUrl,
-  reportPaidStorageKey,
-  confirmReportAccessForSession,
 } from '../utils/telegramPayments';
+import {
+  confirmReportAccess,
+  reportPaidStorageKey,
+} from '../utils/paymentAccess';
 import { recoverRobokassaPaymentFromUrl, syncSubscriptionAccessFromServer } from '../utils/webPayments';
 import { syncSubscriptionEmailBinding } from '../utils/subscriptionAccess';
 import { isSubscriptionProduct } from '../utils/paymentProductTypes';
@@ -337,11 +339,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
       if (stage === 'full-report' && !isDevPaymentBypass()) {
-        const confirmed = await confirmReportAccessForSession(
-          session.id,
-          participant?.email,
+        const confirmed = await confirmReportAccess({
+          sessionId: session.id,
+          payerEmail: participant?.email,
           serverPaymentsReady,
-        );
+        });
         if (!confirmed) setStage('result');
       }
     };

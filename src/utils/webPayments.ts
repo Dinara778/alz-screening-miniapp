@@ -1,9 +1,7 @@
 import type { TelegramInvoiceProduct } from './paymentProductTypes';
 import { isReportUnlockProduct } from './paymentProductTypes';
-import {
-  getPaymentsApiUrl,
-  reportPaidStorageKey,
-} from './telegramPayments';
+import { grantReportAccess, reportPaidStorageKey } from './paymentAccess';
+import { getPaymentsApiUrl } from './telegramPayments';
 import {
   clearRobokassaReturnSession,
   peekRobokassaReturnInvId,
@@ -77,7 +75,7 @@ function markWebProductPaid(
   subscriptionUntil?: string,
   payerEmail?: string,
 ): void {
-  localStorage.setItem(reportPaidStorageKey(sessionId), '1');
+  grantReportAccess(sessionId);
   if (subscriptionUntil) setSubscriptionFromServer(subscriptionUntil, payerEmail);
 }
 

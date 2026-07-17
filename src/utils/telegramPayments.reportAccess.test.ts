@@ -19,9 +19,11 @@ vi.hoisted(() => {
 });
 
 import {
-  getPaidReportSessionId,
-  isReportPaidUnlocked,
+  isReportPaidLocal,
   reportPaidStorageKey,
+} from './paymentAccess';
+import {
+  getPaidReportSessionId,
   verifyReportPaymentOnServer,
 } from './telegramPayments';
 
@@ -33,8 +35,8 @@ describe('report access', () => {
   it('getPaidReportSessionId finds other paid session; unlock is per session', () => {
     localStorage.setItem(reportPaidStorageKey('paid-session'), '1');
     expect(getPaidReportSessionId('new-session')).toBe('paid-session');
-    expect(isReportPaidUnlocked('new-session', true)).toBe(false);
-    expect(isReportPaidUnlocked('paid-session', true)).toBe(true);
+    expect(isReportPaidLocal('new-session', true)).toBe(false);
+    expect(isReportPaidLocal('paid-session', true)).toBe(true);
   });
 
   it('prefers exact session match', () => {
@@ -47,7 +49,7 @@ describe('report access', () => {
     localStorage.setItem('corta_subscription_until', '2099-12-31');
     localStorage.setItem('corta_subscription_server_ok', '1');
     localStorage.setItem('corta_subscription_email', 'sub@example.com');
-    expect(isReportPaidUnlocked('new-session', true)).toBe(false);
+    expect(isReportPaidLocal('new-session', true)).toBe(false);
   });
 
   it('verifyReportPaymentOnServer ignores stale paid flag for another session', async () => {

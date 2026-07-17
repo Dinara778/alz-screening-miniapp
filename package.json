@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build && node scripts/write-build-info.mjs",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:payments": "vitest run src/utils/paymentAccess.test.ts src/utils/telegramPayments.reportAccess.test.ts && node --test server/paymentRecovery.test.mjs",
     "self-test:cognitive": "vitest run src/debug/cognitiveSelfTest.test.ts",
     "payments-server": "npm --prefix server run start",
     "deploy": "node scripts/deploy.mjs"

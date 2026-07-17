@@ -5,13 +5,11 @@ import { CalmCardShell } from './CalmCardShell';
 import { TELEGRAM_SUPPORT_URL } from './SupportFooter';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
 import { isReportUnlockProduct, isSubscriptionProduct } from '../utils/paymentProductTypes';
-import { openWebPayment, pollRobokassaPaymentStatus, confirmWebSubscriptionAccess } from '../utils/webPayments';
+import { openWebPayment, pollRobokassaPaymentStatus } from '../utils/webPayments';
+import { confirmProductPaid, alreadyPaidCheckoutCopy } from '../utils/paymentAccess';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import { REPORT_TARIFF_PAYMENT_BUTTON_CLASS } from '../constants/ctaButton';
 import type { ReportUnlockProduct } from '../utils/paymentProductTypes';
-import {
-  confirmReportAccessForSession,
-} from '../utils/telegramPayments';
 
 type Props = {
   open: boolean;
@@ -38,30 +36,18 @@ export const PaymentCheckoutSheet = ({
   const [awaitingReturn, setAwaitingReturn] = useState(false);
   const [alreadyPaidHelpOpen, setAlreadyPaidHelpOpen] = useState(false);
   const [alreadyPaidHelpAcknowledged, setAlreadyPaidHelpAcknowledged] = useState(false);
-  const isOneTimeReport = product === 'full_report';
-  const isSubscriptionCheckout = isSubscriptionProduct(product);
-
-  const checkProductAlreadyPaid = useCallback(async (): Promise<boolean> => {
-    if (isOneTimeReport) {
-      return confirmReportAccessForSession(sessionId, payerEmail, serverPaymentsReady);
-    }
-    if (isSubscriptionCheckout) {
-      return confirmWebSubscriptionAccess(
+  const checkProductAlreadyPaid = useCallback(
+    (): Promise<boolean> =>
+      confirmProductPaid({
         sessionId,
-        product as 'subscription_1m' | 'subscription_3m',
+        product,
         payerEmail,
         serverPaymentsReady,
-      );
-    }
-    return false;
-  }, [
-    isOneTimeReport,
-    isSubscriptionCheckout,
-    product,
-    sessionId,
-    payerEmail,
-    serverPaymentsReady,
-  ]);
+      }),
+    [sessionId, product, payerEmail, serverPaymentsReady],
+  );
+
+  const paidCopy = alreadyPaidCheckoutCopy(product);
   const [alreadyPaid, setAlreadyPaid] = useState(false);
   const [sheetNotice, setSheetNotice] = useState<string | null>(null);
   const payInFlightRef = useRef(false);
@@ -277,11 +263,9 @@ export const PaymentCheckoutSheet = ({
               >
                 {reportAlreadyPaidHelp
                   ? 'я уже оплатил(а)'
-                  : alreadyPaid && isOneTimeReport
-                    ? 'Доступ уже есть'
-                    : alreadyPaid && isSubscriptionCheckout
-                      ? 'Подписка уже активна'
-                      : meta.title}
+                  : alreadyPaid && paidCopy
+                    ? paidCopy.title
+                    : meta.title}
               </h2>
             </div>
             <button
@@ -317,11 +301,9 @@ export const PaymentCheckoutSheet = ({
               </p>
               <p className="text-[11px] leading-snug text-white/50">{meta.alreadyPaidHelpNote}</p>
             </div>
-          ) : alreadyPaid && isOneTimeReport ? (
+          ) : alreadyPaid && paidCopy ? (
             <div className="mt-4 space-y-4">
-              <p className="calm-body text-sm text-emerald-100/95">
-                Оплата учтена. Откройте расширенный отчёт.
-              </p>
+              <p className="calm-body text-sm text-emerald-100/95">{paidCopy.message}</p>
               <Button
                 type="button"
                 variant="sell"
@@ -331,24 +313,7 @@ export const PaymentCheckoutSheet = ({
                   onClose();
                 }}
               >
-                Открыть расширенный отчёт
-              </Button>
-            </div>
-          ) : alreadyPaid && isSubscriptionCheckout ? (
-            <div className="mt-4 space-y-4">
-              <p className="calm-body text-sm text-emerald-100/95">
-                Подписка уже активна на ваш email. Можно продолжить в личный кабинет.
-              </p>
-              <Button
-                type="button"
-                variant="sell"
-                className={REPORT_TARIFF_PAYMENT_BUTTON_CLASS}
-                onClick={() => {
-                  onPaid(sessionId);
-                  onClose();
-                }}
-              >
-                Продолжить
+                {paidCopy.cta}
               </Button>
             </div>
           ) : (

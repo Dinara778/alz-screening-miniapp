@@ -9,9 +9,16 @@ import {
   rememberRobokassaPendingSessionId,
 } from './paymentReturn';
 import { isStandaloneWeb } from './runtime';
-import { recoverRobokassaPaymentFromUrl, verifyWebReportPayment, confirmWebReportAccess } from './webPayments';
+import { recoverRobokassaPaymentFromUrl, verifyWebReportPayment } from './webPayments';
 import { arePaymentsActive, isDevPaymentBypass, isPaymentsEnabled } from './paymentStub';
 import { setSubscriptionFromServer } from './subscriptionAccess';
+import {
+  confirmReportAccess,
+  grantReportAccess,
+  denyReportAccess,
+  isReportPaidLocal,
+  reportPaidStorageKey,
+} from './paymentAccess';
 
 export type { TelegramInvoiceProduct } from './paymentProductTypes';
 
@@ -140,7 +147,7 @@ export const isTelegramMiniApp = (): boolean => {
   return Boolean(tg?.initData && tg?.version);
 };
 
-export const reportPaidStorageKey = (sessionId: string) => `report_paid_${sessionId}`;
+export { reportPaidStorageKey } from './paymentAccess';
 
 type PaidOrderPayload = {
   paid?: boolean;
@@ -153,7 +160,7 @@ function applyPaidOrder(data: PaidOrderPayload): ProdamusPaymentRecovery | null 
   if (!data.paid || !data.sessionId) return null;
   sessionStorage.removeItem(prodamusPendingOrderKey(data.sessionId));
   if (isReportUnlockProduct(data.product ?? '')) {
-    localStorage.setItem(reportPaidStorageKey(data.sessionId), '1');
+    grantReportAccess(data.sessionId);
     if (data.subscriptionUntil) setSubscriptionFromServer(data.subscriptionUntil);
     return {
       paid: true,
@@ -534,44 +541,13 @@ function loadLastSessionIdFromHistory(): string | null {
   }
 }
 
-/**
- * Доступ к отчёту именно для этой сессии (одна оплата = одно прохождение теста).
- * Только локальный флаг report_paid_<sessionId>; подписка не открывает отчёт без серверной проверки.
- */
-export const isReportPaidUnlocked = (sessionId: string, serverPaymentsReady = false): boolean => {
-  if (isDevPaymentBypass()) return true;
-  if (!arePaymentsActive(serverPaymentsReady)) return true;
-  if (typeof localStorage === 'undefined') return false;
-  try {
-    return localStorage.getItem(reportPaidStorageKey(sessionId)) === '1';
-  } catch {
-    return false;
-  }
-};
-
-/** Подтвердить оплату отчёта на сервере перед открытием (сайт / Telegram). */
-export async function confirmReportAccessForSession(
+export const isReportPaidUnlocked = isReportPaidLocal;
+export const confirmReportAccessForSession = (
   sessionId: string,
   payerEmail?: string,
   serverPaymentsReady = false,
-): Promise<boolean> {
-  if (isDevPaymentBypass()) return true;
-  if (!arePaymentsActive(serverPaymentsReady)) return true;
-
-  if (isStandaloneWeb()) {
-    return confirmWebReportAccess(sessionId, payerEmail, serverPaymentsReady);
-  }
-
-  const recovered = await verifyReportPaymentOnServer(sessionId, payerEmail);
-  if (recovered.ok) return true;
-
-  try {
-    localStorage.removeItem(reportPaidStorageKey(sessionId));
-  } catch {
-    /* ignore */
-  }
-  return false;
-}
+) =>
+  confirmReportAccess({ sessionId, payerEmail, serverPaymentsReady });
 
 /** Есть ли оплаченный отчёт за любое прохождение (восстановление / «Я уже оплатил»). */
 export const hasAnyPaidReportInStorage = (): boolean =>
@@ -660,12 +636,7 @@ export async function verifyReportPaymentOnServer(
     return { ok: true, sessionId };
   }
 
-  try {
-    localStorage.removeItem(reportPaidStorageKey(sessionId));
-  } catch {
-    /* ignore */
-  }
-
+  denyReportAccess(sessionId);
   return { ok: false, message: VERIFY_PAYMENT_FAIL_MSG };
 }
 
@@ -674,7 +645,7 @@ export type RecoverReportResult =
   | { ok: false; message: string };
 
 function unlockReportSession(sessionId: string): RecoverReportResult {
-  localStorage.setItem(reportPaidStorageKey(sessionId), '1');
+  grantReportAccess(sessionId);
   return { ok: true, sessionId };
 }
 
@@ -686,22 +657,14 @@ export async function recoverFullReportAccess(
   if (isStandaloneWeb()) {
     const verified = await verifyWebReportPayment(sessionId, payerEmail);
     if (verified.ok) return unlockReportSession(verified.sessionId);
-    try {
-      localStorage.removeItem(reportPaidStorageKey(sessionId));
-    } catch {
-      /* ignore */
-    }
+    denyReportAccess(sessionId);
     return { ok: false, message: verified.message };
   }
 
   if (isReportPaidInStorage(sessionId)) {
     const verified = await verifyReportPaymentOnServer(sessionId, payerEmail);
     if (verified.ok) return { ok: true, sessionId: verified.sessionId };
-    try {
-      localStorage.removeItem(reportPaidStorageKey(sessionId));
-    } catch {
-      /* ignore */
-    }
+    denyReportAccess(sessionId);
   }
 
   const fromRobokassa = await recoverRobokassaPaymentFromUrl();

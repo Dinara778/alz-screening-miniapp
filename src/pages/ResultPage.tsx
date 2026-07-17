@@ -40,10 +40,13 @@ import type { ReportUnlockProduct } from '../utils/paymentProductTypes';
 import { isSubscriptionProduct } from '../utils/paymentProductTypes';
 import { isSubscriptionActiveLocal } from '../utils/subscriptionAccess';
 import {
+  confirmReportAccess,
+  grantReportAccess,
   reportPaidStorageKey,
+} from '../utils/paymentAccess';
+import {
   recoverProdamusPaymentFromUrl,
   recoverFullReportAccess,
-  confirmReportAccessForSession,
 } from '../utils/telegramPayments';
 
 type ResultStep =
@@ -124,7 +127,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       const session =
         latestResult?.id === sid ? latestResult : loadSessionFromHistory(sid) ?? latestResult;
       if (session) setLatestResult(session);
-      localStorage.setItem(reportPaidStorageKey(sid), '1');
+      grantReportAccess(sid);
       setStage('full-report');
     },
     [latestResult, setLatestResult, setStage],
@@ -138,7 +141,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         const session =
           latestResult?.id === sid ? latestResult : loadSessionFromHistory(sid) ?? latestResult;
         if (session) setLatestResult(session);
-        localStorage.setItem(reportPaidStorageKey(sid), '1');
+        grantReportAccess(sid);
       }
       setCheckoutOpen(false);
       setStep('complete');
@@ -160,11 +163,11 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   useEffect(() => {
     if (step !== 'report-offer' || skipNativePayment || !latestResult?.id) return;
     let cancelled = false;
-    void confirmReportAccessForSession(
-      latestResult.id,
+    void confirmReportAccess({
+      sessionId: latestResult.id,
       payerEmail,
       serverPaymentsReady,
-    ).then((confirmed) => {
+    }).then((confirmed) => {
       if (cancelled) return;
       setSubscriptionSynced(true);
       setReportAccessConfirmed(confirmed);
@@ -250,7 +253,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       const session = loadSessionFromHistory(recovery.sessionId);
       if (session) setLatestResult(session);
       if (isReportOfferProduct(recovery.product)) {
-        localStorage.setItem(reportPaidStorageKey(recovery.sessionId), '1');
+        grantReportAccess(recovery.sessionId);
         // Подписка после уже оплаченного разового отчёта → финальный экран, не отчёт заново
         if (isSubscriptionProduct(recovery.product) && hadOneTimePaid) {
           setStep('complete');
@@ -295,8 +298,11 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
   const accent = indexDisplayReady ? indexCategory.color : scoreAccentFromValue(a.index.value);
 
   const openPaidReport = () => {
-    void confirmReportAccessForSession(latestResult.id, payerEmail, serverPaymentsReady).then(
-      (confirmed) => {
+    void confirmReportAccess({
+      sessionId: latestResult.id,
+      payerEmail,
+      serverPaymentsReady,
+    }).then((confirmed) => {
         if (confirmed) unlockFullReport(latestResult.id);
       },
     );
@@ -310,11 +316,11 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
     setReportGateBusy(true);
     try {
       void syncSubscriptionAccessFromServer(payerEmail).then(() => setSubscriptionSynced(true));
-      const confirmed = await confirmReportAccessForSession(
-        latestResult.id,
+      const confirmed = await confirmReportAccess({
+        sessionId: latestResult.id,
         payerEmail,
         serverPaymentsReady,
-      );
+      });
       if (confirmed) {
         unlockFullReport(latestResult.id);
         return;
@@ -343,7 +349,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
         const session = loadSessionFromHistory(fromUrl.sessionId);
         if (session) setLatestResult(session);
         if (isReportOfferProduct(fromUrl.product)) {
-          localStorage.setItem(reportPaidStorageKey(fromUrl.sessionId), '1');
+          grantReportAccess(fromUrl.sessionId);
           if (isSubscriptionProduct(fromUrl.product) && hadOneTimePaid) {
             setStep('complete');
             return;
@@ -360,7 +366,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       if (recovered.ok) {
         const session = loadSessionFromHistory(recovered.sessionId);
         if (session) setLatestResult(session);
-        localStorage.setItem(reportPaidStorageKey(recovered.sessionId), '1');
+        grantReportAccess(recovered.sessionId);
         if (isSubscriptionActiveLocal(payerEmail) && hadOneTimePaid) {
           setStep('complete');
           return;
