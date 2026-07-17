@@ -43,7 +43,7 @@ export const CalmScreen = ({
         contentAlign === 'readable'
           ? 'flex min-h-0 flex-1 flex-col items-stretch justify-start overflow-y-auto px-5 py-6 text-left sm:px-6'
           : contentAlign === 'index'
-            ? 'flex min-h-0 flex-1 flex-col items-stretch justify-start overflow-hidden px-3 pb-1 pt-1 text-center'
+            ? 'flex min-h-0 flex-1 flex-col items-stretch justify-stretch overflow-hidden px-3 pb-1 pt-2 text-center'
             : 'flex min-h-0 flex-1 flex-col items-center justify-center px-3 py-8 text-center'
       }
     >
