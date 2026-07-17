@@ -11,14 +11,14 @@ import { ProgressBar } from '../components/ProgressBar';
 import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { ParticipantProfile } from '../types';
 import { TEST_DURATION_LABEL } from '../constants/testDuration';
-import { fetchCabinetParticipantProfile, signOutCabinet, useCabinetSession } from '../utils/cabinetApi';
+import { fetchCabinetParticipantProfile, useCabinetSession } from '../utils/cabinetApi';
+import { ensureFreshCabinetSession } from '../utils/cabinetSessionRefresh';
 import {
   formatProfileResumeLabel,
   loadLocalParticipantProfile,
   saveSavedParticipantProfile,
 } from '../utils/participantProfileStore';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
-import { ensureSupabaseBrowserConfig, getSupabaseBrowser } from '../utils/supabaseBrowser';
 import { syncFunnelToSupabase } from '../utils/supabaseFunnelSync';
 import { syncCabinetSessionWithEmail } from '../utils/cabinetEmailSync';
 import { syncSubscriptionAccessFromServer } from '../utils/webPayments';
@@ -79,9 +79,9 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
     setName('');
     setSex('Женский');
     setAge('');
-    setEmail('');
+    // Если уже вошли в кабинет — оставляем его email, не подставляем чужой локальный профиль.
+    setEmail(cabinetSession.email?.trim().toLowerCase() ?? '');
     setStep(1);
-    void signOutCabinet().then(() => cabinetSession.refresh());
   };
 
   useEffect(() => {
@@ -94,31 +94,62 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
       void syncSubscriptionAccessFromServer(profile.email);
     };
 
-    const local = loadLocalParticipantProfile();
-    if (local) adoptProfile(local);
+    const wantsRetake =
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('retake') === '1';
 
     void (async () => {
-      const cfg = await ensureSupabaseBrowserConfig();
-      if (!cfg || cancelled) return;
-      try {
-        const supabase = await getSupabaseBrowser();
-        const { data } = await supabase.auth.getSession();
-        const token = data.session?.access_token;
-        if (!token || cancelled) return;
-        const remote = await fetchCabinetParticipantProfile(token);
-        if (remote && !cancelled) {
+      const session = await ensureFreshCabinetSession();
+      if (cancelled || editingFreshRef.current) return;
+
+      const cabinetEmail = session?.email?.trim().toLowerCase() || null;
+
+      if (session?.access_token) {
+        const remote = await fetchCabinetParticipantProfile(session.access_token);
+        if (cancelled || editingFreshRef.current) return;
+        if (remote) {
           saveSavedParticipantProfile(remote);
           adoptProfile(remote);
+          if (wantsRetake) {
+            onProfileReady?.(remote);
+            setStep(5);
+            try {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('retake');
+              window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+            } catch {
+              /* ignore */
+            }
+          }
+          return;
         }
-      } catch {
-        /* кабинет не настроен или нет сессии */
       }
+
+      const local = loadLocalParticipantProfile();
+      if (cancelled || editingFreshRef.current) return;
+
+      if (local) {
+        if (!cabinetEmail || local.email === cabinetEmail) {
+          adoptProfile(local);
+          if (wantsRetake && cabinetEmail && local.email === cabinetEmail) {
+            onProfileReady?.(local);
+            setStep(5);
+          }
+          return;
+        }
+        // Локальный профиль от другой почты — не показываем его поверх сессии кабинета.
+        setEmail(cabinetEmail);
+        setResumeProfile(null);
+        return;
+      }
+
+      if (cabinetEmail) setEmail(cabinetEmail);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [onProfileReady]);
 
   const sendFormStartedEvent = (triggerField: string) => {
     if (hasSentFormStartRef.current) return;
@@ -303,7 +334,7 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
         <h2 className="app-heading text-center">С возвращением!</h2>
         <p className="calm-caption sm:text-base">
           {alreadyIn
-            ? 'Вы уже вошли — откройте кабинет или обновите данные.'
+            ? 'Вы уже вошли — можно сразу пройти оценку с этим профилем.'
             : 'Войдите в кабинет с сохранённым email или измените данные.'}
         </p>
         <div className="calm-inset space-y-2 rounded-2xl px-4 py-3 text-left text-sm text-white/90">
@@ -319,7 +350,9 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
           className={CTA_BUTTON_CLASS}
           onClick={() => {
             if (alreadyIn) {
-              goToCabinet();
+              onProfileReady?.(resumeProfile);
+              saveSavedParticipantProfile(resumeProfile);
+              setStep(5);
               return;
             }
             setResumeLogin(true);
@@ -327,7 +360,7 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
         >
           <span className="flex min-w-0 flex-col items-center gap-0.5 leading-snug">
             <span className="inline-flex items-center gap-2">
-              {alreadyIn ? 'Открыть кабинет' : 'Войти как'}
+              {alreadyIn ? 'Пройти оценку' : 'Войти как'}
               <IconArrowRight className="h-5 w-5 shrink-0" />
             </span>
             {!alreadyIn ? (

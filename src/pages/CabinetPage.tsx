@@ -325,7 +325,7 @@ export const CabinetPage = () => {
         </section>
 
         <p className="cabinet-foot">
-          <a href="/">Пройти оценку снова</a>
+          <a href="/?retake=1">Пройти оценку снова</a>
         </p>
       </div>
     </div>
