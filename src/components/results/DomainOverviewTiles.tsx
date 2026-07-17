@@ -62,11 +62,11 @@ export const DomainOverviewTiles = ({ domains, indexValue, ready = true }: Props
             >
               ◎
             </span>
-            <h2 className="text-base font-bold leading-tight text-white sm:text-lg">
+            <h2 className="app-heading leading-snug text-white">
               Когнитивный ресурс
             </h2>
           </div>
-          <p className="mt-1.5 pl-9 text-[0.8125rem] leading-snug text-white/65 sm:text-sm">
+          <p className="calm-caption mt-1.5 pl-9 sm:text-base">
             Индекс на сегодня по доменам:
           </p>
         </div>
