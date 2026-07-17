@@ -5,7 +5,7 @@
  * 1. full_report оплачен → доступ к отчёту для sessionId.
  * 2. subscription оплачена / активна по email → доступ к подписке, не путать с п.1 при checkout.
  * 3. Оплата full_report НЕ считается оплатой subscription_* при запросе подписки.
- * 4. Оплата subscription даёт доступ к full_report (подписчик видит отчёт).
+ * 4. Оплата subscription даёт доступ к full_report (подписчик видит отчёт, в т.ч. при новом прохождении).
  */
 
 export function createResolveWebPaymentRecovery(deps) {

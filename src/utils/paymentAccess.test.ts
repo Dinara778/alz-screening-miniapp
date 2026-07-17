@@ -116,6 +116,21 @@ describe('paymentAccess invariants', () => {
     expect(confirmWebReportAccess).not.toHaveBeenCalled();
   });
 
+  it('confirmReportAccess grants report when server sees active subscription on new session', async () => {
+    vi.mocked(confirmWebReportAccess).mockResolvedValue(true);
+    const ok = await confirmReportAccess({
+      sessionId: 'new-retake-session',
+      payerEmail: 'sub@example.com',
+      serverPaymentsReady: true,
+    });
+    expect(ok).toBe(true);
+    expect(confirmWebReportAccess).toHaveBeenCalledWith(
+      'new-retake-session',
+      'sub@example.com',
+      true,
+    );
+  });
+
   it('alreadyPaidCheckoutCopy differs for report vs subscription', () => {
     const report = alreadyPaidCheckoutCopy('full_report');
     const sub = alreadyPaidCheckoutCopy('subscription_1m');

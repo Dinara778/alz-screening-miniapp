@@ -10,6 +10,7 @@
  * 3. report_paid_<sessionId> в localStorage — кэш; при отказе сервера очищается.
  * 4. Подписка в localStorage привязана к email; чужой кэш не даёт доступ.
  * 5. Оплата разового отчёта не считается активной подпиской при checkout подписки.
+ * 6. Активная подписка по email открывает отчёт для любой новой sessionId (повторное прохождение).
  */
 import type { ReportUnlockProduct } from './paymentProductTypes';
 import { isSubscriptionProduct } from './paymentProductTypes';

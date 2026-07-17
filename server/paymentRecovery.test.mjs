@@ -63,6 +63,23 @@ describe('resolveWebPaymentRecovery invariants', () => {
     assert.equal(r.paid, true);
   });
 
+  it('active subscription by email grants full_report for a brand-new session (retake)', async () => {
+    const deps = makeDeps();
+    deps.isSupabaseConfigured = () => true;
+    deps.findActiveSubscriptionByEmail = async (email) =>
+      email === 'sub@x.ru' ? { end_date: '2099-12-31' } : null;
+
+    const resolve = createResolveWebPaymentRecovery(deps);
+    const r = await resolve({
+      sessionId: 'brand-new-session-xyz',
+      product: 'full_report',
+      email: 'sub@x.ru',
+    });
+    assert.equal(r.paid, true);
+    assert.equal(r.sessionId, 'brand-new-session-xyz');
+    assert.equal(r.subscriptionUntil, '2099-12-31');
+  });
+
   it('active subscription by email grants report but not confused with one-time only', async () => {
     const deps = makeDeps();
     deps.isSupabaseConfigured = () => true;

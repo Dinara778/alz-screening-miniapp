@@ -1,6 +1,6 @@
 import type { TelegramInvoiceProduct } from './paymentProductTypes';
 import { isReportUnlockProduct } from './paymentProductTypes';
-import { grantReportAccess, reportPaidStorageKey } from './paymentAccess';
+import { grantReportAccess, reportPaidStorageKey, denyReportAccess } from './paymentAccess';
 import { getPaymentsApiUrl } from './telegramPayments';
 import {
   clearRobokassaReturnSession,
@@ -88,14 +88,15 @@ export async function confirmWebReportAccess(
   if (isDevPaymentBypass()) return true;
   if (!arePaymentsActive(serverPaymentsReady)) return true;
 
-  const verified = await verifyWebProductPayment(sessionId, 'full_report', payerEmail);
+  const normalizedEmail = payerEmail?.trim().toLowerCase();
+  if (normalizedEmail?.includes('@')) {
+    await syncSubscriptionAccessFromServer(normalizedEmail);
+  }
+
+  const verified = await verifyWebProductPayment(sessionId, 'full_report', normalizedEmail);
   if (verified.ok) return true;
 
-  try {
-    localStorage.removeItem(reportPaidStorageKey(sessionId));
-  } catch {
-    /* ignore */
-  }
+  denyReportAccess(sessionId);
   return false;
 }
 
