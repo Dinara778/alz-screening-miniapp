@@ -268,14 +268,21 @@ async function resolveWebPaymentRecovery({ sessionId, product = 'full_report', e
   const normalizedEmail = normalizeRecoverEmail(email);
   if (!sid) return { paid: false };
 
-  const reportUnlock = isReportUnlockProduct(prod);
+  const wantsReport = prod === 'full_report';
+  const wantsSubscription = isSubscriptionProduct(prod);
 
   const exact = isWebPaidForSession(sid, prod);
   if (exact.paid) {
-    return { paid: true, sessionId: exact.sessionId, product: exact.product };
+    const sub = normalizedEmail ? await findActiveSubscriptionByEmail(normalizedEmail) : null;
+    return {
+      paid: true,
+      sessionId: exact.sessionId,
+      product: exact.product,
+      subscriptionUntil: sub?.end_date ?? undefined,
+    };
   }
 
-  if (reportUnlock) {
+  if (wantsReport) {
     const reportPaid = isWebPaidForSession(sid, 'full_report');
     if (reportPaid.paid) {
       return { paid: true, sessionId: reportPaid.sessionId, product: prod };
@@ -286,10 +293,7 @@ async function resolveWebPaymentRecovery({ sessionId, product = 'full_report', e
   if (invKey) {
     const order = robokassaGetOrder(invKey);
     if (order) {
-      const webPaidForOrder =
-        isWebPaidForSession(order.sessionId, order.product).paid ||
-        (isReportUnlockProduct(order.product) &&
-          isWebPaidForSession(order.sessionId, 'full_report').paid);
+      const webPaidForOrder = isWebPaidForSession(order.sessionId, order.product).paid;
 
       let paidInSupabase = null;
       if (isSupabaseConfigured()) {
@@ -304,7 +308,7 @@ async function resolveWebPaymentRecovery({ sessionId, product = 'full_report', e
         if (order.sessionId !== sid) {
           markWebPaid({
             sessionId: sid,
-            product: reportUnlock ? 'full_report' : prod,
+            product: wantsReport ? 'full_report' : order.product,
             invId: invKey,
           });
         }
@@ -324,11 +328,16 @@ async function resolveWebPaymentRecovery({ sessionId, product = 'full_report', e
   }
 
   if (isSupabaseConfigured()) {
-    if (normalizedEmail && reportUnlock) {
+    if (normalizedEmail) {
       const sub = await findActiveSubscriptionByEmail(normalizedEmail);
       if (sub?.end_date) {
-        markWebPaid({ sessionId: sid, product: 'full_report', invId: invKey });
-        return { paid: true, sessionId: sid, product: prod, subscriptionUntil: sub.end_date };
+        if (wantsSubscription) {
+          return { paid: true, sessionId: sid, product: prod, subscriptionUntil: sub.end_date };
+        }
+        if (wantsReport) {
+          markWebPaid({ sessionId: sid, product: 'full_report', invId: invKey });
+          return { paid: true, sessionId: sid, product: prod, subscriptionUntil: sub.end_date };
+        }
       }
     }
 
@@ -345,7 +354,7 @@ async function resolveWebPaymentRecovery({ sessionId, product = 'full_report', e
       }
       markWebPaid({
         sessionId: resolvedSessionId,
-        product: reportUnlock ? 'full_report' : prod,
+        product: wantsReport ? 'full_report' : prod,
         invId: supa.external_id ?? '',
       });
       const sub = normalizedEmail ? await findActiveSubscriptionByEmail(normalizedEmail) : null;
@@ -357,9 +366,8 @@ async function resolveWebPaymentRecovery({ sessionId, product = 'full_report', e
       };
     }
 
-    if (reportUnlock && normalizedEmail) {
-      for (const candidate of ['full_report', 'subscription_1m', 'subscription_3m']) {
-        if (candidate === prod) continue;
+    if (wantsReport && normalizedEmail) {
+      for (const candidate of ['subscription_1m', 'subscription_3m']) {
         const alt = await findPaidProductPayment({
           sessionId: sid,
           email: normalizedEmail,

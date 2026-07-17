@@ -4,14 +4,12 @@ import { Button } from './Button';
 import { CalmCardShell } from './CalmCardShell';
 import { TELEGRAM_SUPPORT_URL } from './SupportFooter';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
-import { isReportUnlockProduct } from '../utils/paymentProductTypes';
-import { openWebPayment, pollRobokassaPaymentStatus } from '../utils/webPayments';
+import { isReportUnlockProduct, isSubscriptionProduct } from '../utils/paymentProductTypes';
+import { openWebPayment, pollRobokassaPaymentStatus, confirmWebSubscriptionAccess } from '../utils/webPayments';
 import { sendAnalyticsEventToSheets } from '../utils/sheetsWebhook';
 import { REPORT_TARIFF_PAYMENT_BUTTON_CLASS } from '../constants/ctaButton';
 import type { ReportUnlockProduct } from '../utils/paymentProductTypes';
 import {
-  isReportPaidUnlocked,
-  verifyReportPaymentOnServer,
   confirmReportAccessForSession,
 } from '../utils/telegramPayments';
 
@@ -40,9 +38,31 @@ export const PaymentCheckoutSheet = ({
   const [awaitingReturn, setAwaitingReturn] = useState(false);
   const [alreadyPaidHelpOpen, setAlreadyPaidHelpOpen] = useState(false);
   const [alreadyPaidHelpAcknowledged, setAlreadyPaidHelpAcknowledged] = useState(false);
-  const [alreadyPaid, setAlreadyPaid] = useState(() =>
-    isReportUnlockProduct(product) ? isReportPaidUnlocked(sessionId, false) : false,
-  );
+  const isOneTimeReport = product === 'full_report';
+  const isSubscriptionCheckout = isSubscriptionProduct(product);
+
+  const checkProductAlreadyPaid = useCallback(async (): Promise<boolean> => {
+    if (isOneTimeReport) {
+      return confirmReportAccessForSession(sessionId, payerEmail, serverPaymentsReady);
+    }
+    if (isSubscriptionCheckout) {
+      return confirmWebSubscriptionAccess(
+        sessionId,
+        product as 'subscription_1m' | 'subscription_3m',
+        payerEmail,
+        serverPaymentsReady,
+      );
+    }
+    return false;
+  }, [
+    isOneTimeReport,
+    isSubscriptionCheckout,
+    product,
+    sessionId,
+    payerEmail,
+    serverPaymentsReady,
+  ]);
+  const [alreadyPaid, setAlreadyPaid] = useState(false);
   const [sheetNotice, setSheetNotice] = useState<string | null>(null);
   const payInFlightRef = useRef(false);
 
@@ -85,20 +105,20 @@ export const PaymentCheckoutSheet = ({
     payInFlightRef.current = false;
     if (!isReportUnlockProduct(product)) return;
     let cancelled = false;
-    void confirmReportAccessForSession(sessionId, payerEmail, serverPaymentsReady).then((ok) => {
+    void checkProductAlreadyPaid().then((ok) => {
       if (!cancelled) setAlreadyPaid(ok);
     });
     return () => {
       cancelled = true;
     };
-  }, [open, product, sessionId, serverPaymentsReady, payerEmail]);
+  }, [open, product, checkProductAlreadyPaid]);
 
   useEffect(() => {
     if (!open || !awaitingReturn || !isReportUnlockProduct(product)) return;
     let cancelled = false;
     const check = async () => {
       if (cancelled) return;
-      if (isReportPaidUnlocked(sessionId, serverPaymentsReady)) {
+      if (await checkProductAlreadyPaid()) {
         onPaid(sessionId);
         onClose();
         return;
@@ -123,27 +143,23 @@ export const PaymentCheckoutSheet = ({
     payerEmail,
     onPaid,
     onClose,
+    checkProductAlreadyPaid,
   ]);
 
   useEffect(() => {
     if (!open || !isReportUnlockProduct(product)) return;
     const onVis = () => {
       if (document.visibilityState !== 'visible') return;
-      if (isReportPaidUnlocked(sessionId, serverPaymentsReady)) {
-        onPaid(sessionId);
-        onClose();
-        return;
-      }
-      void verifyReportPaymentOnServer(sessionId, payerEmail).then((r) => {
-        if (r.ok) {
-          onPaid(r.sessionId);
+      void checkProductAlreadyPaid().then((ok) => {
+        if (ok) {
+          onPaid(sessionId);
           onClose();
         }
       });
     };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
-  }, [open, product, sessionId, serverPaymentsReady, onPaid, onClose, payerEmail]);
+  }, [open, product, onPaid, onClose, checkProductAlreadyPaid, sessionId]);
 
   if (!open) return null;
 
@@ -156,11 +172,7 @@ export const PaymentCheckoutSheet = ({
   const handlePay = async () => {
     if (payBusy || payInFlightRef.current) return;
     if (isReportUnlockProduct(product)) {
-      const confirmed = await confirmReportAccessForSession(
-        sessionId,
-        payerEmail,
-        serverPaymentsReady,
-      );
+      const confirmed = await checkProductAlreadyPaid();
       if (confirmed) {
         onPaid(sessionId);
         onClose();
@@ -265,9 +277,11 @@ export const PaymentCheckoutSheet = ({
               >
                 {reportAlreadyPaidHelp
                   ? 'я уже оплатил(а)'
-                  : alreadyPaid && isReportUnlockProduct(product)
+                  : alreadyPaid && isOneTimeReport
                     ? 'Доступ уже есть'
-                    : meta.title}
+                    : alreadyPaid && isSubscriptionCheckout
+                      ? 'Подписка уже активна'
+                      : meta.title}
               </h2>
             </div>
             <button
@@ -303,7 +317,7 @@ export const PaymentCheckoutSheet = ({
               </p>
               <p className="text-[11px] leading-snug text-white/50">{meta.alreadyPaidHelpNote}</p>
             </div>
-          ) : alreadyPaid && isReportUnlockProduct(product) ? (
+          ) : alreadyPaid && isOneTimeReport ? (
             <div className="mt-4 space-y-4">
               <p className="calm-body text-sm text-emerald-100/95">
                 Оплата учтена. Откройте расширенный отчёт.
@@ -318,6 +332,23 @@ export const PaymentCheckoutSheet = ({
                 }}
               >
                 Открыть расширенный отчёт
+              </Button>
+            </div>
+          ) : alreadyPaid && isSubscriptionCheckout ? (
+            <div className="mt-4 space-y-4">
+              <p className="calm-body text-sm text-emerald-100/95">
+                Подписка уже активна на ваш email. Можно продолжить в личный кабинет.
+              </p>
+              <Button
+                type="button"
+                variant="sell"
+                className={REPORT_TARIFF_PAYMENT_BUTTON_CLASS}
+                onClick={() => {
+                  onPaid(sessionId);
+                  onClose();
+                }}
+              >
+                Продолжить
               </Button>
             </div>
           ) : (
@@ -374,7 +405,7 @@ export const PaymentCheckoutSheet = ({
               Назад
             </Button>
           </div>
-        ) : !alreadyPaid || !isReportUnlockProduct(product) ? (
+        ) : !alreadyPaid ? (
           <div className="relative z-20 shrink-0 space-y-3 border-t border-white/10 px-5 py-4 sm:px-6">
             {sheetNotice ? (
               <p className="text-center text-xs leading-relaxed text-amber-200/95">{sheetNotice}</p>

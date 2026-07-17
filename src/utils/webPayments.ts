@@ -101,6 +101,24 @@ export async function confirmWebReportAccess(
   return false;
 }
 
+/** Подписка активна на сервере для этого email (разовый отчёт ≠ подписка). */
+export async function confirmWebSubscriptionAccess(
+  sessionId: string,
+  product: 'subscription_1m' | 'subscription_3m',
+  payerEmail?: string,
+  serverPaymentsReady = false,
+): Promise<boolean> {
+  if (isDevPaymentBypass()) return true;
+  if (!arePaymentsActive(serverPaymentsReady)) return true;
+  if (!payerEmail?.includes('@')) return false;
+
+  const synced = await syncSubscriptionAccessFromServer(payerEmail);
+  if (synced) return true;
+
+  const verified = await verifyWebProductPayment(sessionId, product, payerEmail);
+  return verified.ok;
+}
+
 export async function openWebPayment(
   product: TelegramInvoiceProduct,
   sessionId: string,
