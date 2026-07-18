@@ -365,6 +365,10 @@
       $('updatedAt').textContent = at
         ? 'Период: ' + pl + startHint + ' · обновлено ' + at.toLocaleString('ru-RU', { timeZone: data.timezone || 'Europe/Moscow' }) + ' (МСК)'
         : 'Период: ' + pl;
+      if (window.__lastReconcile && window.__lastReconcile.fulfilled) {
+        $('updatedAt').textContent +=
+          ' · подтянуто из Робокассы: ' + window.__lastReconcile.fulfilled;
+      }
     }
 
     async function loadDashboard(token) {
@@ -377,6 +381,7 @@
         throw new Error(json.hint ? String(json.hint) : 'Ошибка загрузки (' + res.status + ')');
       }
       if (!json.ok) throw new Error(json.hint || json.error || 'Ошибка');
+      window.__lastReconcile = json.reconcile || null;
       render(json.data);
     }
 

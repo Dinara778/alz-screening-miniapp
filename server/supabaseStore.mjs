@@ -381,28 +381,26 @@ export async function recordPayment(
   if (extId) {
     const { data: existing, error: existingError } = await supabase
       .from('payments')
-      .select('id, amount, type, product')
+      .select('id, amount, type, product, status')
       .eq('external_id', extId)
       .maybeSingle();
     if (existingError) {
       console.error('[supabase] find payment by external_id', existingError.message);
     } else if (existing?.id) {
-      // Повторный Result/Success URL: подтянуть сумму/тип/продукт, если раньше записали криво.
-      const patch = {};
+      // Повторный Result/Success URL / reconcile: подтянуть сумму/тип/продукт/статус.
+      const patch = { status: status || 'paid' };
       const prev = Number(existing.amount);
       if (!Number.isFinite(prev) || prev <= 0 || prev !== resolvedAmount) {
         patch.amount = resolvedAmount;
       }
       if (type && existing.type !== type) patch.type = type;
       if (product && existing.product !== product) patch.product = String(product);
-      if (Object.keys(patch).length) {
-        const { error: updErr } = await supabase
-          .from('payments')
-          .update(patch)
-          .eq('id', existing.id);
-        if (updErr) console.error('[supabase] update payment', updErr.message);
-        else console.info('[supabase] payment refreshed', existing.id, patch);
-      }
+      const { error: updErr } = await supabase
+        .from('payments')
+        .update(patch)
+        .eq('id', existing.id);
+      if (updErr) console.error('[supabase] update payment', updErr.message);
+      else console.info('[supabase] payment refreshed', existing.id, patch);
       return existing;
     }
   }
@@ -461,6 +459,110 @@ export async function recordPayment(
   }
   console.info('[supabase] payment recorded', data.id, product, resolvedAmount);
   return data;
+}
+
+/** Счёт выставлен — сразу в payments (pending), чтобы дашборд мог сверить с Робокассой. */
+export async function registerPendingPayment(
+  {
+    email,
+    sessionId,
+    product,
+    amountRub,
+    type = 'one_time',
+    externalId,
+  },
+  env = process.env,
+) {
+  const supabase = getClient(env);
+  if (!supabase) return null;
+  const extId = externalId ? String(externalId) : null;
+  if (!extId) return null;
+
+  const resolvedAmount = resolveAmountRub(amountRub, product);
+  if (resolvedAmount == null) return null;
+
+  const { data: existing } = await supabase
+    .from('payments')
+    .select('id, status')
+    .eq('external_id', extId)
+    .maybeSingle();
+  if (existing?.id) return existing;
+
+  let userId = null;
+  if (email) {
+    const user = await upsertUserByEmail(email, env);
+    userId = user?.id ?? null;
+  }
+  if (!userId) {
+    const fallback = `robokassa+${extId}@payments.corta.local`;
+    const user = await upsertUserByEmail(fallback, env);
+    userId = user?.id ?? null;
+  }
+  if (!userId) return null;
+
+  const { data, error } = await supabase
+    .from('payments')
+    .insert({
+      user_id: userId,
+      type,
+      amount: resolvedAmount,
+      status: 'pending',
+      product: product ?? null,
+      session_id: sessionId ? String(sessionId) : null,
+      external_id: extId,
+    })
+    .select('id, status')
+    .single();
+
+  if (error) {
+    if (/duplicate|unique|23505/i.test(error.message)) {
+      const { data: raced } = await supabase
+        .from('payments')
+        .select('id, status')
+        .eq('external_id', extId)
+        .maybeSingle();
+      return raced;
+    }
+    console.error('[supabase] insert pending payment', error.message);
+    return null;
+  }
+  console.info('[supabase] pending payment', data.id, product, extId);
+  return data;
+}
+
+/** Кандидаты на сверку: pending + недавние unpaid по external_id. */
+export async function listPaymentsForRobokassaReconcile(env = process.env) {
+  const supabase = getClient(env);
+  if (!supabase) return [];
+  const since = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from('payments')
+    .select('id, external_id, session_id, product, amount, type, status, created_at')
+    .not('external_id', 'is', null)
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (error) {
+    console.error('[supabase] list payments reconcile', error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function findPaidExternalIds(externalIds, env = process.env) {
+  const supabase = getClient(env);
+  if (!supabase || !externalIds?.length) return new Set();
+  const ids = [...new Set(externalIds.map((x) => String(x)))].slice(0, 200);
+  const { data, error } = await supabase
+    .from('payments')
+    .select('external_id')
+    .in('external_id', ids)
+    .eq('status', 'paid');
+  if (error) {
+    console.error('[supabase] find paid external ids', error.message);
+    return new Set();
+  }
+  return new Set((data ?? []).map((r) => String(r.external_id)));
 }
 
 function formatDateOnly(date) {

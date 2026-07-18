@@ -198,6 +198,23 @@ export function robokassaGetOrder(invId) {
   return ordersByInvId.get(String(invId)) ?? null;
 }
 
+/** Все локальные счета (для авто-сверки с OpState). */
+export function listRobokassaOrders() {
+  return [...ordersByInvId.values()];
+}
+
+/** Недавние InvId для OpState-probe (unix-счётчик счетов). */
+export function listRecentRobokassaInvIdProbes(limit = 100) {
+  const ids = [...ordersByInvId.keys()].map(Number).filter((n) => Number.isFinite(n) && n > 0);
+  const max = Math.max(nextInvId - 1, Math.floor(Date.now() / 1000), ...ids, 0);
+  const out = [];
+  for (let i = 0; i < limit; i += 1) {
+    const id = max - i;
+    if (id > 1_700_000_000) out.push(String(id));
+  }
+  return out;
+}
+
 function robokassaPublicBaseUrl(env = process.env) {
   const raw = envStr(env, 'PAYMENTS_PUBLIC_BASE_URL') || 'https://cortaapp.ru';
   const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;

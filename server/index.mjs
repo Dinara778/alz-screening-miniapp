@@ -79,6 +79,7 @@ import {
   getPublicSupabaseConfig,
   isSupabaseConfigured,
   recordPayment,
+  registerPendingPayment,
   findPaidProductPayment,
   reassignPaidPaymentSession,
   upsertAssessment,
@@ -88,6 +89,8 @@ import {
   isSubscriptionProduct,
   subscriptionDaysForProduct,
 } from './supabaseStore.mjs';
+import { paymentTypeForProduct } from './paymentCatalog.mjs';
+import { reconcileRobokassaPayments } from './paymentReconcile.mjs';
 import {
   findLatestTelegramPaidForUser,
   isTelegramPaidForUser,
@@ -95,6 +98,18 @@ import {
   parseInvoicePayload,
 } from './telegramPaidStore.mjs';
 import { createResolveWebPaymentRecovery } from './paymentRecovery.mjs';
+
+function persistRobokassaInvoice(order, product) {
+  if (!order?.invId) return;
+  void registerPendingPayment({
+    email: order.email,
+    sessionId: order.sessionId,
+    product,
+    amountRub: order.amountRub,
+    type: paymentTypeForProduct(product),
+    externalId: String(order.invId),
+  }).catch((e) => console.error('[supabase] pending payment', e));
+}
 
 function normalizeBotToken(raw) {
   const t = String(raw ?? '').trim();
@@ -932,6 +947,7 @@ app.post('/invoice', async (req, res) => {
         amountRub: spec.priceRub,
         email: payerEmail,
       });
+      persistRobokassaInvoice(order, product);
       const paymentUrl = buildRobokassaPaymentUrl({
         invId: order.invId,
         amountRub: spec.priceRub,
@@ -1003,6 +1019,7 @@ app.post('/invoice-web', async (req, res) => {
       amountRub: spec.priceRub,
       email: payerEmail,
     });
+    persistRobokassaInvoice(order, product);
     const paymentUrl = buildRobokassaPaymentUrl({
       invId: order.invId,
       amountRub: spec.priceRub,
@@ -1417,6 +1434,8 @@ app.get('/api/admin/dashboard', async (req, res) => {
     if (!verifyAdminPassword(password)) {
       return res.status(401).json({ ok: false, error: 'unauthorized' });
     }
+    // Перед метриками — подтянуть оплаченные в Робокассе, но ещё не в Supabase.
+    const reconcile = await reconcileRobokassaPayments({ fulfillPaidOrder });
     const data = await getDashboardStats(parseDashboardPeriod(req.query.period));
     if (!data) {
       return res.status(500).json({
@@ -1425,7 +1444,7 @@ app.get('/api/admin/dashboard', async (req, res) => {
         hint: 'Проверьте Supabase: таблицы users, funnel_sessions, assessments, payments',
       });
     }
-    return res.json({ ok: true, data });
+    return res.json({ ok: true, data, reconcile });
   } catch (e) {
     console.error('[api/admin/dashboard]', e);
     return res.status(500).json({ ok: false, error: 'server_error' });
@@ -1874,4 +1893,15 @@ app.listen(PORT, () => {
   } else {
     console.warn('[bot] TELEGRAM_BOT_TOKEN не задан — /start не будет отвечать');
   }
+
+  // Фоновая сверка Робокасса → Supabase (дашборд без ручного дописывания).
+  const runReconcile = () => {
+    void reconcileRobokassaPayments({ fulfillPaidOrder })
+      .then((r) => {
+        if (r?.fulfilled) console.info('[reconcile] auto', r);
+      })
+      .catch((e) => console.error('[reconcile] auto', e));
+  };
+  setTimeout(runReconcile, 8000);
+  setInterval(runReconcile, 3 * 60 * 1000);
 });
