@@ -119,7 +119,6 @@
     .hidden { display: none !important; }
     .login button { width: 100%; }
     #importBtn { width: 100%; margin-top: 8px; }
-    #repairAmountsBtn { width: 100%; margin-top: 8px; font-size: .9rem; }
   </style>
 </head>
 <body>
@@ -188,29 +187,12 @@
           <span class="metric-label">Последняя оплата в базе</span>
           <span class="metric-value" id="payLatest" style="font-size:1rem">—</span>
         </div>
-        <button id="repairAmountsBtn" type="button" style="margin-top:12px">
-          Выровнять суммы по тарифам
-        </button>
-        <p class="note" style="margin-top:8px;margin-bottom:0">
-          Ставит 149 / 499 / 990 ₽ по продукту, если в базе другая или пустая сумма.
-        </p>
-        <div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)">
-          <p class="note" style="margin:0 0 8px">Дозаписать оплату (если нет в дашборде, но есть в Робокассе):</p>
-          <input id="manualEmail" type="email" placeholder="email покупателя" style="width:100%;margin-bottom:6px" />
-          <select id="manualProduct" style="width:100%;margin-bottom:6px">
-            <option value="subscription_1m">Подписка 1 мес — 499 ₽</option>
-            <option value="subscription_3m">Подписка 3 мес — 990 ₽</option>
-            <option value="full_report">Разовый отчёт — 149 ₽</option>
-          </select>
-          <input id="manualInvId" type="text" placeholder="InvId Робокассы (необязательно)" style="width:100%;margin-bottom:6px" />
-          <button id="manualPayBtn" type="button">Дозаписать оплату</button>
-        </div>
       </section>
     </div>
 
     <section style="margin-bottom:16px">
       <h2>Оплаты за период</h2>
-      <p class="note" style="margin-top:0">Разбивка из Supabase — сверьте с кабинетом Робокассы.</p>
+      <p class="note" style="margin-top:0">Подтягиваются автоматически из Робокассы при обновлении дашборда.</p>
       <div id="payRecent" class="note">—</div>
     </section>
 
@@ -463,64 +445,6 @@
     $('importBtn').addEventListener('click', () => {
       const token = sessionStorage.getItem(STORAGE_KEY);
       if (token) void importCsv(token);
-    });
-
-    $('repairAmountsBtn').addEventListener('click', () => {
-      const token = sessionStorage.getItem(STORAGE_KEY);
-      if (!token) return;
-      if (!confirm('Выровнять суммы всех оплат в базе по тарифам 149 / 499 / 990 / 5490 ₽?')) return;
-      void (async () => {
-        $('repairAmountsBtn').disabled = true;
-        try {
-          const res = await fetch('/api/admin/repair-payment-amounts', {
-            method: 'POST',
-            headers: { Authorization: 'Bearer ' + token },
-          });
-          const json = await res.json().catch(() => ({}));
-          if (!res.ok || !json.ok) throw new Error(json.error || 'Ошибка');
-          alert('Обновлено строк: ' + (json.updated ?? 0) + ' из ' + (json.checked ?? 0));
-          await loadDashboard(token);
-        } catch (e) {
-          alert(e.message || 'Ошибка');
-        } finally {
-          $('repairAmountsBtn').disabled = false;
-        }
-      })();
-    });
-
-    $('manualPayBtn').addEventListener('click', () => {
-      const token = sessionStorage.getItem(STORAGE_KEY);
-      if (!token) return;
-      const email = $('manualEmail').value.trim();
-      const product = $('manualProduct').value;
-      const invId = $('manualInvId').value.trim();
-      if (!email || !email.includes('@')) {
-        alert('Укажите email покупателя');
-        return;
-      }
-      void (async () => {
-        $('manualPayBtn').disabled = true;
-        try {
-          const res = await fetch('/api/admin/record-payment', {
-            method: 'POST',
-            headers: {
-              Authorization: 'Bearer ' + token,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email, product, invId: invId || undefined }),
-          });
-          const json = await res.json().catch(() => ({}));
-          if (!res.ok || !json.ok) throw new Error(json.error || 'Ошибка');
-          alert('Оплата записана: ' + json.product + ' · ' + json.amountRub + ' ₽');
-          $('manualEmail').value = '';
-          $('manualInvId').value = '';
-          await loadDashboard(token);
-        } catch (e) {
-          alert(e.message || 'Ошибка');
-        } finally {
-          $('manualPayBtn').disabled = false;
-        }
-      })();
     });
 
     document.querySelectorAll('#periods button').forEach((btn) => {
