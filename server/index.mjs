@@ -60,6 +60,7 @@ import {
   getDashboardStats,
   isAdminDashboardConfigured,
   parseDashboardPeriod,
+  repairPaymentAmountsFromCatalog,
   verifyAdminPassword,
 } from './dashboardStore.mjs';
 import { importSheetsCsvText } from './sheetsCsvImport.mjs';
@@ -309,12 +310,17 @@ function confirmRobokassaSuccessReturn({ invId, outSum, signatureValue, shp, ord
         email: String(shp.Shp_email ?? ''),
       };
   if (!resolved?.sessionId) return null;
+  const outSumRub = Number(outSum);
+  const paidAmountRub =
+    Number.isFinite(outSumRub) && outSumRub > 0
+      ? Number(outSumRub.toFixed(2))
+      : resolved.amountRub;
   if (Number(outSum).toFixed(2) !== Number(resolved.amountRub).toFixed(2)) return null;
 
   void fulfillPaidOrder({
     sessionId: resolved.sessionId,
     product: resolved.product,
-    amountRub: resolved.amountRub,
+    amountRub: paidAmountRub,
     invId,
     email: resolved.email,
   });
@@ -1099,10 +1105,12 @@ app.all('/robokassa/result', async (req, res) => {
       return res.status(400).send('bad signature');
     }
     const invId = String(body.InvId ?? body.inv_id ?? '');
+    const outSumRaw = body.OutSum ?? body.out_summ;
+    const outSumRub = Number(outSumRaw);
     let order = robokassaGetOrder(invId);
     const shpFromBody = extractRobokassaShp(body);
     if (!order) {
-      const outSum = String(body.OutSum ?? body.out_summ ?? '');
+      const outSum = String(outSumRaw ?? '');
       const shp = shpFromBody;
       const resolved = resolveRobokassaPaidFromShp(outSum, shp);
       if (!resolved) {
@@ -1117,6 +1125,8 @@ app.all('/robokassa/result', async (req, res) => {
         email: String(shp.Shp_email ?? ''),
       };
     }
+    const paidAmountRub =
+      Number.isFinite(outSumRub) && outSumRub > 0 ? Number(outSumRub.toFixed(2)) : order.amountRub;
     markWebPaid({
       sessionId: order.sessionId,
       product: isReportUnlockProduct(order.product) ? 'full_report' : order.product,
@@ -1125,7 +1135,7 @@ app.all('/robokassa/result', async (req, res) => {
     void fulfillPaidOrder({
       sessionId: order.sessionId,
       product: order.product,
-      amountRub: order.amountRub,
+      amountRub: paidAmountRub,
       invId: order.invId,
       email: order.email || shpFromBody.Shp_email,
     }).catch((e) => console.error('[robokassa/result] supabase fulfill', e));
@@ -1411,6 +1421,24 @@ app.get('/api/admin/dashboard', async (req, res) => {
     return res.json({ ok: true, data });
   } catch (e) {
     console.error('[api/admin/dashboard]', e);
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
+/** Выровнять amount в payments по актуальным тарифам (149 / 499 / 990 / 5490). */
+app.post('/api/admin/repair-payment-amounts', async (req, res) => {
+  try {
+    if (!isAdminDashboardConfigured()) {
+      return res.status(503).json({ ok: false, error: 'admin_not_configured' });
+    }
+    const password = extractAdminPassword(req);
+    if (!verifyAdminPassword(password)) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' });
+    }
+    const result = await repairPaymentAmountsFromCatalog();
+    return res.json({ ok: true, ...result });
+  } catch (e) {
+    console.error('[api/admin/repair-payment-amounts]', e);
     return res.status(500).json({ ok: false, error: 'server_error' });
   }
 });

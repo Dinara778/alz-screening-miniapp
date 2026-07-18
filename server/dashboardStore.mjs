@@ -3,6 +3,7 @@
  * Все периоды (сегодня / 7д / 30д / всё) считаются одним путём — прямыми запросами с фильтром даты.
  */
 import { getClient, isSupabaseConfigured } from './supabaseStore.mjs';
+import { catalogPriceRub, resolveAmountRub } from './paymentCatalog.mjs';
 
 export function isAdminDashboardConfigured(env = process.env) {
   return Boolean(isSupabaseConfigured(env) && env.ADMIN_DASHBOARD_PASSWORD?.trim());
@@ -116,6 +117,10 @@ function isPaidPurchase(row) {
   return row?.status === 'paid' && (row.type === 'one_time' || row.type === 'subscription');
 }
 
+function paymentAmountRub(row) {
+  return resolveAmountRub(row?.amount, row?.product) ?? 0;
+}
+
 function buildDashboardPayload({
   period,
   usersNewInPeriod,
@@ -142,17 +147,27 @@ function buildDashboardPayload({
   let subscriptionRub = 0;
   let oneTimeCount = 0;
   let subscriptionCount = 0;
+  const recentPayments = [];
   for (const p of payments ?? []) {
-    const amount = Number(p.amount);
+    const amount = paymentAmountRub(p);
     if (p.type === 'one_time') {
       oneTimeCount += 1;
-      if (Number.isFinite(amount)) oneTimeRub += amount;
+      oneTimeRub += amount;
     }
     if (p.type === 'subscription') {
       subscriptionCount += 1;
-      if (Number.isFinite(amount)) subscriptionRub += amount;
+      subscriptionRub += amount;
     }
+    recentPayments.push({
+      product: p.product ?? null,
+      type: p.type,
+      amount,
+      amountRaw: Number(p.amount),
+      createdAt: p.created_at ?? null,
+      externalId: p.external_id ?? null,
+    });
   }
+  recentPayments.sort((a, b) => new Date(b.createdAt ?? 0) - new Date(a.createdAt ?? 0));
 
   return {
     generatedAt: new Date().toISOString(),
@@ -167,6 +182,7 @@ function buildDashboardPayload({
     revenue: {
       oneTimeRub,
       subscriptionRub,
+      totalRub: oneTimeRub + subscriptionRub,
     },
     payments: {
       inPeriod: oneTimeCount + subscriptionCount,
@@ -174,6 +190,7 @@ function buildDashboardPayload({
       subscription: subscriptionCount,
       totalInDb: paymentsTotalInDb,
       latestInDb: debug?.latestPaymentAt ?? null,
+      recent: recentPayments.slice(0, 30),
     },
     assessments: {
       inPeriod: testsInPeriod,
@@ -222,7 +239,7 @@ async function fetchDashboardStatsDirect(supabase, period = 'today') {
 
   const [usersRes, paymentsRes, assessmentsRes, funnelRows] = await Promise.all([
     supabase.from('users').select('id, created_at'),
-    supabase.from('payments').select('user_id, type, product, amount, created_at, status').eq('status', 'paid'),
+    supabase.from('payments').select('user_id, type, product, amount, created_at, status, external_id').eq('status', 'paid'),
     supabase.from('assessments').select('user_id, created_at'),
     fetchTableRows(supabase, 'funnel_sessions', 'user_id, created_at'),
   ]);
@@ -286,6 +303,42 @@ export async function getDashboardStats(period = 'today', env = process.env) {
   if (!supabase) return null;
   // Один путь для всех периодов — иначе «сегодня» (RPC) расходился с Supabase и с 7д/30д.
   return fetchDashboardStatsDirect(supabase, period);
+}
+
+/**
+ * Подтянуть суммы в payments по каталогу тарифов (если amount пустой/0 или не совпадает с тарифом).
+ * Возвращает число обновлённых строк.
+ */
+export async function repairPaymentAmountsFromCatalog(env = process.env) {
+  const supabase = getClient(env);
+  if (!supabase) return { updated: 0, checked: 0 };
+
+  const { data, error } = await supabase
+    .from('payments')
+    .select('id, product, amount, type')
+    .eq('status', 'paid');
+  if (error) {
+    console.error('[supabase] repair payments', error.message);
+    return { updated: 0, checked: 0, error: error.message };
+  }
+
+  let updated = 0;
+  for (const row of data ?? []) {
+    const catalog = catalogPriceRub(row.product);
+    if (catalog == null) continue;
+    const current = Number(row.amount);
+    if (Number.isFinite(current) && current === catalog) continue;
+    const { error: updErr } = await supabase
+      .from('payments')
+      .update({ amount: catalog })
+      .eq('id', row.id);
+    if (updErr) {
+      console.error('[supabase] repair payment row', row.id, updErr.message);
+      continue;
+    }
+    updated += 1;
+  }
+  return { updated, checked: data?.length ?? 0 };
 }
 
 export function getAdminDashboardHealthInfo(env = process.env) {

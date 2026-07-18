@@ -119,6 +119,7 @@
     .hidden { display: none !important; }
     .login button { width: 100%; }
     #importBtn { width: 100%; margin-top: 8px; }
+    #repairAmountsBtn { width: 100%; margin-top: 8px; font-size: .9rem; }
   </style>
 </head>
 <body>
@@ -172,6 +173,10 @@
           <span class="metric-value" id="revSub">—</span>
         </div>
         <div class="metric">
+          <span class="metric-label">Всего доход за период</span>
+          <span class="metric-value" id="revTotal">—</span>
+        </div>
+        <div class="metric">
           <span class="metric-label">Оплат за период</span>
           <span class="metric-value" id="payInPeriod">—</span>
         </div>
@@ -183,8 +188,20 @@
           <span class="metric-label">Последняя оплата в базе</span>
           <span class="metric-value" id="payLatest" style="font-size:1rem">—</span>
         </div>
+        <button id="repairAmountsBtn" type="button" style="margin-top:12px">
+          Выровнять суммы по тарифам
+        </button>
+        <p class="note" style="margin-top:8px;margin-bottom:0">
+          Ставит 149 / 499 / 990 ₽ по продукту, если в базе другая или пустая сумма.
+        </p>
       </section>
     </div>
+
+    <section style="margin-bottom:16px">
+      <h2>Оплаты за период</h2>
+      <p class="note" style="margin-top:0">Разбивка из Supabase — сверьте с кабинетом Робокассы.</p>
+      <div id="payRecent" class="note">—</div>
+    </section>
 
     <section style="margin-bottom:16px">
       <h2>Конверсии</h2>
@@ -284,6 +301,10 @@
       $('usersTotal').textContent = data?.users?.total ?? '—';
       $('revOneTime').textContent = fmtRub(data?.revenue?.oneTimeRub);
       $('revSub').textContent = fmtRub(data?.revenue?.subscriptionRub);
+      $('revTotal').textContent = fmtRub(
+        data?.revenue?.totalRub ??
+          (Number(data?.revenue?.oneTimeRub) || 0) + (Number(data?.revenue?.subscriptionRub) || 0),
+      );
       const payIn = data?.payments?.inPeriod;
       const payOne = data?.payments?.oneTime;
       const paySub = data?.payments?.subscription;
@@ -296,6 +317,25 @@
       $('payLatest').textContent = latest
         ? new Date(latest).toLocaleString('ru-RU', { timeZone: data.timezone || 'Europe/Moscow' })
         : 'нет оплат';
+      const recent = data?.payments?.recent;
+      if (Array.isArray(recent) && recent.length) {
+        $('payRecent').innerHTML = recent
+          .map((p) => {
+            const when = p.createdAt
+              ? new Date(p.createdAt).toLocaleString('ru-RU', { timeZone: data.timezone || 'Europe/Moscow' })
+              : '—';
+            const prod = p.product || p.type || '—';
+            const amt = fmtRub(p.amount);
+            const raw =
+              Number.isFinite(Number(p.amountRaw)) && Number(p.amountRaw) !== Number(p.amount)
+                ? ` (в базе было ${fmtRub(p.amountRaw)})`
+                : '';
+            return `<div style="margin:6px 0">${when} · <strong>${prod}</strong> · ${amt}${raw}</div>`;
+          })
+          .join('');
+      } else {
+        $('payRecent').textContent = 'Нет оплат за выбранный период';
+      }
       $('convVisit').textContent = fmtPct(data?.conversions?.visitedToTest);
       $('convVisitDetail').textContent = fmtConvDetail(data?.conversions?.visitedToTest);
       $('convTest').textContent = fmtPct(data?.conversions?.testToPurchase);
@@ -407,6 +447,29 @@
     $('importBtn').addEventListener('click', () => {
       const token = sessionStorage.getItem(STORAGE_KEY);
       if (token) void importCsv(token);
+    });
+
+    $('repairAmountsBtn').addEventListener('click', () => {
+      const token = sessionStorage.getItem(STORAGE_KEY);
+      if (!token) return;
+      if (!confirm('Выровнять суммы всех оплат в базе по тарифам 149 / 499 / 990 / 5490 ₽?')) return;
+      void (async () => {
+        $('repairAmountsBtn').disabled = true;
+        try {
+          const res = await fetch('/api/admin/repair-payment-amounts', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + token },
+          });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok || !json.ok) throw new Error(json.error || 'Ошибка');
+          alert('Обновлено строк: ' + (json.updated ?? 0) + ' из ' + (json.checked ?? 0));
+          await loadDashboard(token);
+        } catch (e) {
+          alert(e.message || 'Ошибка');
+        } finally {
+          $('repairAmountsBtn').disabled = false;
+        }
+      })();
     });
 
     document.querySelectorAll('#periods button').forEach((btn) => {

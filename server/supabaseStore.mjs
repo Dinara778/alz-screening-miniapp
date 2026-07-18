@@ -4,6 +4,7 @@
 import { createClient } from '@supabase/supabase-js';
 import ws from 'ws';
 import { isWebPaidForSession } from './webPaidStore.mjs';
+import { resolveAmountRub } from './paymentCatalog.mjs';
 
 if (typeof globalThis.WebSocket === 'undefined') {
   globalThis.WebSocket = ws;
@@ -370,16 +371,32 @@ export async function recordPayment(
   const supabase = getClient(env);
   if (!supabase) return null;
 
+  const resolvedAmount = resolveAmountRub(amountRub, product);
+  if (resolvedAmount == null) {
+    console.warn('[supabase] recordPayment: no amount', { product, amountRub });
+    return null;
+  }
+
   const extId = externalId ? String(externalId) : null;
   if (extId) {
     const { data: existing, error: existingError } = await supabase
       .from('payments')
-      .select('id')
+      .select('id, amount')
       .eq('external_id', extId)
       .maybeSingle();
     if (existingError) {
       console.error('[supabase] find payment by external_id', existingError.message);
     } else if (existing?.id) {
+      // Повторный Result/Success URL: подтянуть фактическую сумму, если раньше записали 0/пусто/другое.
+      const prev = Number(existing.amount);
+      if (!Number.isFinite(prev) || prev <= 0 || prev !== resolvedAmount) {
+        const { error: updErr } = await supabase
+          .from('payments')
+          .update({ amount: resolvedAmount })
+          .eq('id', existing.id);
+        if (updErr) console.error('[supabase] update payment amount', updErr.message);
+        else console.info('[supabase] payment amount refreshed', existing.id, resolvedAmount);
+      }
       return existing;
     }
   }
@@ -392,6 +409,17 @@ export async function recordPayment(
   if (!userId && sessionId) {
     userId = await findUserIdBySessionId(sessionId, env);
   }
+  // Не теряем оплату в дашборде: заглушка-пользователь, если email/сессия ещё не в базе.
+  if (!userId) {
+    const fallbackEmail =
+      (email && String(email).includes('@') ? String(email).trim().toLowerCase() : null) ||
+      (extId ? `robokassa+${extId}@payments.corta.local` : null) ||
+      (sessionId ? `session+${String(sessionId).slice(0, 48)}@payments.corta.local` : null);
+    if (fallbackEmail) {
+      const user = await upsertUserByEmail(fallbackEmail, env);
+      userId = user?.id ?? null;
+    }
+  }
   if (!userId) {
     console.warn(
       '[supabase] recordPayment: user not found — платёж НЕ записан',
@@ -403,7 +431,7 @@ export async function recordPayment(
   const row = {
     user_id: userId,
     type,
-    amount: Number(amountRub),
+    amount: resolvedAmount,
     status,
     product: product ?? null,
     session_id: sessionId ? String(sessionId) : null,
@@ -425,7 +453,7 @@ export async function recordPayment(
     console.error('[supabase] insert payment', error.message);
     return null;
   }
-  console.info('[supabase] payment recorded', data.id, product, amountRub);
+  console.info('[supabase] payment recorded', data.id, product, resolvedAmount);
   return data;
 }
 

@@ -2,6 +2,7 @@
  * Разовый импорт из CSV (экспорт листа events из Google Sheets).
  */
 import { recordPayment, upsertAssessment, upsertFunnelSession, upsertUserByEmail } from './supabaseStore.mjs';
+import { paymentTypeForProduct, resolveAmountRub } from './paymentCatalog.mjs';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -189,14 +190,15 @@ export async function importSheetsCsvRows(rows, env = process.env) {
         sessionId
       ) {
         const extra = parseExtra(row.extra);
-        const amountRub = Number(extra?.amountRub ?? extra?.amount ?? 149);
+        const product = String(extra?.product ?? 'full_report');
+        const amountRub = resolveAmountRub(extra?.amountRub ?? extra?.amount, product) ?? 149;
         const saved = await recordPayment(
           {
             email,
             sessionId,
-            product: extra?.product ?? 'full_report',
-            amountRub: Number.isFinite(amountRub) ? amountRub : 149,
-            type: 'one_time',
+            product,
+            amountRub,
+            type: paymentTypeForProduct(product),
             status: 'paid',
             externalId: extra?.invId ?? extra?.externalId,
           },
