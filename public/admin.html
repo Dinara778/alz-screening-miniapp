@@ -194,6 +194,17 @@
         <p class="note" style="margin-top:8px;margin-bottom:0">
           Ставит 149 / 499 / 990 ₽ по продукту, если в базе другая или пустая сумма.
         </p>
+        <div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)">
+          <p class="note" style="margin:0 0 8px">Дозаписать оплату (если нет в дашборде, но есть в Робокассе):</p>
+          <input id="manualEmail" type="email" placeholder="email покупателя" style="width:100%;margin-bottom:6px" />
+          <select id="manualProduct" style="width:100%;margin-bottom:6px">
+            <option value="subscription_1m">Подписка 1 мес — 499 ₽</option>
+            <option value="subscription_3m">Подписка 3 мес — 990 ₽</option>
+            <option value="full_report">Разовый отчёт — 149 ₽</option>
+          </select>
+          <input id="manualInvId" type="text" placeholder="InvId Робокассы (необязательно)" style="width:100%;margin-bottom:6px" />
+          <button id="manualPayBtn" type="button">Дозаписать оплату</button>
+        </div>
       </section>
     </div>
 
@@ -468,6 +479,41 @@
           alert(e.message || 'Ошибка');
         } finally {
           $('repairAmountsBtn').disabled = false;
+        }
+      })();
+    });
+
+    $('manualPayBtn').addEventListener('click', () => {
+      const token = sessionStorage.getItem(STORAGE_KEY);
+      if (!token) return;
+      const email = $('manualEmail').value.trim();
+      const product = $('manualProduct').value;
+      const invId = $('manualInvId').value.trim();
+      if (!email || !email.includes('@')) {
+        alert('Укажите email покупателя');
+        return;
+      }
+      void (async () => {
+        $('manualPayBtn').disabled = true;
+        try {
+          const res = await fetch('/api/admin/record-payment', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + token,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, product, invId: invId || undefined }),
+          });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok || !json.ok) throw new Error(json.error || 'Ошибка');
+          alert('Оплата записана: ' + json.product + ' · ' + json.amountRub + ' ₽');
+          $('manualEmail').value = '';
+          $('manualInvId').value = '';
+          await loadDashboard(token);
+        } catch (e) {
+          alert(e.message || 'Ошибка');
+        } finally {
+          $('manualPayBtn').disabled = false;
         }
       })();
     });

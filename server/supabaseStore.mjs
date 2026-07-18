@@ -381,21 +381,27 @@ export async function recordPayment(
   if (extId) {
     const { data: existing, error: existingError } = await supabase
       .from('payments')
-      .select('id, amount')
+      .select('id, amount, type, product')
       .eq('external_id', extId)
       .maybeSingle();
     if (existingError) {
       console.error('[supabase] find payment by external_id', existingError.message);
     } else if (existing?.id) {
-      // Повторный Result/Success URL: подтянуть фактическую сумму, если раньше записали 0/пусто/другое.
+      // Повторный Result/Success URL: подтянуть сумму/тип/продукт, если раньше записали криво.
+      const patch = {};
       const prev = Number(existing.amount);
       if (!Number.isFinite(prev) || prev <= 0 || prev !== resolvedAmount) {
+        patch.amount = resolvedAmount;
+      }
+      if (type && existing.type !== type) patch.type = type;
+      if (product && existing.product !== product) patch.product = String(product);
+      if (Object.keys(patch).length) {
         const { error: updErr } = await supabase
           .from('payments')
-          .update({ amount: resolvedAmount })
+          .update(patch)
           .eq('id', existing.id);
-        if (updErr) console.error('[supabase] update payment amount', updErr.message);
-        else console.info('[supabase] payment amount refreshed', existing.id, resolvedAmount);
+        if (updErr) console.error('[supabase] update payment', updErr.message);
+        else console.info('[supabase] payment refreshed', existing.id, patch);
       }
       return existing;
     }

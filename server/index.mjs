@@ -182,12 +182,7 @@ async function fulfillPaidOrder({ sessionId, product, amountRub, invId, email })
 
     let subscriptionUntil = null;
     if (isSubscriptionProduct(prod)) {
-      const activated = await activateSubscription({
-        email: normalizedEmail,
-        product: prod,
-        days: subscriptionDaysForProduct(prod),
-      });
-      subscriptionUntil = activated?.endDate ?? null;
+      // Сначала платёж в дашборд — активация подписки не должна блокировать учёт денег.
       const saved = await recordPayment({
         sessionId: sid,
         product: prod,
@@ -205,6 +200,12 @@ async function fulfillPaidOrder({ sessionId, product, amountRub, invId, email })
           email: normalizedEmail,
         });
       }
+      const activated = await activateSubscription({
+        email: normalizedEmail,
+        product: prod,
+        days: subscriptionDaysForProduct(prod),
+      });
+      subscriptionUntil = activated?.endDate ?? null;
     } else if (prod === 'full_report') {
       const saved = await recordPayment({
         sessionId: sid,
@@ -293,7 +294,7 @@ function resolveRobokassaPaidFromShp(outSum, shp) {
   return { sessionId, product, amountRub: spec.priceRub };
 }
 
-function confirmRobokassaSuccessReturn({ invId, outSum, signatureValue, shp, order, source }) {
+async function confirmRobokassaSuccessReturn({ invId, outSum, signatureValue, shp, order, source }) {
   if (!outSum || !signatureValue || !isRobokassaConfigured(process.env)) return null;
   const sigBody = { OutSum: outSum, InvId: String(invId), SignatureValue: signatureValue, ...shp };
   if (!verifyRobokassaSuccessSignature(sigBody, process.env)) return null;
@@ -317,7 +318,7 @@ function confirmRobokassaSuccessReturn({ invId, outSum, signatureValue, shp, ord
       : resolved.amountRub;
   if (Number(outSum).toFixed(2) !== Number(resolved.amountRub).toFixed(2)) return null;
 
-  void fulfillPaidOrder({
+  await fulfillPaidOrder({
     sessionId: resolved.sessionId,
     product: resolved.product,
     amountRub: paidAmountRub,
@@ -1054,7 +1055,7 @@ app.post('/payment-recover-inv-web', async (req, res) => {
     const order = robokassaGetOrder(invId);
 
     if (outSum && signatureValue) {
-      const confirmed = confirmRobokassaSuccessReturn({
+      const confirmed = await confirmRobokassaSuccessReturn({
         invId,
         outSum,
         signatureValue,
@@ -1132,20 +1133,26 @@ app.all('/robokassa/result', async (req, res) => {
       product: isReportUnlockProduct(order.product) ? 'full_report' : order.product,
       invId: order.invId,
     });
-    void fulfillPaidOrder({
-      sessionId: order.sessionId,
-      product: order.product,
-      amountRub: paidAmountRub,
-      invId: order.invId,
-      email: order.email || shpFromBody.Shp_email,
-    }).catch((e) => console.error('[robokassa/result] supabase fulfill', e));
+    // Ждём запись в Supabase ДО OK — иначе Робокасса не повторит Result URL при сбое.
+    try {
+      await fulfillPaidOrder({
+        sessionId: order.sessionId,
+        product: order.product,
+        amountRub: paidAmountRub,
+        invId: order.invId,
+        email: order.email || shpFromBody.Shp_email,
+      });
+    } catch (e) {
+      console.error('[robokassa/result] supabase fulfill', e);
+      return res.status(500).send('fulfill_error');
+    }
     payAnalytics.trackPaidOnServer({
       sessionId: order.sessionId,
       product: order.product,
       tgUserId: null,
       payload: `robokassa:${invId}`,
     });
-    console.info('[robokassa/result] paid', invId, order.sessionId);
+    console.info('[robokassa/result] paid', invId, order.sessionId, order.product, paidAmountRub);
     return res.send(`OK${invId}`);
   } catch (e) {
     console.error('[robokassa/result]', e);
@@ -1439,6 +1446,46 @@ app.post('/api/admin/repair-payment-amounts', async (req, res) => {
     return res.json({ ok: true, ...result });
   } catch (e) {
     console.error('[api/admin/repair-payment-amounts]', e);
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
+/**
+ * Дозаписать оплату в Supabase вручную (если Result URL не донёс платёж).
+ * body: { email, product, invId?, sessionId?, amountRub? }
+ */
+app.post('/api/admin/record-payment', async (req, res) => {
+  try {
+    if (!isAdminDashboardConfigured()) {
+      return res.status(503).json({ ok: false, error: 'admin_not_configured' });
+    }
+    const password = extractAdminPassword(req);
+    if (!verifyAdminPassword(password)) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' });
+    }
+    const product = String(req.body?.product ?? '').trim();
+    const email = normalizeRecoverEmail(req.body?.email);
+    const invId = req.body?.invId != null ? String(req.body.invId).trim() : '';
+    const sessionId = String(req.body?.sessionId ?? `manual-${Date.now()}`).slice(0, 80);
+    const spec = PRODUCTS[product];
+    if (!spec) {
+      return res.status(400).json({ ok: false, error: 'unknown_product' });
+    }
+    if (!email) {
+      return res.status(400).json({ ok: false, error: 'email_required' });
+    }
+    const amountRub = Number(req.body?.amountRub);
+    const paid = Number.isFinite(amountRub) && amountRub > 0 ? amountRub : spec.priceRub;
+    await fulfillPaidOrder({
+      sessionId,
+      product,
+      amountRub: paid,
+      invId: invId || `manual-${Date.now()}`,
+      email,
+    });
+    return res.json({ ok: true, product, email, amountRub: paid, sessionId });
+  } catch (e) {
+    console.error('[api/admin/record-payment]', e);
     return res.status(500).json({ ok: false, error: 'server_error' });
   }
 });
