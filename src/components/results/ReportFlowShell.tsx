@@ -47,7 +47,12 @@ export const ReportFlowShell = ({
         {footer}
       </div>
     ) : null}
-    <SupportFooter showDeveloperCredit={false} accountEmail={accountEmail} />
+    <SupportFooter
+      showDeveloperCredit={false}
+      showCabinetAccess={false}
+      showSupportEmailHint={false}
+      accountEmail={accountEmail}
+    />
   </div>
   );
 };

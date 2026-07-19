@@ -5,7 +5,7 @@ import {
   PaidReportTemporalOverload,
   PaidReportTemporalRecommendations,
 } from './PaidReportTemporalBlocks';
-import { ReportFinishFooter, ReportTomorrowBanner, type ReportFinishMode } from './ReportFinishBlock';
+import { ReportFinishFooter, type ReportFinishMode } from './ReportFinishBlock';
 import { SupportFooter } from './SupportFooter';
 import { CalmScreen } from './results/CalmScreen';
 import { ReportFlowShell } from './results/ReportFlowShell';
@@ -308,9 +308,7 @@ export const FullReportContent = ({
         }
       >
         <div className="mx-auto w-full max-w-md space-y-5 pb-4">
-          {finishAfterLearned ? (
-            <ReportTomorrowBanner />
-          ) : (
+          {finishAfterLearned ? null : (
             <>
               <SketchHighlightTitle accent={accent}>Что вы узнали:</SketchHighlightTitle>
               <ul className="calm-inset list-none space-y-2.5 results-body">
@@ -365,7 +363,6 @@ export const FullReportContent = ({
         }
       >
         <div className="mx-auto w-full max-w-md space-y-4 pb-2">
-          {isLast && finishMode ? <ReportTomorrowBanner /> : null}
           <SketchHighlightTitle accent={accent}>{screen.title}</SketchHighlightTitle>
           <div className="calm-inset whitespace-pre-line results-body">{screen.body}</div>
         </div>

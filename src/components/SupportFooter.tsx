@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { CabinetAccessLink } from './CabinetAccessLink';
 import { SupportContactSheet } from './SupportContactSheet';
-import { SUPPORT_EMAIL } from '../constants/supportContact';
 
 export { TELEGRAM_SUPPORT_URL, SUPPORT_EMAIL } from '../constants/supportContact';
 
@@ -9,7 +8,7 @@ type Props = {
   showSupport?: boolean;
   showDeveloperCredit?: boolean;
   showCabinetAccess?: boolean;
-  /** Показывать «пишите на hello@…» рядом с кнопкой */
+  /** @deprecated подпись «пишите на…» больше не показывается */
   showSupportEmailHint?: boolean;
   /** Email анкеты / прохождения — не показывать чужой email из старой сессии кабинета */
   accountEmail?: string | null;
@@ -21,7 +20,6 @@ export const SupportFooter = ({
   showSupport = true,
   showDeveloperCredit = true,
   showCabinetAccess = true,
-  showSupportEmailHint = true,
   accountEmail = null,
   sessionId = null,
   screen = null,
@@ -47,12 +45,6 @@ export const SupportFooter = ({
             >
               Техподдержка
             </button>
-            {showSupportEmailHint ? (
-              <>
-                <span className="text-white/30"> · </span>
-                <span>пишите на {SUPPORT_EMAIL}</span>
-              </>
-            ) : null}
           </div>
         ) : null}
         {showDeveloperCredit ? (
