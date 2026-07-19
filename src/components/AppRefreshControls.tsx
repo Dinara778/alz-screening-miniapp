@@ -1,8 +1,8 @@
 import { useApp } from '../context/AppContext';
 import type { AppStage } from '../types';
 
-/** Экраны, где нужны перезагрузка и выход в начало (после теста / оплаты). */
-export const REFRESH_CONTROLS_STAGES = new Set<AppStage>(['full-report']);
+/** Экраны, где нужны перезагрузка и выход в начало (результат / отчёт / после теста). */
+export const REFRESH_CONTROLS_STAGES = new Set<AppStage>(['result', 'full-report']);
 
 const btnClass =
   'rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/85 transition hover:border-white/25 hover:bg-white/10 active:scale-[0.98]';

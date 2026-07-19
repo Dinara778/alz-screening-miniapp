@@ -96,8 +96,10 @@ export function getInitialAppStage(): AppStage {
   captureRobokassaSuccessFromUrl();
   purgeStalePostTestProgress();
   const paymentReturn = hasPaymentReturnInUrl() || hasPendingRobokassaReturn();
+  // Явный «Начать сначала» всегда побеждает висящий возврат оплаты (Instagram WebView).
+  if (isRestartBoot()) return 'corta-intro';
   if (shouldBootToResultAfterPaymentFail()) return 'result';
-  if (isRestartBoot() || isPageReload()) {
+  if (isPageReload()) {
     if (!paymentReturn) return 'corta-intro';
   }
   if (paymentReturn) return 'result';

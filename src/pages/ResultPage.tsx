@@ -447,6 +447,9 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
             <Button type="button" className={calmBtnClass} onClick={() => setStep('index-detail')}>
               Узнать, что это значит
             </Button>
+            <button type="button" className={calmBtnGhost} onClick={onRestart}>
+              На главную
+            </button>
           </>
         }
       >

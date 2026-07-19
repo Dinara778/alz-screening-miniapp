@@ -1,6 +1,11 @@
+import { clearRobokassaReturnSession } from './paymentReturn';
+
 const HARD_RELOAD_KEY = 'alz_hard_reload';
 const RESTART_KEY = 'alz_restart';
 const PROGRESS_KEY = 'alz_progress_v1';
+const PAYMENT_FAIL_NOTICE_KEY = 'alz_payment_fail_notice';
+const PAYMENT_FAIL_BOOT_KEY = 'alz_payment_fail_boot_result';
+const ROBOKASSA_PENDING_INV_LS_KEY = 'alz_robokassa_pending_inv';
 
 /** Убрать параметры возврата с оплаты из адреса (чтобы не зацикливать recovery). */
 export function stripPaymentQueryFromUrl(): void {
@@ -94,7 +99,11 @@ export function goToIntroFresh(): void {
   markRestartIntent();
   stripPaymentQueryFromUrl();
   clearTransientUiKeys();
+  clearRobokassaReturnSession();
   try {
+    sessionStorage.removeItem(PAYMENT_FAIL_NOTICE_KEY);
+    sessionStorage.removeItem(PAYMENT_FAIL_BOOT_KEY);
+    localStorage.removeItem(ROBOKASSA_PENDING_INV_LS_KEY);
     localStorage.removeItem(PROGRESS_KEY);
   } catch {
     /* ignore */
