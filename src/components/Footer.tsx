@@ -1,26 +1,37 @@
-import { TELEGRAM_SUPPORT_URL } from './SupportFooter';
+import { useState } from 'react';
+import { SupportContactSheet } from './SupportContactSheet';
+import { SUPPORT_EMAIL, SUPPORT_MAILTO } from '../constants/supportContact';
 
 type Props = { compact?: boolean };
 
 export const Footer = ({ compact = false }: Props) => {
+  const [supportOpen, setSupportOpen] = useState(false);
+
   if (compact) {
     return (
-      <footer className="calm-footer mt-0 space-y-1.5 px-1 py-1 text-left text-[0.6875rem] leading-snug">
-        <p className="text-white/45">
-          Данные обрабатываются в соответствии с политикой конфиденциальности.
-        </p>
-        <p className="text-white/55">
-          <a href="mailto:hello@bookvolon.ru" className="text-teal-300/90 underline underline-offset-2">
-            hello@bookvolon.ru
-          </a>
-          <span className="text-white/30"> · </span>
-          <a href={TELEGRAM_SUPPORT_URL} target="_blank" rel="noopener noreferrer">
-            Техподдержка
-          </a>
-          <span className="text-white/30"> · </span>
-          <span className="text-white/35">© {new Date().getFullYear()} Corta Lab</span>
-        </p>
-      </footer>
+      <>
+        <footer className="calm-footer mt-0 space-y-1.5 px-1 py-1 text-left text-[0.6875rem] leading-snug">
+          <p className="text-white/45">
+            Данные обрабатываются в соответствии с политикой конфиденциальности.
+          </p>
+          <p className="text-white/55">
+            <a href={SUPPORT_MAILTO} className="text-teal-300/90 underline underline-offset-2">
+              {SUPPORT_EMAIL}
+            </a>
+            <span className="text-white/30"> · </span>
+            <button
+              type="button"
+              className="text-teal-300/90 underline underline-offset-2"
+              onClick={() => setSupportOpen(true)}
+            >
+              Техподдержка
+            </button>
+            <span className="text-white/30"> · </span>
+            <span className="text-white/35">© {new Date().getFullYear()} Corta Lab</span>
+          </p>
+        </footer>
+        <SupportContactSheet open={supportOpen} onClose={() => setSupportOpen(false)} />
+      </>
     );
   }
 
@@ -40,10 +51,10 @@ export const Footer = ({ compact = false }: Props) => {
         <div className="mb-2 w-full">
           <div className="mb-0.5 font-medium text-white/60">📧 По вопросам</div>
           <a
-            href="mailto:hello@bookvolon.ru"
+            href={SUPPORT_MAILTO}
             className="text-teal-300/90 underline underline-offset-2 hover:text-teal-200"
           >
-            hello@bookvolon.ru
+            {SUPPORT_EMAIL}
           </a>
         </div>
         <div className="mb-2 w-full">
@@ -52,17 +63,22 @@ export const Footer = ({ compact = false }: Props) => {
           </a>
         </div>
         <div className="mb-2 w-full">
-          <a href={TELEGRAM_SUPPORT_URL} target="_blank" rel="noopener noreferrer">
+          <button
+            type="button"
+            className="text-teal-300/90 underline underline-offset-2 hover:text-teal-200"
+            onClick={() => setSupportOpen(true)}
+          >
             Техподдержка
-          </a>
+          </button>
           <span className="text-white/30"> · </span>
-          <span>Telegram</span>
+          <span>письмо на {SUPPORT_EMAIL}</span>
         </div>
         <p className="mb-2 w-full leading-relaxed text-white/45">
           © {new Date().getFullYear()} Разработано Corta Lab (ООО «Букволон ИТ Решения»)
         </p>
         <div className="text-white/35">Версия 1.0.0</div>
       </footer>
+      <SupportContactSheet open={supportOpen} onClose={() => setSupportOpen(false)} />
     </>
   );
 };

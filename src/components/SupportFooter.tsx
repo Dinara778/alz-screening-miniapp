@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { CabinetAccessLink } from './CabinetAccessLink';
+import { SupportContactSheet } from './SupportContactSheet';
+import { SUPPORT_EMAIL } from '../constants/supportContact';
 
-export const TELEGRAM_SUPPORT_URL = 'https://t.me/dinarareads';
+export { TELEGRAM_SUPPORT_URL, SUPPORT_EMAIL } from '../constants/supportContact';
 
 type Props = {
   showSupport?: boolean;
@@ -8,6 +11,8 @@ type Props = {
   showCabinetAccess?: boolean;
   /** Email анкеты / прохождения — не показывать чужой email из старой сессии кабинета */
   accountEmail?: string | null;
+  sessionId?: string | null;
+  screen?: string | null;
 };
 
 export const SupportFooter = ({
@@ -15,30 +20,47 @@ export const SupportFooter = ({
   showDeveloperCredit = true,
   showCabinetAccess = true,
   accountEmail = null,
+  sessionId = null,
+  screen = null,
 }: Props) => {
+  const [supportOpen, setSupportOpen] = useState(false);
+
   if (!showSupport && !showDeveloperCredit && !showCabinetAccess) return null;
 
   return (
-    <footer className="calm-footer">
-      {showCabinetAccess ? (
-        <div className={showSupport || showDeveloperCredit ? 'mb-3' : ''}>
-          <CabinetAccessLink variant="button" expectedEmail={accountEmail} />
-        </div>
-      ) : null}
-      {showSupport ? (
-        <div className={showDeveloperCredit ? 'mb-3' : ''}>
-          <a href={TELEGRAM_SUPPORT_URL} target="_blank" rel="noopener noreferrer">
-            Техподдержка
-          </a>
-          <span className="text-white/30"> · </span>
-          <span>Telegram</span>
-        </div>
-      ) : null}
-      {showDeveloperCredit ? (
-        <p className="text-xs leading-relaxed">
-          © {new Date().getFullYear()} Разработано Corta Lab (ООО «Букволон ИТ Решения»)
-        </p>
-      ) : null}
-    </footer>
+    <>
+      <footer className="calm-footer">
+        {showCabinetAccess ? (
+          <div className={showSupport || showDeveloperCredit ? 'mb-3' : ''}>
+            <CabinetAccessLink variant="button" expectedEmail={accountEmail} />
+          </div>
+        ) : null}
+        {showSupport ? (
+          <div className={showDeveloperCredit ? 'mb-3' : ''}>
+            <button
+              type="button"
+              className="font-medium text-teal-300/90 underline decoration-teal-400/40 underline-offset-2 hover:text-teal-200"
+              onClick={() => setSupportOpen(true)}
+            >
+              Техподдержка
+            </button>
+            <span className="text-white/30"> · </span>
+            <span>письмо на {SUPPORT_EMAIL}</span>
+          </div>
+        ) : null}
+        {showDeveloperCredit ? (
+          <p className="text-xs leading-relaxed">
+            © {new Date().getFullYear()} Разработано Corta Lab (ООО «Букволон ИТ Решения»)
+          </p>
+        ) : null}
+      </footer>
+      <SupportContactSheet
+        open={supportOpen}
+        onClose={() => setSupportOpen(false)}
+        initialEmail={accountEmail}
+        sessionId={sessionId}
+        screen={screen}
+      />
+    </>
   );
 };

@@ -428,9 +428,96 @@ async function tgApiForm(method, formData) {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const LEAD_TO_DEFAULT = 'hello@bookvolon.ru';
+const LEAD_TO_DEFAULT = 'hello@cortalab.ru';
+const SUPPORT_TO_DEFAULT = 'hello@cortalab.ru';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** @type {Map<string, number>} */
+const supportLeadLastSentAt = new Map();
+
+function createSmtpTransport() {
+  const host = process.env.SMTP_HOST?.trim();
+  const user = process.env.SMTP_USER?.trim();
+  const pass = process.env.SMTP_PASS?.trim();
+  const from = process.env.SMTP_FROM?.trim() || user;
+  if (!host || !user || !pass || !from) return null;
+
+  const port = Number(process.env.SMTP_PORT || 465);
+  const secureExplicit = process.env.SMTP_SECURE;
+  const secure =
+    secureExplicit === 'true' || (secureExplicit !== 'false' && port === 465);
+
+  return {
+    from,
+    transporter: nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass },
+    }),
+  };
+}
+
+async function sendConsultationEmail({ consultationEmail, sessionId, participant, tgUser }) {
+  const smtp = createSmtpTransport();
+  const to = (process.env.CONSULTATION_LEAD_TO || LEAD_TO_DEFAULT).trim();
+  if (!smtp) return false;
+
+  const subject = `Заявка на разбор: ${consultationEmail}`;
+  const lines = [
+    'Пользователь оставил заявку на разбор в мини-приложении.',
+    '',
+    `Email для связи: ${consultationEmail}`,
+    `ID сессии оценки: ${sessionId || '—'}`,
+  ];
+  if (tgUser?.id) {
+    lines.push(`Telegram: id ${tgUser.id}${tgUser.username ? `, @${tgUser.username}` : ''}`);
+  }
+  if (participant && Object.keys(participant).length) {
+    lines.push('', 'Анкета участника:', safeJson(participant, 1200));
+  }
+
+  await smtp.transporter.sendMail({
+    from: smtp.from,
+    to,
+    replyTo: consultationEmail,
+    subject: subject.slice(0, 200),
+    text: lines.join('\n'),
+  });
+  return true;
+}
+
+async function sendSupportEmail({ email, message, topic, sessionId, screen }) {
+  const smtp = createSmtpTransport();
+  const to = (process.env.SUPPORT_TO || process.env.CONSULTATION_LEAD_TO || SUPPORT_TO_DEFAULT).trim();
+  if (!smtp) return false;
+
+  const topicLabel = String(topic || 'общее').trim().slice(0, 80);
+  const subject = `Corta: обращение в поддержку (${topicLabel})`;
+  const lines = [
+    'Новое обращение в техподдержку из приложения Corta.',
+    '',
+    `От: ${email}`,
+    `Тема: ${topicLabel}`,
+    `Экран: ${screen || '—'}`,
+    `Сессия: ${sessionId || '—'}`,
+    '',
+    'Сообщение:',
+    String(message || '').trim(),
+    '',
+    'Ответьте на это письмо — ответ уйдёт пользователю (Reply-To).',
+  ];
+
+  await smtp.transporter.sendMail({
+    from: smtp.from,
+    to,
+    replyTo: email,
+    subject: subject.slice(0, 200),
+    text: lines.join('\n'),
+  });
+  return true;
+}
 
 function parseTgUser(initData) {
   try {
@@ -450,55 +537,6 @@ function safeJson(obj, maxLen = 1800) {
   } catch {
     return '';
   }
-}
-
-async function sendConsultationEmail({ consultationEmail, sessionId, participant, tgUser }) {
-  const host = process.env.SMTP_HOST?.trim();
-  const user = process.env.SMTP_USER?.trim();
-  const pass = process.env.SMTP_PASS?.trim();
-  const from = process.env.SMTP_FROM?.trim() || user;
-  const to = (process.env.CONSULTATION_LEAD_TO || LEAD_TO_DEFAULT).trim();
-
-  if (!host || !user || !pass || !from) {
-    return false;
-  }
-
-  const port = Number(process.env.SMTP_PORT || 465);
-  const secureExplicit = process.env.SMTP_SECURE;
-  const secure =
-    secureExplicit === 'true' || (secureExplicit !== 'false' && port === 465);
-
-  const transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure,
-    auth: { user, pass },
-  });
-
-  const subject = `Заявка на разбор: ${consultationEmail}`;
-  const lines = [
-    'Пользователь оставил заявку на разбор в мини-приложении.',
-    '',
-    `Email для связи: ${consultationEmail}`,
-    `ID сессии оценки: ${sessionId || '—'}`,
-  ];
-  if (tgUser?.id) {
-    lines.push(`Telegram: id ${tgUser.id}${tgUser.username ? `, @${tgUser.username}` : ''}`);
-  }
-  if (participant && Object.keys(participant).length) {
-    lines.push('', 'Анкета участника:', safeJson(participant, 1200));
-  }
-
-  const text = lines.join('\n');
-
-  await transporter.sendMail({
-    from,
-    to,
-    replyTo: consultationEmail,
-    subject: subject.slice(0, 200),
-    text,
-  });
-  return true;
 }
 
 async function sendConsultationTelegram({ consultationEmail, sessionId, participant, tgUser }) {
@@ -917,7 +955,7 @@ app.post('/invoice', async (req, res) => {
     if (PAYMENT_PROVIDER === 'robokassa') {
       if (!isRobokassaConfigured(process.env)) {
         return failInvoice(503, 'robokassa_pending', {
-          error: 'Оплата картой подключается (Робокасса). Попробуйте позже или напишите hello@bookvolon.ru',
+          error: 'Оплата картой подключается (Робокасса). Попробуйте позже или напишите hello@cortalab.ru',
           paymentsDisabled: true,
         });
       }
@@ -962,7 +1000,7 @@ app.post('/invoice', async (req, res) => {
     }
 
     return failInvoice(503, 'Оплата доступна только через Робокассу', {
-      error: 'Оплата доступна только через Робокассу. Напишите hello@bookvolon.ru',
+      error: 'Оплата доступна только через Робокассу. Напишите hello@cortalab.ru',
       paymentsDisabled: true,
     });
   } catch (e) {
@@ -996,7 +1034,7 @@ app.post('/invoice-web', async (req, res) => {
         error: 'robokassa_pending',
       });
       return res.status(503).json({
-        error: 'Оплата картой подключается (Робокасса). Попробуйте позже или напишите hello@bookvolon.ru',
+        error: 'Оплата картой подключается (Робокасса). Попробуйте позже или напишите hello@cortalab.ru',
         code: 'robokassa_pending',
       });
     }
@@ -1777,6 +1815,60 @@ app.post('/consultation-lead', async (req, res) => {
   }
 });
 
+/** Обращение в техподдержку с сайта / мини-приложения → письмо на hello@cortalab.ru */
+app.post('/support-lead', async (req, res) => {
+  try {
+    const email = String(req.body?.email ?? '')
+      .trim()
+      .toLowerCase();
+    const message = String(req.body?.message ?? '').trim();
+    const topic = String(req.body?.topic ?? 'общее').trim().slice(0, 80);
+    const sessionId = String(req.body?.sessionId ?? '').slice(0, 80);
+    const screen = String(req.body?.screen ?? '').slice(0, 80);
+
+    if (!email || !EMAIL_RE.test(email) || email.length > 254) {
+      return res.status(400).json({ ok: false, error: 'Некорректный email' });
+    }
+    if (message.length < 5 || message.length > 4000) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Сообщение должно быть от 5 до 4000 символов',
+      });
+    }
+
+    const last = supportLeadLastSentAt.get(email) ?? 0;
+    if (Date.now() - last < 60_000) {
+      return res.status(429).json({
+        ok: false,
+        error: 'Подождите минуту перед следующим сообщением',
+      });
+    }
+
+    let emailSent = false;
+    try {
+      emailSent = await sendSupportEmail({ email, message, topic, sessionId, screen });
+    } catch (e) {
+      console.error('[support-lead] SMTP', e);
+    }
+
+    if (!emailSent) {
+      return res.status(503).json({
+        ok: false,
+        error:
+          'Почта поддержки не настроена. Задайте SMTP_* и SMTP_FROM на сервере, либо напишите на ' +
+          SUPPORT_TO_DEFAULT,
+      });
+    }
+
+    supportLeadLastSentAt.set(email, Date.now());
+    console.info('[support-lead]', email, topic);
+    return res.json({ ok: true, emailSent: true });
+  } catch (e) {
+    console.error('[support-lead]', e);
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
 async function processTelegramUpdate(update) {
   if (!update || !BOT_TOKEN) return;
 
@@ -1867,7 +1959,7 @@ if (process.env.SERVE_STATIC === 'true') {
         },
       }),
     );
-    app.get(/^(?!\/(webhook|invoice|invoice-web|health|api|prodamus|robokassa|consultation-lead|admin|payment-order-status|payment-return-confirm|payment-recover-session|payment-recover-session-web|payment-recover-inv-web)).*$/, (_req, res) => {
+    app.get(/^(?!\/(webhook|invoice|invoice-web|health|api|prodamus|robokassa|consultation-lead|support-lead|admin|payment-order-status|payment-return-confirm|payment-recover-session|payment-recover-session-web|payment-recover-inv-web)).*$/, (_req, res) => {
       res.type('html');
       res.sendFile(path.join(distDir, 'index.html'));
     });

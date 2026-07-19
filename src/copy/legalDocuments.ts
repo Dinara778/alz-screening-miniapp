@@ -19,7 +19,7 @@ export const personalDataConsentSections = [
   {
     title: '4. Срок и отзыв',
     body:
-      'Согласие действует до достижения целей обработки или до его отзыва. Отозвать согласие можно, направив запрос на hello@bookvolon.ru.',
+      'Согласие действует до достижения целей обработки или до его отзыва. Отозвать согласие можно, направив запрос на hello@cortalab.ru.',
   },
 ] as const;
 
@@ -46,6 +46,6 @@ export const userAgreementSections = [
   },
   {
     title: '5. Контакты',
-    body: 'По вопросам соглашения: hello@bookvolon.ru.',
+    body: 'По вопросам соглашения: hello@cortalab.ru.',
   },
 ] as const;

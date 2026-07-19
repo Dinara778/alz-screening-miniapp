@@ -46,7 +46,7 @@ SMTP_SECURE=true
 SMTP_USER=resend
 SMTP_PASS=re_...
 SMTP_FROM=Corta <noreply@cortaapp.ru>
-CONSULTATION_LEAD_TO=hello@bookvolon.ru
+CONSULTATION_LEAD_TO=hello@cortalab.ru
 ```
 
 Пересоберите / перезапустите приложение на Amvera.

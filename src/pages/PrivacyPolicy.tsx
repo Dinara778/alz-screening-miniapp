@@ -1,6 +1,8 @@
 /**
  * Простой экран политики конфиденциальности (при необходимости можно подключить в навигацию).
  */
+import { SUPPORT_EMAIL } from '../constants/supportContact';
+
 export const PrivacyPolicy = () => (
   <div className="calm-inset p-6 shadow-sm space-y-4 calm-body text-sm leading-relaxed">
     <h1 className="app-heading">Конфиденциальность</h1>
@@ -13,6 +15,6 @@ export const PrivacyPolicy = () => (
       При использовании формы обратной связи или вебхуков действуют условия соответствующего сервиса — уточняйте их у
       оператора, если подключена отправка данных на сервер.
     </p>
-    <p className="text-xs text-slate-500">По вопросам: hello@bookvolon.ru</p>
+    <p className="text-xs text-slate-500">По вопросам: {SUPPORT_EMAIL}</p>
   </div>
 );

@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Button } from './Button';
 import { CalmCardShell } from './CalmCardShell';
 import { TELEGRAM_SUPPORT_URL } from './SupportFooter';
+import { SUPPORT_EMAIL, SUPPORT_MAILTO } from '../constants/supportContact';
 import { PAYMENT_PRODUCTS } from '../utils/paymentProducts';
 import { isReportUnlockProduct, isSubscriptionProduct } from '../utils/paymentProductTypes';
 import { openWebPayment, pollRobokassaPaymentStatus } from '../utils/webPayments';
@@ -292,10 +293,10 @@ export const PaymentCheckoutSheet = ({
                 </a>{' '}
                 или по почте{' '}
                 <a
-                  href="mailto:hello@bookvolon.ru"
+                  href={SUPPORT_MAILTO}
                   className="font-medium text-teal-300 underline underline-offset-2"
                 >
-                  hello@bookvolon.ru
+                  {SUPPORT_EMAIL}
                 </a>
                 .
               </p>

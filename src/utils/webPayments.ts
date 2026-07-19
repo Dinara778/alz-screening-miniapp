@@ -151,7 +151,7 @@ export async function openWebPayment(
         status: 'pending_setup',
         message:
           data.error ||
-          'Оплата картой подключается. Напишите hello@bookvolon.ru — откроем отчёт вручную после оплаты.',
+          'Оплата картой подключается. Напишите hello@cortalab.ru — откроем отчёт вручную после оплаты.',
       };
     }
     if (!res.ok) {
@@ -216,7 +216,7 @@ export async function verifyWebProductPayment(
     return {
       ok: false,
       message:
-        'Оплату пока не видим на сервере. Если деньги списались — напишите hello@bookvolon.ru с датой и email.',
+        'Оплату пока не видим на сервере. Если деньги списались — напишите hello@cortalab.ru с датой и email.',
     };
   } catch {
     return { ok: false, message: 'Нет связи с сервером. Проверьте интернет и повторите.' };

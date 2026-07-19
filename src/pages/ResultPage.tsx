@@ -241,7 +241,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
       if (!recovery?.sessionId) {
         if (hasPaymentReturnInUrl() || hasPendingRobokassaReturn()) {
           setPayNotice(
-            'Оплата ещё не подтвердилась на сервере. Подождите минуту и нажмите «Проверить оплату» — или напишите hello@bookvolon.ru',
+            'Оплата ещё не подтвердилась на сервере. Подождите минуту и нажмите «Проверить оплату» — или напишите hello@cortalab.ru',
           );
           const failedProduct = peekRobokassaReturnProduct();
           setStep(
@@ -377,7 +377,7 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
 
       setPayNotice(
         recovered.message ||
-          'Оплату пока не видим. Если деньги списались — напишите hello@bookvolon.ru с датой и email из чека.',
+          'Оплату пока не видим. Если деньги списались — напишите hello@cortalab.ru с датой и email из чека.',
       );
     } finally {
       setRecoverBusy(false);
