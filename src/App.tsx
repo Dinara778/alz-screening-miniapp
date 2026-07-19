@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { InstallAppBanner } from './components/InstallAppBanner';
-import { AppRefreshControls } from './components/AppRefreshControls';
 import { useAppViewport } from './hooks/useAppViewport';
 import { useScrollToTopOnStage } from './hooks/useScrollToTopOnStage';
 import { useApp } from './context/AppContext';
@@ -84,7 +83,6 @@ function App() {
 
   return (
     <main className="app-calm-shell mx-auto flex h-[var(--app-vh,100dvh)] max-h-[var(--app-vh,100dvh)] min-h-0 w-full max-w-2xl flex-col overflow-hidden px-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] text-white shadow-none">
-      <AppRefreshControls />
       <div
         ref={scrollRef}
         className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] [overflow-anchor:none]"
