@@ -11,6 +11,8 @@ type Props = {
   showScrollHint?: boolean;
   /** Email анкеты — чтобы не показывать чужой email из кабинета */
   accountEmail?: string | null;
+  /** Техподдержка внизу оболочки (выключайте, если она уже в footer) */
+  showSupport?: boolean;
 };
 
 /** Оболочка экранов отчёта / upsell: скролл, CTA, техподдержка */
@@ -20,6 +22,7 @@ export const ReportFlowShell = ({
   centerContent,
   showScrollHint,
   accountEmail = null,
+  showSupport = true,
 }: Props) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -47,12 +50,13 @@ export const ReportFlowShell = ({
         {footer}
       </div>
     ) : null}
-    <SupportFooter
-      showDeveloperCredit={false}
-      showCabinetAccess={false}
-      showSupportEmailHint={false}
-      accountEmail={accountEmail}
-    />
+    {showSupport ? (
+      <SupportFooter
+        showDeveloperCredit={false}
+        showCabinetAccess={false}
+        accountEmail={accountEmail}
+      />
+    ) : null}
   </div>
   );
 };

@@ -15,10 +15,6 @@ export const Footer = ({ compact = false }: Props) => {
             Данные обрабатываются в соответствии с политикой конфиденциальности.
           </p>
           <p className="text-white/55">
-            <a href={SUPPORT_MAILTO} className="text-teal-300/90 underline underline-offset-2">
-              {SUPPORT_EMAIL}
-            </a>
-            <span className="text-white/30"> · </span>
             <button
               type="button"
               className="text-teal-300/90 underline underline-offset-2"
@@ -70,8 +66,6 @@ export const Footer = ({ compact = false }: Props) => {
           >
             Техподдержка
           </button>
-          <span className="text-white/30"> · </span>
-          <span>письмо на {SUPPORT_EMAIL}</span>
         </div>
         <p className="mb-2 w-full leading-relaxed text-white/45">
           © {new Date().getFullYear()} Разработано Corta Lab (ООО «Букволон ИТ Решения»)

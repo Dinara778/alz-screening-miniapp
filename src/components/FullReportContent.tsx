@@ -337,6 +337,7 @@ export const FullReportContent = ({
     return (
       <ReportFlowShell
         accountEmail={accountEmail}
+        showSupport={!(isLast && finishMode)}
         footer={
           isLast && finishMode ? (
             <ReportFinishFooter mode={finishMode} />

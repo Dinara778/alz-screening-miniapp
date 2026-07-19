@@ -17,5 +17,6 @@ export const ReportFinishFooter = ({ mode }: { mode: ReportFinishMode }) => (
     <a href={mode.cabinetHref} className={`cabinet-access-btn block text-center ${CTA_BUTTON_CLASS}`}>
       Вернуться в кабинет, чтобы посмотреть динамику изменений
     </a>
+    <SupportFooter showDeveloperCredit={false} showCabinetAccess={false} />
   </div>
 );

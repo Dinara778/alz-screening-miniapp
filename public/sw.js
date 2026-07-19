@@ -1,5 +1,5 @@
 /* Corta PWA — минимальный service worker для установки на главный экран. */
-const CACHE_VERSION = 'corta-pwa-v2';
+const CACHE_VERSION = 'corta-pwa-v3';
 const PRECACHE_URLS = [
   '/manifest.webmanifest',
   '/icon-192.png',
