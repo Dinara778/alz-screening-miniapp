@@ -29,7 +29,7 @@ type Props = {
   onProfileReady?: (profile: ParticipantProfile) => void;
 };
 
-/** Знакомство → имя → пол → возраст → email → вход в кабинет (код, если ещё не вошли). */
+/** Знакомство → имя → пол → возраст → email → код (если нужно) → старт оценки. */
 const FIELD_STEP_MAX = 5;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -64,8 +64,21 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
   const hasSentFormStartRef = useRef(false);
   const cabinetSession = useCabinetSession();
 
-  const goToCabinet = () => {
-    window.location.href = '/cabinet';
+  /** После кода (или если сессия уже есть) — остаёмся на главном и идём к старту оценки. */
+  const continueOnMainAfterLogin = async () => {
+    await cabinetSession.refresh();
+    setEmailLogin(false);
+    setResumeLogin(false);
+    const profile = buildProfile();
+    if (profile) {
+      onProfileReady?.(profile);
+      saveSavedParticipantProfile(profile);
+    } else if (resumeProfile) {
+      onProfileReady?.(resumeProfile);
+      saveSavedParticipantProfile(resumeProfile);
+      applyProfileToForm(resumeProfile);
+    }
+    setStep(5);
   };
 
   const applyProfileToForm = (profile: ParticipantProfile) => {
@@ -241,8 +254,8 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
         const session = await ensureFreshCabinetSession();
         const sessionEmail = session?.email?.trim().toLowerCase() || null;
         if (session?.access_token && sessionEmail === profile.email) {
-          // Уже вошли с этой почтой и не выходили — код не нужен.
-          goToCabinet();
+          // Уже вошли с этой почтой и не выходили — код не нужен, остаёмся на главном.
+          setStep(5);
           return;
         }
         setEmailLogin(true);
@@ -295,16 +308,24 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
   );
 
   if (step === 5) {
+    const accountEmail =
+      email.trim().toLowerCase() ||
+      resumeProfile?.email ||
+      cabinetSession.email ||
+      null;
     return (
       <CalmCardShell fill>
         <ScreenBottomCta
           footer={
-            <Button type="button" className={CTA_BUTTON_CLASS} onClick={startAssessment}>
-              <span className="flex items-center justify-center gap-2">
-                Начать оценку
-                <IconArrowRight className="h-5 w-5 shrink-0" />
-              </span>
-            </Button>
+            <div className="space-y-3">
+              <Button type="button" className={CTA_BUTTON_CLASS} onClick={startAssessment}>
+                <span className="flex items-center justify-center gap-2">
+                  Начать оценку
+                  <IconArrowRight className="h-5 w-5 shrink-0" />
+                </span>
+              </Button>
+              <CabinetAccessLink variant="button" expectedEmail={accountEmail} />
+            </div>
           }
         >
           <div className="space-y-5 px-1 sm:px-2">
@@ -337,9 +358,9 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
         calm
         fixedEmail
         initialEmail={loginEmail}
-        title="Вход в кабинет"
+        title="Подтвердите email"
         subtitle={`Код придёт на ${loginEmail}`}
-        onLoggedIn={goToCabinet}
+        onLoggedIn={() => void continueOnMainAfterLogin()}
         onCancel={() => {
           if (emailLogin) setEmailLogin(false);
           else setResumeLogin(false);
@@ -358,8 +379,8 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
         <h2 className="app-heading text-center">Мы помним ваши данные</h2>
         <p className="calm-caption sm:text-base">
           {alreadyIn
-            ? 'Вы уже вошли — можно сразу открыть личный кабинет.'
-            : 'Это данные с прошлой оценки на этом устройстве. Войдите в кабинет или измените их.'}
+            ? 'Вы уже вошли — можно сразу пройти оценку или открыть кабинет по кнопке с почтой.'
+            : 'Это данные с прошлой оценки на этом устройстве. Подтвердите email или измените данные.'}
         </p>
         <div className="calm-inset space-y-2 rounded-2xl px-4 py-3 text-left text-sm text-white/90">
           <p className="font-semibold text-white">{formatProfileResumeLabel(resumeProfile)}</p>
@@ -376,7 +397,7 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
             if (alreadyIn) {
               onProfileReady?.(resumeProfile);
               saveSavedParticipantProfile(resumeProfile);
-              goToCabinet();
+              setStep(5);
               return;
             }
             setResumeLogin(true);
@@ -384,7 +405,7 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
         >
           <span className="flex min-w-0 flex-col items-center gap-0.5 leading-snug">
             <span className="inline-flex items-center gap-2">
-              {alreadyIn ? 'В кабинет' : 'Войти как'}
+              {alreadyIn ? 'Пройти оценку' : 'Войти как'}
               <IconArrowRight className="h-5 w-5 shrink-0" />
             </span>
             {!alreadyIn ? (
@@ -394,6 +415,9 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
             ) : null}
           </span>
         </Button>
+        {alreadyIn ? (
+          <CabinetAccessLink variant="button" expectedEmail={resumeProfile.email} />
+        ) : null}
         <Button
           type="button"
           variant="secondary"
@@ -499,7 +523,7 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
         <div className="text-center text-4xl">✉️</div>
         <h2 className="app-heading text-center">Ваш email</h2>
         <p className="text-center calm-caption">
-          Дальше откроем личный кабинет. Если вы ещё не входили — пришлём код на эту почту.
+          Подтвердим почту кодом — так сохранится кабинет. Потом можно сразу начать оценку.
         </p>
         <SameEmailHint />
         <input
@@ -564,7 +588,7 @@ export const WelcomePage = ({ visitId, onStart, onProfileReady }: Props) => {
                 )}
                 <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-0.5 text-[0.6875rem] font-medium text-white/65">
                   {emailLogin || (step === 0 && resumeLogin)
-                    ? 'вход в кабинет'
+                    ? 'подтверждение email'
                     : step === 0
                       ? resumeProfile
                         ? 'сохранённый профиль'
