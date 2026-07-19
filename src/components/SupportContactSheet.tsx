@@ -4,14 +4,6 @@ import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import { SUPPORT_EMAIL, SUPPORT_MAILTO } from '../constants/supportContact';
 import { sendSupportLead } from '../utils/supportLead';
 
-const TOPICS = [
-  { value: 'общее', label: 'Общий вопрос' },
-  { value: 'оплата', label: 'Оплата' },
-  { value: 'отчёт', label: 'Отчёт / доступ' },
-  { value: 'вход', label: 'Вход в кабинет' },
-  { value: 'оценка', label: 'Оценка / тест' },
-] as const;
-
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -28,7 +20,6 @@ export const SupportContactSheet = ({
   screen = null,
 }: Props) => {
   const [email, setEmail] = useState('');
-  const [topic, setTopic] = useState<string>(TOPICS[0].value);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +28,6 @@ export const SupportContactSheet = ({
   useEffect(() => {
     if (!open) return;
     setEmail(initialEmail?.trim().toLowerCase() || '');
-    setTopic(TOPICS[0].value);
     setMessage('');
     setError(null);
     setSent(false);
@@ -53,7 +43,6 @@ export const SupportContactSheet = ({
     const result = await sendSupportLead({
       email: email.trim().toLowerCase(),
       message: message.trim(),
-      topic,
       sessionId: sessionId || undefined,
       screen: screen || undefined,
     });
@@ -126,21 +115,6 @@ export const SupportContactSheet = ({
                 className="calm-input w-full"
                 placeholder="you@email.com"
               />
-            </label>
-
-            <label className="block space-y-1.5">
-              <span className="text-xs font-medium text-white/60">Тема</span>
-              <select
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                className="calm-input w-full"
-              >
-                {TOPICS.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
             </label>
 
             <label className="block space-y-1.5">

@@ -1822,7 +1822,7 @@ app.post('/support-lead', async (req, res) => {
       .trim()
       .toLowerCase();
     const message = String(req.body?.message ?? '').trim();
-    const topic = String(req.body?.topic ?? 'общее').trim().slice(0, 80);
+    const topic = String(req.body?.topic ?? 'обращение').trim().slice(0, 80);
     const sessionId = String(req.body?.sessionId ?? '').slice(0, 80);
     const screen = String(req.body?.screen ?? '').slice(0, 80);
 
