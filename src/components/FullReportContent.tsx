@@ -276,27 +276,63 @@ export const FullReportContent = ({
 
   if (phase === 'learned') {
     const finishAfterLearned = finishMode && !showDetox;
-    return (
-      <CalmScreen
-        contentAlign="readable"
-        footer={
-          finishAfterLearned ? (
-            <ReportFinishFooter mode={finishMode} />
-          ) : (
+    const cabinetHref = finishMode?.cabinetHref ?? '/cabinet';
+
+    if (showDetox) {
+      return (
+        <CalmScreen
+          contentAlign="readable"
+          footer={
             <div className="space-y-3">
               <Button
                 type="button"
                 className={CTA_BUTTON_CLASS}
                 onClick={() => {
-                  if (showDetox) {
-                    setDetoxPageIndex(0);
-                    setPhase('detox');
-                    return;
-                  }
-                  onDone();
+                  setDetoxPageIndex(0);
+                  setPhase('detox');
                 }}
               >
-                {showDetox ? 'Цифровой детокс' : doneButtonLabel}
+                Хочу узнать
+              </Button>
+              <a
+                href={cabinetHref}
+                className={`cabinet-access-btn block text-center ${CTA_BUTTON_CLASS}`}
+              >
+                Вернуться в кабинет
+              </a>
+              <SupportFooter
+                showDeveloperCredit={false}
+                showCabinetAccess={false}
+                accountEmail={accountEmail}
+              />
+            </div>
+          }
+        >
+          <div className="mx-auto w-full max-w-md space-y-5 pb-4 text-center">
+            <p className="text-5xl leading-none" aria-hidden>
+              🌿
+            </p>
+            <h2 className="app-heading text-center text-white">
+              Мы рекомендуем вам цифровой детокс
+            </h2>
+            <p className="text-base leading-relaxed text-white/80 sm:text-lg">
+              Хотите узнать, как устроить цифровой детокс правильно?
+            </p>
+          </div>
+        </CalmScreen>
+      );
+    }
+
+    return (
+      <CalmScreen
+        contentAlign="readable"
+        footer={
+          finishAfterLearned ? (
+            <ReportFinishFooter mode={finishMode!} />
+          ) : (
+            <div className="space-y-3">
+              <Button type="button" className={CTA_BUTTON_CLASS} onClick={onDone}>
+                {doneButtonLabel}
               </Button>
               <SupportFooter
                 showDeveloperCredit={false}
