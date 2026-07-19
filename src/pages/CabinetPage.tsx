@@ -1,9 +1,11 @@
 import { useEffect, useState, useCallback, type ReactNode } from 'react';
+import { Button } from '../components/Button';
 import { CabinetChangeSection } from '../components/CabinetChangeSection';
 import { CabinetExpertProgramOffer } from '../components/CabinetExpertProgramOffer';
 import { CabinetSubscriptionOffer } from '../components/CabinetSubscriptionOffer';
 import { CabinetLoginForm } from '../components/CabinetLoginForm';
 import { SupportFooter } from '../components/SupportFooter';
+import { CTA_BUTTON_CLASS } from '../constants/ctaButton';
 import {
   cabinetReportUrl,
   fetchCabinetData,
@@ -371,11 +373,17 @@ export const CabinetPage = () => {
           )}
         </CabinetCollapse>
 
-        <p className="cabinet-foot" style={{ marginTop: 20 }}>
-          <a className="cabinet-btn cabinet-btn-as-link" href="/?retake=1">
+        <div style={{ marginTop: 20 }}>
+          <Button
+            type="button"
+            className={CTA_BUTTON_CLASS}
+            onClick={() => {
+              window.location.href = '/?retake=1';
+            }}
+          >
             Пройти оценку
-          </a>
-        </p>
+          </Button>
+        </div>
 
         <SupportFooter
           showCabinetAccess={false}

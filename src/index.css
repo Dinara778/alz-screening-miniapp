@@ -514,12 +514,6 @@ input:focus-visible {
   background: linear-gradient(135deg, #34d399, #2dd4bf);
   color: #042f2e;
 }
-.cabinet-btn-as-link {
-  display: block;
-  box-sizing: border-box;
-  text-align: center;
-  text-decoration: none;
-}
 .cabinet-btn-secondary {
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
