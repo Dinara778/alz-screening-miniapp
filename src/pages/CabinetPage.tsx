@@ -371,8 +371,10 @@ export const CabinetPage = () => {
           )}
         </CabinetCollapse>
 
-        <p className="cabinet-foot">
-          <a href="/?retake=1">Пройти оценку снова</a>
+        <p className="cabinet-foot" style={{ marginTop: 20 }}>
+          <a className="cabinet-btn cabinet-btn-as-link" href="/?retake=1">
+            Пройти оценку
+          </a>
         </p>
 
         <SupportFooter
