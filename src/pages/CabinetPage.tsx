@@ -50,6 +50,20 @@ function paymentLabel(p: CabinetPayment): string {
   return 'Оплата';
 }
 
+/** Плашка 7990 ₽ — только тем, кто уже покупал разовый отчёт или подписку. */
+function hasPaidReportOrSubscription(data: CabinetData | null): boolean {
+  if (!data) return false;
+  if (data.subscription) return true;
+  if (data.access.type === 'one_time' || data.access.type === 'subscription') return true;
+  return data.payments.some((p) => {
+    if (String(p.type || '') === 'refunded') return false;
+    if (p.product === 'full_report') return true;
+    if (p.product === 'subscription_1m' || p.product === 'subscription_3m') return true;
+    if (p.type === 'subscription') return true;
+    return false;
+  });
+}
+
 function fmtDateOnly(isoDate: string): string {
   try {
     return new Date(`${isoDate}T12:00:00`).toLocaleDateString('ru-RU', {
@@ -302,12 +316,14 @@ export const CabinetPage = () => {
 
         <CabinetChangeSection historySortedDesc={historyAll} />
 
-        <CabinetExpertProgramOffer
-          email={email ?? data?.email}
-          payments={data?.payments ?? []}
-          fallbackSessionId={latest?.sessionId ?? null}
-          onPurchased={() => void reloadCabinet()}
-        />
+        {hasPaidReportOrSubscription(data) ? (
+          <CabinetExpertProgramOffer
+            email={email ?? data?.email}
+            payments={data?.payments ?? []}
+            fallbackSessionId={latest?.sessionId ?? null}
+            onPurchased={() => void reloadCabinet()}
+          />
+        ) : null}
 
         <section className="cabinet-card" style={{ marginTop: 16 }}>
           <h2>Ваша рекомендация</h2>

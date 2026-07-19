@@ -581,6 +581,12 @@ export const ResultPage = ({ onRestart }: { onRestart: () => void }) => {
                   Открыть расшифровку
                 </Button>
               ) : null}
+              <a
+                href="/cabinet"
+                className={`cabinet-access-btn block text-center ${calmBtnClass}`}
+              >
+                В кабинет
+              </a>
             </div>
           }
         >
