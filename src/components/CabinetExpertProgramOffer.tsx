@@ -59,7 +59,7 @@ export const CabinetExpertProgramOffer = ({
     if (typeof window === 'undefined') return;
     const q = new URLSearchParams(window.location.search);
     if (q.get('robokassa') !== 'success') return;
-    if (q.get('product') && q.get('product') !== PRODUCT) return;
+    if (q.get('product') !== PRODUCT) return;
 
     let cancelled = false;
     void (async () => {

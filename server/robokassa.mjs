@@ -227,14 +227,21 @@ export function buildRobokassaAutoRedirect(
   { sessionId, product } = {},
 ) {
   const base = robokassaPublicBaseUrl(env);
-  const returnPath = product === 'expert_program_7d' ? '/cabinet' : '/';
+  const returnPath =
+    product === 'expert_program_7d' ||
+    product === 'subscription_1m' ||
+    product === 'subscription_3m'
+      ? '/cabinet'
+      : '/';
   const success = new URL(`${base}${returnPath}`);
   success.searchParams.set('robokassa', 'success');
   if (sessionId) success.searchParams.set('sessionId', String(sessionId).slice(0, 80));
   if (product) success.searchParams.set('product', String(product));
   const returnUrl = success.toString();
   const failReturnUrl =
-    product === 'expert_program_7d'
+    product === 'expert_program_7d' ||
+    product === 'subscription_1m' ||
+    product === 'subscription_3m'
       ? `${base}/cabinet?robokassa=fail`
       : `${base}/?robokassa=fail`;
   return {

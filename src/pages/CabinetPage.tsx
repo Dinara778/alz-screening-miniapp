@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, type ReactNode } from 'react';
 import { CabinetChangeSection } from '../components/CabinetChangeSection';
 import { CabinetExpertProgramOffer } from '../components/CabinetExpertProgramOffer';
+import { CabinetSubscriptionOffer } from '../components/CabinetSubscriptionOffer';
 import { CabinetLoginForm } from '../components/CabinetLoginForm';
 import { SupportFooter } from '../components/SupportFooter';
 import {
@@ -263,6 +264,14 @@ export const CabinetPage = () => {
               <p className="cabinet-muted">Активной подписки нет.</p>
             )}
           </section>
+
+          {!data?.subscription ? (
+            <CabinetSubscriptionOffer
+              email={email ?? data?.email}
+              fallbackSessionId={latest?.sessionId ?? null}
+              onPurchased={() => void reloadCabinet()}
+            />
+          ) : null}
 
           <section className="cabinet-card">
             <h2>Текущее состояние</h2>
