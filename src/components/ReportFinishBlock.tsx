@@ -14,8 +14,15 @@ export const ReportTomorrowBanner = () => null;
 
 export const ReportFinishFooter = ({ mode }: { mode: ReportFinishMode }) => (
   <div className="space-y-3">
-    <a href={mode.cabinetHref} className={`cabinet-access-btn block text-center ${CTA_BUTTON_CLASS}`}>
-      Вернуться в кабинет, чтобы посмотреть динамику изменений
+    <a
+      href={mode.cabinetHref}
+      className={`cabinet-access-btn cabinet-access-btn--multiline block text-center ${CTA_BUTTON_CLASS}`}
+    >
+      <span className="cabinet-access-btn-label">
+        Вернуться в кабинет,
+        <br />
+        чтобы посмотреть динамику изменений
+      </span>
     </a>
     <SupportFooter showDeveloperCredit={false} showCabinetAccess={false} />
   </div>
