@@ -323,6 +323,7 @@ export const CabinetPage = () => {
 
         <SupportFooter
           showCabinetAccess={false}
+          showSupportEmailHint={false}
           accountEmail={email ?? data?.email ?? null}
           screen="cabinet"
         />

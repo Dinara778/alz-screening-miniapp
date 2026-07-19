@@ -9,6 +9,8 @@ type Props = {
   showSupport?: boolean;
   showDeveloperCredit?: boolean;
   showCabinetAccess?: boolean;
+  /** Показывать «пишите на hello@…» рядом с кнопкой */
+  showSupportEmailHint?: boolean;
   /** Email анкеты / прохождения — не показывать чужой email из старой сессии кабинета */
   accountEmail?: string | null;
   sessionId?: string | null;
@@ -19,6 +21,7 @@ export const SupportFooter = ({
   showSupport = true,
   showDeveloperCredit = true,
   showCabinetAccess = true,
+  showSupportEmailHint = true,
   accountEmail = null,
   sessionId = null,
   screen = null,
@@ -44,8 +47,12 @@ export const SupportFooter = ({
             >
               Техподдержка
             </button>
-            <span className="text-white/30"> · </span>
-            <span>пишите на {SUPPORT_EMAIL}</span>
+            {showSupportEmailHint ? (
+              <>
+                <span className="text-white/30"> · </span>
+                <span>пишите на {SUPPORT_EMAIL}</span>
+              </>
+            ) : null}
           </div>
         ) : null}
         {showDeveloperCredit ? (
