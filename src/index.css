@@ -555,10 +555,11 @@ input:focus-visible {
   padding: 0;
 }
 .cabinet-delta-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  column-gap: 12px;
+  row-gap: 6px;
   padding: 12px 0;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -584,29 +585,47 @@ input:focus-visible {
   font-weight: 700;
 }
 .cabinet-delta-label {
+  min-width: 0;
   font-size: 0.95rem;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.92);
+  line-height: 1.25;
 }
 .cabinet-delta-right {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
-  flex-shrink: 0;
+  max-width: 100%;
 }
 .cabinet-delta-value {
   font-size: 0.95rem;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.92);
+  line-height: 1.25;
+  text-align: right;
 }
 .cabinet-delta-badge {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   border-radius: 999px;
   padding: 0.2rem 0.55rem;
   font-size: 0.72rem;
   font-weight: 600;
   line-height: 1.2;
+}
+@media (max-width: 380px) {
+  .cabinet-delta-row {
+    grid-template-columns: 1fr;
+  }
+  .cabinet-delta-right {
+    justify-content: flex-start;
+    padding-left: calc(1.6rem + 10px);
+  }
+  .cabinet-delta-value {
+    text-align: left;
+  }
 }
 .cabinet-delta-row--up .cabinet-delta-icon {
   background: rgba(16, 185, 129, 0.18);
