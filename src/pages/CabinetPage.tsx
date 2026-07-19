@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, type ReactNode } from 'react';
 import { CabinetChangeSection } from '../components/CabinetChangeSection';
 import { CabinetExpertProgramOffer } from '../components/CabinetExpertProgramOffer';
 import { CabinetLoginForm } from '../components/CabinetLoginForm';
@@ -88,6 +88,48 @@ function HistoryList({ rows, emptyText }: { rows: CabinetAssessment[]; emptyText
         </li>
       ))}
     </ul>
+  );
+}
+
+function CabinetCollapse({
+  title,
+  count,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  count?: number;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const panelId = `cabinet-collapse-${title.replace(/\s+/g, '-').toLowerCase()}`;
+
+  return (
+    <section className="cabinet-card" style={{ marginTop: 16 }}>
+      <button
+        type="button"
+        className="cabinet-collapse-toggle"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="cabinet-collapse-title">
+          {title}
+          {typeof count === 'number' && count > 0 ? (
+            <span className="cabinet-count">{count}</span>
+          ) : null}
+        </span>
+        <span className="cabinet-collapse-icon" aria-hidden>
+          {open ? '−' : '+'}
+        </span>
+      </button>
+      {open ? (
+        <div id={panelId} className="cabinet-collapse-panel">
+          {children}
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -259,7 +301,7 @@ export const CabinetPage = () => {
         />
 
         <section className="cabinet-card" style={{ marginTop: 16 }}>
-          <h2>Ваше упражнение</h2>
+          <h2>Ваша рекомендация</h2>
           {data?.compensationTip ? (
             <p className="cabinet-tip">{data.compensationTip}</p>
           ) : (
@@ -267,28 +309,26 @@ export const CabinetPage = () => {
           )}
         </section>
 
-        <section className="cabinet-card" style={{ marginTop: 16 }}>
-          <h2>
-            За последние 7 дней
-            {history7d.length ? (
-              <span className="cabinet-count">{history7d.length}</span>
-            ) : null}
-          </h2>
-          <HistoryList rows={history7d} emptyText="Нет оценок за последние 7 дней." />
-        </section>
+        <CabinetCollapse title="Отчёты" count={historyAll.length}>
+          <div className="cabinet-collapse-block">
+            <h3 className="cabinet-collapse-subtitle">
+              За последние 7 дней
+              {history7d.length ? <span className="cabinet-count">{history7d.length}</span> : null}
+            </h3>
+            <HistoryList rows={history7d} emptyText="Нет оценок за последние 7 дней." />
+          </div>
+          {olderThan7d.length > 0 ? (
+            <div className="cabinet-collapse-block" style={{ marginTop: 14 }}>
+              <h3 className="cabinet-collapse-subtitle">
+                Ранее
+                <span className="cabinet-count">{olderThan7d.length}</span>
+              </h3>
+              <HistoryList rows={olderThan7d} emptyText="Нет более ранних оценок." />
+            </div>
+          ) : null}
+        </CabinetCollapse>
 
-        {olderThan7d.length > 0 ? (
-          <section className="cabinet-card" style={{ marginTop: 16 }}>
-            <h2>
-              Ранее
-              <span className="cabinet-count">{olderThan7d.length}</span>
-            </h2>
-            <HistoryList rows={olderThan7d} emptyText="Нет более ранних оценок." />
-          </section>
-        ) : null}
-
-        <section className="cabinet-card" style={{ marginTop: 16 }}>
-          <h2>Оплаты</h2>
+        <CabinetCollapse title="Оплаты" count={data?.payments?.length ?? 0}>
           {data?.payments?.length ? (
             <ul className="cabinet-payments">
               {data.payments.map((p, i) => (
@@ -304,7 +344,7 @@ export const CabinetPage = () => {
           ) : (
             <p className="cabinet-muted">Пока нет оплаченных заказов.</p>
           )}
-        </section>
+        </CabinetCollapse>
 
         <p className="cabinet-foot">
           <a href="/?retake=1">Пройти оценку снова</a>

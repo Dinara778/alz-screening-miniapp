@@ -779,6 +779,50 @@ input:focus-visible {
   font-weight: 600;
   color: rgba(255, 255, 255, 0.45);
 }
+.cabinet-collapse-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.cabinet-collapse-title {
+  display: inline-flex;
+  align-items: center;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.cabinet-collapse-icon {
+  display: inline-flex;
+  height: 1.75rem;
+  width: 1.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(238, 246, 243, 0.9);
+}
+.cabinet-collapse-panel {
+  margin-top: 12px;
+}
+.cabinet-collapse-subtitle {
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+  font-weight: 650;
+  color: rgba(238, 246, 243, 0.72);
+}
 .cabinet-payments {
   list-style: none;
   margin: 0;
