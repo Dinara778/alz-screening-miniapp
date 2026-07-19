@@ -5,7 +5,6 @@ import { CabinetLoginForm } from '../components/CabinetLoginForm';
 import { SupportFooter } from '../components/SupportFooter';
 import {
   cabinetReportUrl,
-  cancelCabinetSubscription,
   fetchCabinetData,
   signOutCabinet,
   useCabinetSession,
@@ -96,9 +95,7 @@ export const CabinetPage = () => {
   const { accessToken, email, ready, configured, refresh } = useCabinetSession();
   const [data, setData] = useState<CabinetData | null>(null);
   const [loadError, setLoadError] = useState('');
-  const [cancelBusy, setCancelBusy] = useState(false);
   const [logoutBusy, setLogoutBusy] = useState(false);
-  const [cancelMsg, setCancelMsg] = useState('');
 
   useEffect(() => {
     if (!ready || !accessToken) return;
@@ -140,27 +137,6 @@ export const CabinetPage = () => {
       setLoadError(e instanceof Error ? e.message : 'Не удалось выйти');
     } finally {
       setLogoutBusy(false);
-    }
-  };
-
-  const onCancelSubscription = async () => {
-    if (!accessToken || cancelBusy) return;
-    setCancelBusy(true);
-    setCancelMsg('');
-    setLoadError('');
-    try {
-      const result = await cancelCabinetSubscription(accessToken);
-      const refreshed = await fetchCabinetData(accessToken);
-      setData(refreshed);
-      setCancelMsg(
-        result.endDate
-          ? `Подписка отменена. Доступ сохранится до ${fmtDateOnly(result.endDate)}.`
-          : 'Подписка отменена.',
-      );
-    } catch (e) {
-      setLoadError(e instanceof Error ? e.message : 'Не удалось отменить подписку');
-    } finally {
-      setCancelBusy(false);
     }
   };
 
@@ -234,21 +210,10 @@ export const CabinetPage = () => {
               <>
                 <p className="cabinet-big">{data.subscription.planLabel}</p>
                 <p className="cabinet-muted">действует до {fmtDateOnly(data.subscription.endDate)}</p>
-                {data.subscription.status === 'cancelled' ? (
-                  <p className="cabinet-muted">Автопродление отключено</p>
-                ) : null}
-                {data.subscription.canCancel ? (
-                  <button
-                    type="button"
-                    className="cabinet-btn-secondary"
-                    style={{ marginTop: 12 }}
-                    disabled={cancelBusy}
-                    onClick={() => void onCancelSubscription()}
-                  >
-                    {cancelBusy ? 'Отмена…' : 'Отменить подписку'}
-                  </button>
-                ) : null}
-                {cancelMsg ? <p className="cabinet-success">{cancelMsg}</p> : null}
+                <p className="cabinet-muted" style={{ marginTop: 8 }}>
+                  Без автосписаний: доступ действует до указанной даты, продлевается только новой
+                  оплатой.
+                </p>
               </>
             ) : data?.access.type === 'one_time' ? (
               <p className="cabinet-muted">У вас разовый доступ к отчёту без подписки.</p>
