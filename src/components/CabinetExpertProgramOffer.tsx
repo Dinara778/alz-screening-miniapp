@@ -167,9 +167,13 @@ export const CabinetExpertProgramOffer = ({
               <span className="cabinet-expert-cta-emoji" aria-hidden>
                 🧠
               </span>
-              <span className="cabinet-expert-cta-text">
-                <strong>7-дневная программа восстановления когнитивной эффективности с экспертом</strong>
-                <span className="cabinet-expert-cta-price">{meta.priceRub.toLocaleString('ru-RU')} ₽</span>
+              <span className="cabinet-expert-cta-body">
+                <strong className="cabinet-expert-cta-title">
+                  7-дневная программа восстановления когнитивной эффективности с экспертом
+                </strong>
+                <span className="cabinet-expert-cta-price">
+                  {meta.priceRub.toLocaleString('ru-RU')} ₽
+                </span>
               </span>
             </button>
             {notice ? <p className="cabinet-success" style={{ marginTop: 10 }}>{notice}</p> : null}
@@ -213,7 +217,7 @@ export const CabinetExpertProgramOffer = ({
                   ваши показатели, и получите персональную стратегию поддержания высокой
                   когнитивной формы.
                 </p>
-                <p className="text-sm font-semibold text-emerald-200">
+                <p className="cabinet-expert-sheet-price">
                   {meta.priceRub.toLocaleString('ru-RU')} ₽
                 </p>
                 <Button
