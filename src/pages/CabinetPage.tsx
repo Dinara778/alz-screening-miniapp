@@ -211,7 +211,7 @@ export const CabinetPage = () => {
 
         <div className="cabinet-grid">
           <section className="cabinet-card">
-            <h2>Подписка</h2>
+            <h2>Статус доступа</h2>
             {data?.subscription ? (
               <>
                 <p className="cabinet-big">{data.subscription.planLabel}</p>
@@ -237,14 +237,6 @@ export const CabinetPage = () => {
             ) : (
               <p className="cabinet-muted">Активной подписки нет.</p>
             )}
-          </section>
-
-          <section className="cabinet-card">
-            <h2>Статус доступа</h2>
-            <p className="cabinet-big">{data?.access.label ?? '—'}</p>
-            {data?.access.endDate ? (
-              <p className="cabinet-muted">до {fmtDateOnly(data.access.endDate)}</p>
-            ) : null}
           </section>
 
           <section className="cabinet-card">
