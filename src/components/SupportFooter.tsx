@@ -45,7 +45,7 @@ export const SupportFooter = ({
               Техподдержка
             </button>
             <span className="text-white/30"> · </span>
-            <span>письмо на {SUPPORT_EMAIL}</span>
+            <span>пишите на {SUPPORT_EMAIL}</span>
           </div>
         ) : null}
         {showDeveloperCredit ? (

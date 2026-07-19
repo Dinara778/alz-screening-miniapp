@@ -74,7 +74,7 @@ export const SupportContactSheet = ({
               Техподдержка
             </h2>
             <p className="mt-1 text-sm text-white/55">
-              Ответим на почту {SUPPORT_EMAIL}
+              Ответ придёт с {SUPPORT_EMAIL} на ваш email
             </p>
           </div>
           <button
@@ -90,7 +90,8 @@ export const SupportContactSheet = ({
         {sent ? (
           <div className="space-y-4 py-2">
             <p className="text-base leading-relaxed text-emerald-100/95">
-              Сообщение отправлено. Ответим на {email.trim().toLowerCase()}.
+              Сообщение отправлено. Ответим на ваш email {email.trim().toLowerCase()} — письмо
+              придёт с {SUPPORT_EMAIL}.
             </p>
             <Button type="button" className={CTA_BUTTON_CLASS} onClick={onClose}>
               Готово

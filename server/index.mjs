@@ -436,6 +436,14 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** @type {Map<string, number>} */
 const supportLeadLastSentAt = new Map();
 
+function isSmtpConfigured() {
+  const host = process.env.SMTP_HOST?.trim();
+  const user = process.env.SMTP_USER?.trim();
+  const pass = process.env.SMTP_PASS?.trim();
+  const from = process.env.SMTP_FROM?.trim() || user;
+  return Boolean(host && user && pass && from);
+}
+
 function createSmtpTransport() {
   const host = process.env.SMTP_HOST?.trim();
   const user = process.env.SMTP_USER?.trim();
@@ -455,6 +463,9 @@ function createSmtpTransport() {
       port,
       secure,
       auth: { user, pass },
+      connectionTimeout: 12_000,
+      greetingTimeout: 12_000,
+      socketTimeout: 20_000,
     }),
   };
 }
@@ -563,6 +574,33 @@ async function sendConsultationTelegram({ consultationEmail, sessionId, particip
   });
   return result.ok === true;
 }
+
+async function sendSupportTelegram({ email, message, topic, sessionId, screen }) {
+  const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID?.trim();
+  if (!chatId || !BOT_TOKEN) return false;
+
+  const text = [
+    'Обращение в техподдержку (Corta)',
+    `От: ${email}`,
+    `Тема: ${String(topic || 'общее').trim().slice(0, 80)}`,
+    `Экран: ${screen || '—'}`,
+    `Сессия: ${sessionId || '—'}`,
+    '',
+    String(message || '').trim().slice(0, 3000),
+  ]
+    .join('\n')
+    .slice(0, 3900);
+
+  const result = await tgApi('sendMessage', {
+    chat_id: chatId,
+    text,
+    disable_web_page_preview: true,
+  });
+  return result.ok === true;
+}
+
+/** Amvera подменяет ответ приложения со статусом 503 своей HTML-страницей — не используем 503 для бизнес-ошибок. */
+const LEAD_UNAVAILABLE_STATUS = 502;
 
 const app = express();
 app.use(cors({ origin: true }));
@@ -692,8 +730,21 @@ async function sendHealthJson(res) {
       'Аналитика: SHEETS_WEBHOOK_URL на «Запуск» (проще) или VITE_SHEETS_WEBHOOK_URL на «Сборка», URL …/exec',
     );
   }
+  const smtpReady = isSmtpConfigured();
+  const adminChatReady = Boolean(process.env.TELEGRAM_ADMIN_CHAT_ID?.trim() && BOT_TOKEN);
+  if (!smtpReady && !adminChatReady && !sheetsUrl) {
+    hints.push(
+      'Поддержка: задайте SMTP_* (Resend) или TELEGRAM_ADMIN_CHAT_ID — иначе форма техподдержки не доставит обращение',
+    );
+  }
   res.json({
     ok: true,
+    support: {
+      smtpConfigured: smtpReady,
+      telegramAdminConfigured: adminChatReady,
+      sheetsConfigured: Boolean(sheetsUrl),
+      ready: smtpReady || adminChatReady || Boolean(sheetsUrl),
+    },
     analytics: {
       sheetsConfigured: Boolean(sheetsUrl),
       source: sheetsWebhookSource(),
@@ -1800,7 +1851,7 @@ app.post('/consultation-lead', async (req, res) => {
     }
 
     if (!emailSent && !telegramSent) {
-      return res.status(503).json({
+      return res.status(LEAD_UNAVAILABLE_STATUS).json({
         error:
           'Уведомления не настроены: задайте SMTP_* и SMTP_FROM для письма на менеджера ' +
           `или TELEGRAM_ADMIN_CHAT_ID для сообщения в Telegram. Письмо по умолчанию: ${LEAD_TO_DEFAULT}`,
@@ -1815,7 +1866,7 @@ app.post('/consultation-lead', async (req, res) => {
   }
 });
 
-/** Обращение в техподдержку с сайта / мини-приложения → письмо на hello@cortalab.ru */
+/** Обращение в техподдержку с сайта / мини-приложения → SMTP / Telegram / Sheets */
 app.post('/support-lead', async (req, res) => {
   try {
     const email = String(req.body?.email ?? '')
@@ -1845,24 +1896,47 @@ app.post('/support-lead', async (req, res) => {
     }
 
     let emailSent = false;
+    let telegramSent = false;
+    let sheetsSent = false;
+
     try {
       emailSent = await sendSupportEmail({ email, message, topic, sessionId, screen });
     } catch (e) {
       console.error('[support-lead] SMTP', e);
     }
+    try {
+      telegramSent = await sendSupportTelegram({ email, message, topic, sessionId, screen });
+    } catch (e) {
+      console.error('[support-lead] Telegram', e);
+    }
+    try {
+      const sheets = await forwardToGoogleSheets({
+        eventType: 'support_lead',
+        sessionId: sessionId || `support-${Date.now()}`,
+        stage: 'support',
+        screen: screen || 'support',
+        timestamp: new Date().toISOString(),
+        participant: { email },
+        reason: topic,
+        detail: message.slice(0, 1800),
+      });
+      sheetsSent = sheets.ok === true;
+      if (!sheets.ok) console.error('[support-lead] Sheets', sheets.status, sheets.error);
+    } catch (e) {
+      console.error('[support-lead] Sheets', e);
+    }
 
-    if (!emailSent) {
-      return res.status(503).json({
+    if (!emailSent && !telegramSent && !sheetsSent) {
+      return res.status(LEAD_UNAVAILABLE_STATUS).json({
         ok: false,
         error:
-          'Почта поддержки не настроена. Задайте SMTP_* и SMTP_FROM на сервере, либо напишите на ' +
-          SUPPORT_TO_DEFAULT,
+          'Сейчас не удалось доставить сообщение. Напишите напрямую на ' + SUPPORT_TO_DEFAULT,
       });
     }
 
     supportLeadLastSentAt.set(email, Date.now());
-    console.info('[support-lead]', email, topic);
-    return res.json({ ok: true, emailSent: true });
+    console.info('[support-lead]', email, topic, { emailSent, telegramSent, sheetsSent });
+    return res.json({ ok: true, emailSent, telegramSent, sheetsSent });
   } catch (e) {
     console.error('[support-lead]', e);
     return res.status(500).json({ ok: false, error: 'server_error' });

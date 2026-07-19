@@ -24,9 +24,13 @@ export async function sendSupportLead(
     });
     const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
     if (!res.ok || !json.ok) {
+      const raw = typeof json.error === 'string' ? json.error.trim() : '';
+      const looksLikeHtml = !raw || raw.startsWith('<') || /service unavailable/i.test(raw);
       return {
         ok: false,
-        error: json.error || `Не удалось отправить (код ${res.status})`,
+        error: looksLikeHtml
+          ? `Не удалось отправить. Напишите напрямую на hello@cortalab.ru`
+          : raw || `Не удалось отправить (код ${res.status})`,
       };
     }
     return { ok: true };
