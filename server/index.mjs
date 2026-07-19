@@ -163,6 +163,13 @@ const PRODUCTS = {
     amount: 549000,
     priceRub: 5490,
   },
+  expert_program_7d: {
+    title: 'Программа с экспертом 7 дней',
+    description:
+      '7-дневная программа восстановления когнитивной эффективности с экспертом Corta',
+    amount: 799000,
+    priceRub: 7990,
+  },
 };
 
 function isReportUnlockProduct(product) {
@@ -239,7 +246,7 @@ async function fulfillPaidOrder({ sessionId, product, amountRub, invId, email })
           email: normalizedEmail,
         });
       }
-    } else if (prod === 'consultation') {
+    } else if (prod === 'consultation' || prod === 'expert_program_7d') {
       const saved = await recordPayment({
         sessionId: sid,
         product: prod,
@@ -250,12 +257,34 @@ async function fulfillPaidOrder({ sessionId, product, amountRub, invId, email })
         email: normalizedEmail,
       });
       if (!saved) {
-        console.error('[supabase] fulfillPaidOrder: consultation payment not saved', {
+        console.error('[supabase] fulfillPaidOrder: one_time expert payment not saved', {
           sid,
           prod,
           invId,
           email: normalizedEmail,
         });
+      }
+      if (prod === 'expert_program_7d' && normalizedEmail) {
+        try {
+          await sendSupportEmail({
+            email: normalizedEmail,
+            message: [
+              'Оплачена 7-дневная программа восстановления когнитивной эффективности с экспертом.',
+              '',
+              `Email клиента: ${normalizedEmail}`,
+              `Сессия / заказ: ${sid || '—'}`,
+              `InvId: ${invId ?? '—'}`,
+              `Сумма: ${amountRub ?? 7990} ₽`,
+              '',
+              'Свяжитесь с клиентом по этому email.',
+            ].join('\n'),
+            topic: 'программа с экспертом 7д',
+            sessionId: sid,
+            screen: 'payment',
+          });
+        } catch (e) {
+          console.error('[fulfill] expert program notify', e);
+        }
       }
     }
 

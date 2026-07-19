@@ -652,6 +652,48 @@ input:focus-visible {
   border: 1px solid rgba(255, 255, 255, 0.18);
   color: rgba(255, 255, 255, 0.55);
 }
+.cabinet-expert-offer {
+  padding: 14px;
+}
+.cabinet-expert-cta {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  gap: 12px;
+  border: 0;
+  border-radius: 16px;
+  padding: 14px 14px 14px 12px;
+  text-align: left;
+  cursor: pointer;
+  background: linear-gradient(135deg, #fbbf24 0%, #34d399 48%, #2dd4bf 100%);
+  color: #042f2e;
+  box-shadow: 0 10px 28px rgba(16, 185, 129, 0.28);
+}
+.cabinet-expert-cta:active {
+  transform: scale(0.985);
+}
+.cabinet-expert-cta-emoji {
+  flex-shrink: 0;
+  font-size: 1.55rem;
+  line-height: 1.2;
+}
+.cabinet-expert-cta-text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+}
+.cabinet-expert-cta-text strong {
+  font-size: 0.98rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+.cabinet-expert-cta-price {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
 .cabinet-tip {
   margin: 0;
   line-height: 1.5;

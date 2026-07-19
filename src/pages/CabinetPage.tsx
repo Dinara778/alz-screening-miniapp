@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { CabinetChangeSection } from '../components/CabinetChangeSection';
+import { CabinetExpertProgramOffer } from '../components/CabinetExpertProgramOffer';
 import { CabinetLoginForm } from '../components/CabinetLoginForm';
 import { SupportFooter } from '../components/SupportFooter';
 import {
@@ -42,6 +43,9 @@ function paymentLabel(p: CabinetPayment): string {
   if (p.product === 'subscription_1m') return 'Подписка Corta daily — 1 месяц';
   if (p.product === 'subscription_3m') return 'Подписка «Corta daily» — 3 месяца';
   if (p.product === 'consultation') return 'Сессия с экспертом';
+  if (p.product === 'expert_program_7d') {
+    return '7-дневная программа с экспертом';
+  }
   if (p.type === 'subscription') return 'Подписка Corta daily';
   return 'Оплата';
 }
@@ -109,6 +113,19 @@ export const CabinetPage = () => {
       })
       .catch((e) => setLoadError(e instanceof Error ? e.message : 'Ошибка загрузки'));
   }, [ready, accessToken]);
+
+  const reloadCabinet = useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const cabinet = await fetchCabinetData(accessToken);
+      setData(cabinet);
+      if (cabinet.subscription?.endDate) {
+        setSubscriptionFromServer(cabinet.subscription.endDate, email);
+      }
+    } catch {
+      /* ignore soft refresh */
+    }
+  }, [accessToken, email]);
 
   const onLogout = async () => {
     if (logoutBusy) return;
@@ -268,6 +285,13 @@ export const CabinetPage = () => {
         </div>
 
         <CabinetChangeSection historySortedDesc={historyAll} />
+
+        <CabinetExpertProgramOffer
+          email={email ?? data?.email}
+          payments={data?.payments ?? []}
+          fallbackSessionId={latest?.sessionId ?? null}
+          onPurchased={() => void reloadCabinet()}
+        />
 
         <section className="cabinet-card" style={{ marginTop: 16 }}>
           <h2>Ваше упражнение</h2>

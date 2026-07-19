@@ -158,7 +158,9 @@ export async function openWebPayment(
       return { status: 'error', message: data.error || `Ошибка сервера (${res.status})` };
     }
     if (data.alreadyPaid) {
-      markWebProductPaid(sessionId, product, undefined, payerEmail);
+      if (isReportUnlockProduct(product)) {
+        markWebProductPaid(sessionId, product, undefined, payerEmail);
+      }
       return { status: 'already_paid' };
     }
     if (data.paymentUrl) {
@@ -210,7 +212,11 @@ export async function verifyWebProductPayment(
       subscriptionUntil?: string;
     };
     if (res.ok && data.paid && data.sessionId) {
-      markWebProductPaid(data.sessionId, product, data.subscriptionUntil, payerEmail);
+      if (isReportUnlockProduct(product)) {
+        markWebProductPaid(data.sessionId, product, data.subscriptionUntil, payerEmail);
+      } else if (data.subscriptionUntil) {
+        setSubscriptionFromServer(data.subscriptionUntil, payerEmail);
+      }
       return { ok: true, sessionId: data.sessionId };
     }
     return {
@@ -253,7 +259,11 @@ async function verifyWebPaymentByInvId(
       subscriptionUntil?: string;
     };
     if (res.ok && data.paid && data.sessionId && data.product) {
-      markWebProductPaid(data.sessionId, data.product, data.subscriptionUntil);
+      if (isReportUnlockProduct(data.product)) {
+        markWebProductPaid(data.sessionId, data.product, data.subscriptionUntil);
+      } else if (data.subscriptionUntil) {
+        setSubscriptionFromServer(data.subscriptionUntil);
+      }
       return { ok: true, sessionId: data.sessionId, product: data.product };
     }
   } catch {

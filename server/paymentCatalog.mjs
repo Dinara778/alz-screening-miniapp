@@ -4,6 +4,7 @@ export const PRODUCT_PRICE_RUB = {
   subscription_1m: 499,
   subscription_3m: 990,
   consultation: 5490,
+  expert_program_7d: 7990,
 };
 
 export function catalogPriceRub(product) {

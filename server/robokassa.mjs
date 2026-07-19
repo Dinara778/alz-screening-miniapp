@@ -227,12 +227,16 @@ export function buildRobokassaAutoRedirect(
   { sessionId, product } = {},
 ) {
   const base = robokassaPublicBaseUrl(env);
-  const success = new URL(`${base}/`);
+  const returnPath = product === 'expert_program_7d' ? '/cabinet' : '/';
+  const success = new URL(`${base}${returnPath}`);
   success.searchParams.set('robokassa', 'success');
   if (sessionId) success.searchParams.set('sessionId', String(sessionId).slice(0, 80));
   if (product) success.searchParams.set('product', String(product));
   const returnUrl = success.toString();
-  const failReturnUrl = `${base}/?robokassa=fail`;
+  const failReturnUrl =
+    product === 'expert_program_7d'
+      ? `${base}/cabinet?robokassa=fail`
+      : `${base}/?robokassa=fail`;
   return {
     /** В подписи — сырой URL (не encodeURIComponent), иначе ошибка 29 при фискализации. */
     successUrl2: returnUrl,
