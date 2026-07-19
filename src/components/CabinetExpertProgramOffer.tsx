@@ -129,7 +129,9 @@ export const CabinetExpertProgramOffer = ({
       }
       if (r.status === 'redirected') {
         setAwaitingReturn(true);
-        setNotice('Переход на оплату… После оплаты вы вернётесь в кабинет.');
+        setNotice(
+          'Переход на оплату… После оплаты вы вернётесь в кабинет. Если этого не произошло — нажмите «Вернуться в магазин» на странице Робокассы.',
+        );
         return;
       }
       if (r.status === 'pending_setup') {
