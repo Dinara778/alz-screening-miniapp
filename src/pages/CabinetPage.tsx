@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CabinetChangeSection } from '../components/CabinetChangeSection';
 import { CabinetLoginForm } from '../components/CabinetLoginForm';
+import { SupportFooter } from '../components/SupportFooter';
 import {
   cabinetReportUrl,
   cancelCabinetSubscription,
@@ -319,6 +320,12 @@ export const CabinetPage = () => {
         <p className="cabinet-foot">
           <a href="/?retake=1">Пройти оценку снова</a>
         </p>
+
+        <SupportFooter
+          showCabinetAccess={false}
+          accountEmail={email ?? data?.email ?? null}
+          screen="cabinet"
+        />
       </div>
     </div>
   );
