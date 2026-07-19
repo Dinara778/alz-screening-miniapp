@@ -324,6 +324,10 @@ export function buildRobokassaPaymentUrl(
   for (const key of Object.keys(shp).sort()) {
     qs = appendQueryParam(qs, key, shp[key]);
   }
+  // Email не входит в подпись: предзаполняет форму Робокассы и отправку чека покупателю.
+  if (normalizedEmail.includes('@')) {
+    qs = appendQueryParam(qs, 'Email', normalizedEmail);
+  }
   qs = appendQueryParam(qs, 'SuccessUrl2', redirect.returnUrl);
   qs = appendQueryParam(qs, 'SuccessUrl2Method', redirect.successUrl2Method);
   qs = appendQueryParam(qs, 'FailUrl2', redirect.failReturnUrl);

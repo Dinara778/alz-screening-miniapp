@@ -41,12 +41,19 @@ export const CabinetExpertProgramOffer = ({
   const [awaitingReturn, setAwaitingReturn] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [supportOpen, setSupportOpen] = useState(false);
+  const [payerEmail, setPayerEmail] = useState('');
 
   const purchased = useMemo(() => hasExpertProgramPurchase(payments), [payments]);
   const sessionId = useMemo(
-    () => expertProgramSessionId(email || '', fallbackSessionId),
-    [email, fallbackSessionId],
+    () => expertProgramSessionId(email || payerEmail || '', fallbackSessionId),
+    [email, payerEmail, fallbackSessionId],
   );
+
+  useEffect(() => {
+    if (step === 'pay') {
+      setPayerEmail((prev) => prev.trim() || email?.trim().toLowerCase() || '');
+    }
+  }, [step, email]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -105,9 +112,9 @@ export const CabinetExpertProgramOffer = ({
 
   const handlePay = async () => {
     if (payBusy) return;
-    const payer = email?.trim().toLowerCase();
-    if (!payer?.includes('@')) {
-      setNotice('Нужен email аккаунта кабинета для оплаты.');
+    const payer = payerEmail.trim().toLowerCase();
+    if (!payer.includes('@') || payer.length > 254) {
+      setNotice('Укажите корректный email — на него уйдёт чек и свяжется эксперт.');
       return;
     }
     setPayBusy(true);
@@ -220,8 +227,21 @@ export const CabinetExpertProgramOffer = ({
             ) : (
               <div className="space-y-4">
                 <p className="text-sm leading-relaxed text-white/70">
-                  Эксперт свяжется с вами по указанной при оплате почте после оплаты
+                  Эксперт свяжется с вами по указанной при оплате почте после оплаты. На этот же
+                  email Робокасса отправит чек.
                 </p>
+                <label className="block space-y-1.5">
+                  <span className="text-xs font-medium text-white/60">Email для связи и чека</span>
+                  <input
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={payerEmail}
+                    onChange={(e) => setPayerEmail(e.target.value)}
+                    className="calm-input w-full"
+                    placeholder="you@email.com"
+                  />
+                </label>
                 {notice ? <p className="text-sm text-amber-200/95">{notice}</p> : null}
                 <Button
                   type="button"
